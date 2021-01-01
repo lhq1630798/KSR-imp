@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.17)
+project(KSR_imp LANGUAGES CXX)
+
+# find_package(CGAL CONFIG REQUIRED OPTIONAL_COMPONENTS Qt5)
+find_package(CGAL CONFIG REQUIRED)
+add_subdirectory("deps/imgui/")
+
+
+add_executable(imgui_example "src/imgui_example.cpp")
+target_link_libraries(imgui_example 
+    PRIVATE imgui
+)
+
+
+set(KSR_SOURCES 
+        "src/main.cpp"
+        "src/math/vec3.h"
+        "src/globject.h")
+add_executable(KSR_imp ${KSR_SOURCES})
+set_target_properties(KSR_imp PROPERTIES
+                      CXX_STANDARD 17
+                      CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(KSR_imp PRIVATE /W4 /wd4201 /wd4840 /wd4100 /fp:fast /MP)
+else()
+    target_compile_options(KSR_imp PRIVATE -Wall -Wextra -Wno-reorder -Wno-unused-parameter)
+endif()
+target_link_libraries(KSR_imp 
+    PRIVATE CGAL::CGAL imgui
+)
+
