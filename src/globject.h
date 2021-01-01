@@ -78,7 +78,7 @@ class Mesh
 public:
     using Index = GLuint;
     using Vert = Vec3;
-    Mesh(std::vector<Vert> verts, std::vector<Index> idxs = {})
+    Mesh(std::vector<Vert> verts, std::vector<Index> idxs)
     {
         _verts = std::move(verts);
         _idxs = std::move(idxs);
@@ -104,7 +104,32 @@ public:
         glDrawElements(GL_TRIANGLES, (GLuint)_idxs.size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
-    void render_polygon()
+
+private:
+    std::vector<Vert> _verts;
+    std::vector<Index> _idxs;
+    GLuint vao = 0, vbo = 0, ebo = 0;
+};
+
+class Polygon{
+public:
+    using Vert = Vec3;
+    Polygon(std::vector<Vert> verts)
+    {
+        _verts = std::move(verts);
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * _verts.size(), _verts.data(), GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBindVertexArray(0);
+    }
+    void render()
     {
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLE_FAN, 0, (GLuint)_verts.size());
@@ -112,6 +137,5 @@ public:
     }
 private:
     std::vector<Vert> _verts;
-    std::vector<Index> _idxs;
-    GLuint vao = 0, vbo = 0, ebo = 0;
+    GLuint vao = 0, vbo = 0;
 };

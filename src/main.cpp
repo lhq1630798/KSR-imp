@@ -89,7 +89,7 @@ int main(int, char **)
                                        1, 2, 3};
 
   // auto mesh = Mesh{verts, idxs};
-  auto poly_mesh = Mesh{verts};
+  auto mesh = Polygon{verts};
 
   //----------------------------------------------------------------------------
 
@@ -137,8 +137,7 @@ int main(int, char **)
     auto timeValue = (float)glfwGetTime();
     auto g_color = sin(timeValue) / 2.0f + 0.5f;
     shader.set_uniform("ourColor", Vec3{0, g_color, 0});
-    // mesh.render();
-    poly_mesh.render_polygon();
+    mesh.render();
 
     // Render UI
     ImGui::Render();
