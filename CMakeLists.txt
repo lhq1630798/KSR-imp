@@ -11,11 +11,13 @@ target_link_libraries(imgui_example
     PRIVATE imgui
 )
 
-
 set(KSR_SOURCES 
-        "src/main.cpp"
         "src/math/vec3.h"
-        "src/globject.h")
+        "src/camera.h"
+        "src/globject.h"
+        "src/intersection.cpp"
+        "src/main.cpp"
+        )
 add_executable(KSR_imp ${KSR_SOURCES})
 set_target_properties(KSR_imp PROPERTIES
                       CXX_STANDARD 17
@@ -28,4 +30,6 @@ endif()
 target_link_libraries(KSR_imp 
     PRIVATE CGAL::CGAL imgui
 )
-
+target_include_directories(KSR_imp 
+    PRIVATE "deps/"
+)

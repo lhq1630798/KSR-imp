@@ -1,12 +1,30 @@
+#include "globject.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
+// #include <glad/glad.h>
 #include <GL/glew.h> // Initialize with glewInit()
 #include <GLFW/glfw3.h>
-
+#include <CGAL/Random.h>
 #include <iostream>
-#include "globject.h"
+#include "camera.h"
+
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+
+// camera
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
+
+// timing
+float deltaTime = 0.0f; // time between current frame and last frame
+float lastFrame = 0.0f;
+
+std::vector<Polygon> decompose(std::vector<Polygon>);
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -19,6 +37,50 @@ void processInput(GLFWwindow *window)
 {
   if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     glfwSetWindowShouldClose(window, true);
+  if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    camera.ProcessKeyboard(FORWARD, deltaTime);
+  if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    camera.ProcessKeyboard(BACKWARD, deltaTime);
+  if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    camera.ProcessKeyboard(LEFT, deltaTime);
+  if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+{
+  // make sure the viewport matches the new window dimensions; note that width and
+  // height will be significantly larger than specified on retina displays.
+  glViewport(0, 0, width, height);
+}
+
+// glfw: whenever the mouse moves, this callback is called
+// -------------------------------------------------------
+void mouse_callback(GLFWwindow *window, double xpos, double ypos)
+{
+  if (firstMouse)
+  {
+    lastX = xpos;
+    lastY = ypos;
+    firstMouse = false;
+  }
+
+  float xoffset = xpos - lastX;
+  float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+  lastX = xpos;
+  lastY = ypos;
+
+  camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+// glfw: whenever the mouse scroll wheel scrolls, this callback is called
+// ----------------------------------------------------------------------
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
+  camera.ProcessMouseScroll(yoffset);
 }
 
 int main(int, char **)
@@ -35,6 +97,7 @@ int main(int, char **)
     return 1;
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); // Enable vsync
+  glfwSetScrollCallback(window, scroll_callback);
 
   if (glewInit() != GLEW_OK)
   {
@@ -56,46 +119,48 @@ int main(int, char **)
   bool show_demo_window = true;
   bool show_another_window = false;
   ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
+  float depth = 1;
 
-  const char *vertexShaderSource = R"(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;
-
-    void main()
-    {
-        gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-    }
-  )";
-  const char *fragmentShaderSource = R"(
-    #version 330 core
-    out vec4 FragColor;
-    uniform vec3 ourColor;
-    void main()
-    {
-        FragColor = vec4(ourColor,1);
-    } 
-  )";
-
-  auto shader = Shader{vertexShaderSource, fragmentShaderSource};
+  auto shader = Shader{"D:/Documents/workspace/KSR-imp/src/7.4.camera.vs", "D:/Documents/workspace/KSR-imp/src/7.4.camera.fs"};
 
   auto verts = std::vector<Mesh::Vert>{
       {0.5f, 0.5f, 0.0f},
       {0.5f, -0.5f, 0.0f},
       {-0.5f, -0.5f, 0.0f},
       {-0.5f, 0.5f, 0.0f},
-      {0.0f, 0.8f, 0.0f},
+      {0.1f, 0.8f, 0.0f},
   };
   auto idxs = std::vector<Mesh::Index>{0, 1, 3,
                                        1, 2, 3};
-
   // auto mesh = Mesh{verts, idxs};
   auto mesh = Polygon{verts};
+
+  auto rand = CGAL::Random{0};
+  auto randam_tri = std::vector<Polygon>{};
+  size_t num = 10;
+  double tri_s = 0.9;
+  while (num-- > 0)
+  {
+    randam_tri.push_back(Polygon{std::vector<Mesh::Vert>{
+        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
+        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
+        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
+    }});
+  }
+  auto meshes = decompose(randam_tri);
+  // auto meshes = std::vector<Polygon>{mesh};
+
+  glEnable(GL_DEPTH_TEST);
+  glClearDepth(depth);
 
   //----------------------------------------------------------------------------
 
   // Main loop
   while (!glfwWindowShouldClose(window))
   {
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;
     glfwPollEvents();
     processInput(window);
     // Start the Dear ImGui frame
@@ -120,6 +185,7 @@ int main(int, char **)
 
       ImGui::SliderFloat("float", &f, 0.0f, 1.0f);             // Edit 1 float using a slider from 0.0f to 1.0f
       ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
+      ImGui::SliderFloat("depth", &depth, -1, 1);
 
       if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
         counter++;
@@ -132,12 +198,37 @@ int main(int, char **)
 
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
+    glClearDepth(depth);
+    glClear(GL_DEPTH_BUFFER_BIT);
 
-    shader.bind();
-    auto timeValue = (float)glfwGetTime();
-    auto g_color = sin(timeValue) / 2.0f + 0.5f;
-    shader.set_uniform("ourColor", Vec3{0, g_color, 0});
-    mesh.render();
+    shader.use();
+    glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
+    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+    glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
+    view = camera.GetViewMatrix();
+    glm::mat4 projection(1); //projection矩阵，投影矩阵
+    projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+    // 向着色器中传入参数
+    shader.setMat4("model", model);
+    shader.setMat4("view", view);
+    shader.setMat4("projection", projection);
+
+    for (const auto &mesh : meshes)
+    {
+      auto timeValue = (float)glfwGetTime();
+      auto g_color = sin(timeValue) / 2.0f + 0.5f;
+      shader.setVec3("ourColor", glm::vec3{0, g_color, 0});
+      // glEnable(GL_DEPTH_TEST);
+      mesh.render();
+
+      // glDisable(GL_DEPTH_TEST);
+      shader.setVec3("ourColor", glm::vec3{1, 0.5, 0.5});
+      glLineWidth(5.0f);
+      glPolygonOffset(1.0f, 1.0f);
+      glEnable(GL_POLYGON_OFFSET_LINE);
+      mesh.render_boundary();
+    }
 
     // Render UI
     ImGui::Render();
