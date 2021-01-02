@@ -1,8 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-// #include <glad/glad.h>
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <vector>
 #include "math/vec3.h"
 #include <string>
@@ -203,10 +202,10 @@ private:
     GLuint vao = 0, vbo = 0, ebo = 0;
 };
 
-class Polygon{
+class Polygon_Mesh{
 public:
     using Vert = Vec3;
-    explicit Polygon(std::vector<Vert> verts)
+    explicit Polygon_Mesh(std::vector<Vert> verts)
     {
         _verts = std::move(verts);
         glGenVertexArrays(1, &vao);

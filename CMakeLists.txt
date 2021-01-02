@@ -5,12 +5,6 @@ project(KSR_imp LANGUAGES CXX)
 find_package(CGAL CONFIG REQUIRED)
 add_subdirectory("deps/imgui/")
 
-
-add_executable(imgui_example "src/imgui_example.cpp")
-target_link_libraries(imgui_example 
-    PRIVATE imgui
-)
-
 set(KSR_SOURCES 
         "src/math/vec3.h"
         "src/camera.h"

@@ -3,8 +3,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
-// #include <glad/glad.h>
-#include <GL/glew.h> // Initialize with glewInit()
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <CGAL/Random.h>
 #include <iostream>
@@ -24,7 +23,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 
-std::vector<Polygon> decompose(std::vector<Polygon>);
+std::vector<Polygon_Mesh> decompose(std::vector<Polygon_Mesh>);
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -99,7 +98,8 @@ int main(int, char **)
   glfwSwapInterval(1); // Enable vsync
   glfwSetScrollCallback(window, scroll_callback);
 
-  if (glewInit() != GLEW_OK)
+  // if (glewInit() != GLEW_OK)
+  if (!gladLoadGL())
   {
     fprintf(stderr, "Failed to initialize OpenGL loader!\n");
     return 1;
@@ -133,15 +133,15 @@ int main(int, char **)
   auto idxs = std::vector<Mesh::Index>{0, 1, 3,
                                        1, 2, 3};
   // auto mesh = Mesh{verts, idxs};
-  auto mesh = Polygon{verts};
+  auto mesh = Polygon_Mesh{verts};
 
   auto rand = CGAL::Random{0};
-  auto randam_tri = std::vector<Polygon>{};
+  auto randam_tri = std::vector<Polygon_Mesh>{};
   size_t num = 10;
   double tri_s = 0.9;
   while (num-- > 0)
   {
-    randam_tri.push_back(Polygon{std::vector<Mesh::Vert>{
+    randam_tri.push_back(Polygon_Mesh{std::vector<Mesh::Vert>{
         {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
         {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
         {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},

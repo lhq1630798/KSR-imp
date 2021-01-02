@@ -17,7 +17,7 @@ using E_Polygon = std::pair<E_Plane, std::vector<E_Point>>;
 using Polygon2 = CGAL::Polygon_2<K>;
 
 // convert from float type to exact type
-std::vector<E_Polygon> f2E_polygons(std::vector<Polygon> polygons)
+std::vector<E_Polygon> f2E_polygons(std::vector<Polygon_Mesh> polygons)
 {
     auto e_polygons = std::vector<E_Polygon>{};
     for (const auto &polygon : polygons)
@@ -40,9 +40,9 @@ std::vector<E_Polygon> f2E_polygons(std::vector<Polygon> polygons)
 }
 
 // convert from exact type to float type
-std::vector<Polygon> E2f_polygons(std::vector<E_Polygon> e_polygons)
+std::vector<Polygon_Mesh> E2f_polygons(std::vector<E_Polygon> e_polygons)
 {
-    auto polygons = std::vector<Polygon>{};
+    auto polygons = std::vector<Polygon_Mesh>{};
     for (const auto &detected_polygon : e_polygons)
     {
         auto verts = std::vector<Vec3>{};
@@ -54,7 +54,7 @@ std::vector<Polygon> E2f_polygons(std::vector<E_Polygon> e_polygons)
                 (float)CGAL::to_double(point.z()),
             });
         }
-        polygons.push_back(Polygon{std::move(verts)});
+        polygons.push_back(Polygon_Mesh{std::move(verts)});
     }
     return polygons;
 }
@@ -195,7 +195,7 @@ std::optional<std::pair<E_Polygon, E_Polygon>> split_by(const E_Polygon &poly1, 
 }
 
 //decompose polygons into intersection-free ones
-std::vector<Polygon> decompose(std::vector<Polygon> polygons)
+std::vector<Polygon_Mesh> decompose(std::vector<Polygon_Mesh> polygons)
 {
 
     auto e_polygons = f2E_polygons(polygons);
