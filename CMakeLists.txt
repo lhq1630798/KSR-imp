@@ -10,6 +10,7 @@ set(KSR_SOURCES
         "src/camera.h"
         "src/globject.h"
         "src/intersection.cpp"
+        "src/intersection.h"
         "src/main.cpp"
         )
 add_executable(KSR_imp ${KSR_SOURCES})

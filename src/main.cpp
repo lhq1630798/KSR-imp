@@ -121,7 +121,7 @@ int main(int, char **)
   ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
   float depth = 1;
 
-  auto shader = Shader{"D:/Documents/workspace/KSR-imp/src/7.4.camera.vs", "D:/Documents/workspace/KSR-imp/src/7.4.camera.fs"};
+  auto shader = Shader{"../../src/7.4.camera.vs", "../../src/7.4.camera.fs"};
 
   auto verts = std::vector<Mesh::Vert>{
       {0.5f, 0.5f, 0.0f},

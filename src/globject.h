@@ -251,8 +251,8 @@ public:
         glDrawArrays(GL_LINE_LOOP, 0, (GLuint)_verts.size());
         glBindVertexArray(0);
     }
+    
     std::vector<Vert> _verts;
-
 private:
     GLuint vao = 0, vbo = 0;
 };
