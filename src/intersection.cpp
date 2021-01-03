@@ -1,40 +1,11 @@
 #include <algorithm>
-#include "intersection.h"
-
-
-// convert from exact type to float type
-std::vector<Polygon_Mesh> E2f_polygons(std::vector<Polygon_3> e_polygons)
-{
-    auto polygons = std::vector<Polygon_Mesh>{};
-    for (const auto &detected_polygon : e_polygons)
-    {
-        auto verts = std::vector<Vec3>{};
-        for (const auto &point : detected_polygon.points_3())
-        {
-            verts.push_back(Vec3{
-                (float)CGAL::to_double(point.x()),
-                (float)CGAL::to_double(point.y()),
-                (float)CGAL::to_double(point.z()),
-            });
-        }
-        polygons.push_back(Polygon_Mesh{std::move(verts)});
-    }
-    return polygons;
-}
+#include "cgal_object.h"
 
 std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect(const Plane_3 &plane, const Polygon_3 &polygon)
-{   
-    auto points = polygon.points_3();
-    auto segments = std::vector<Segment_3>{};
-    auto num = points.size();
-    assert(num >= 3);
-    segments.push_back(Segment_3{points[num - 1], points[0]});
-    for (size_t i = 1; i < num; i++)
-    {
-        segments.push_back(Segment_3{points[i - 1], points[i]});
-    }
+{
+    auto segments_3 = polygon.edges_3();
     auto inters = std::vector<Point_3>{};
-    for (const auto &seg : segments)
+    for (const auto &seg : segments_3)
     {
         auto result = CGAL::intersection(seg, plane);
         if (result)
@@ -48,10 +19,8 @@ std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect(const Plane_3
     if (inters.empty())
         return {};
     assert(inters.size() == 2);
-    return std::make_optional(std::make_pair(inters[0], inters[1]));
+    return {{inters[0], inters[1]}};
 }
-
-
 
 std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon, Line_2 line)
 {
@@ -88,13 +57,17 @@ std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon, Line_2 line)
         }
     }
     assert((poly1.size() + poly2.size()) == (polygon.size() + 4));
-    return std::make_pair(Polygon_2{poly1.begin(), poly1.end()}, Polygon_2{poly2.begin(), poly2.end()});
+    return {
+        Polygon_2{poly1.begin(), poly1.end()},
+        Polygon_2{poly2.begin(), poly2.end()},
+    };
 }
 
 // if p2 intersect p1, then spilt  p1 and return the two new polygon
 std::optional<std::pair<Polygon_3, Polygon_3>> split_by(const Polygon_3 &poly1, const Polygon_3 &poly2)
 {
-    if (poly1.plane() == poly2.plane()) return {};
+    if (poly1.plane() == poly2.plane())
+        return {};
     auto inter_points = plane_polygon_intersect(poly1.plane(), poly2);
     if (!inter_points)
         return {};
@@ -107,8 +80,6 @@ std::optional<std::pair<Polygon_3, Polygon_3>> split_by(const Polygon_3 &poly1, 
         assert(line);
         assert(line->has_on(p1) && line->has_on(p1));
     }
-
-    auto points_2 = poly1.points_2();
 
     auto polygon_2 = poly1.polygon_2();
     assert(polygon_2.is_simple());
@@ -142,15 +113,13 @@ std::optional<std::pair<Polygon_3, Polygon_3>> split_by(const Polygon_3 &poly1, 
     if (!intersect)
         return {};
     auto new_poly_2 = split_polygon_2(polygon_2, line_2);
-    return std::make_pair(Polygon_3{poly1.plane(), new_poly_2.first}, Polygon_3{poly1.plane(), new_poly_2.second});
+    return {{Polygon_3{poly1.plane(), new_poly_2.first},
+             Polygon_3{poly1.plane(), new_poly_2.second}}};
 }
 
 //decompose polygons into intersection-free ones
-std::vector<Polygon_Mesh> decompose(const std::vector<Polygon_Mesh> &polygons_f)
+std::vector<Polygon_3> decompose(const std::vector<Polygon_3> &polygons_3)
 {
-    auto polygons_3 = std::vector<Polygon_3>{};
-    for (const auto &poly : polygons_f)
-        polygons_3.push_back(Polygon_3{poly});
 
     auto decomposed_polygons = polygons_3;
     for (const auto &origin_p : polygons_3)
@@ -172,5 +141,5 @@ std::vector<Polygon_Mesh> decompose(const std::vector<Polygon_Mesh> &polygons_f)
         decomposed_polygons = std::move(temp);
     }
 
-    return E2f_polygons(decomposed_polygons);
+    return decomposed_polygons;
 }

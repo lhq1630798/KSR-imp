@@ -8,10 +8,11 @@ add_subdirectory("deps/imgui/")
 set(KSR_SOURCES 
         "src/math/vec3.h"
         "src/camera.h"
-        "src/globject.h"
-        "src/intersection.cpp"
-        "src/intersection.h"
         "src/main.cpp"
+        "src/gl_object.h"
+        "src/cgal_object.h"
+        "src/cgal_object.cpp"
+        "src/intersection.cpp"
         )
 add_executable(KSR_imp ${KSR_SOURCES})
 set_target_properties(KSR_imp PROPERTIES

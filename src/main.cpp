@@ -1,13 +1,15 @@
-#include "globject.h"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <CGAL/Random.h>
 #include <iostream>
+#include "gl_object.h"
+#include "cgal_object.h"
 #include "camera.h"
+
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -22,8 +24,6 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
-
-std::vector<Polygon_Mesh> decompose(const std::vector<Polygon_Mesh> &);
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -123,32 +123,21 @@ int main(int, char **)
 
   auto shader = Shader{"../../src/7.4.camera.vs", "../../src/7.4.camera.fs"};
 
-  auto verts = std::vector<Mesh::Vert>{
-      {0.5f, 0.5f, 0.0f},
-      {0.5f, -0.5f, 0.0f},
-      {-0.5f, -0.5f, 0.0f},
-      {-0.5f, 0.5f, 0.0f},
-      {0.1f, 0.8f, 0.0f},
-  };
-  auto idxs = std::vector<Mesh::Index>{0, 1, 3,
-                                       1, 2, 3};
+  // auto verts = std::vector<Vec3>{
+  //     {0.5f, 0.5f, 0.0f},
+  //     {0.5f, -0.5f, 0.0f},
+  //     {-0.5f, -0.5f, 0.0f},
+  //     {-0.5f, 0.5f, 0.0f},
+  //     {0.1f, 0.8f, 0.0f},
+  // };
+  // auto idxs = std::vector<Mesh::Index>{0, 1, 3,
+  //                                      1, 2, 3};
   // auto mesh = Mesh{verts, idxs};
-  auto mesh = Polygon_Mesh{verts};
 
-  auto rand = CGAL::Random{0};
-  size_t num = 20;
-  auto randam_tri = std::vector<Polygon_Mesh>{};
-  double tri_s = 0.9;
-  while (num-- > 0)
-  {
-    randam_tri.push_back(Polygon_Mesh{std::vector<Mesh::Vert>{
-        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
-        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
-        {(float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s), (float)rand.get_double(-tri_s, tri_s)},
-    }});
-  }
-  auto meshes = decompose(randam_tri);
-  // auto meshes = std::vector<Polygon>{mesh};
+  auto polys_3 = generate_poly_3(20);
+  polys_3 = decompose(polys_3);
+  const auto &mesh = Polygon_Mesh{polys_3};
+
 
   glEnable(GL_DEPTH_TEST);
   glClearDepth(depth);
@@ -214,11 +203,7 @@ int main(int, char **)
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
 
-    for (const auto &mesh : meshes)
-    {
-      mesh.render_rand(shader);
-      mesh.render_boundary(shader);
-    }
+    mesh.render(shader);
 
     // Render UI
     ImGui::Render();
