@@ -23,7 +23,7 @@ bool firstMouse = true;
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 
-std::vector<Polygon_Mesh> decompose(std::vector<Polygon_Mesh>);
+std::vector<Polygon_Mesh> decompose(const std::vector<Polygon_Mesh> &);
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -136,8 +136,8 @@ int main(int, char **)
   auto mesh = Polygon_Mesh{verts};
 
   auto rand = CGAL::Random{0};
+  size_t num = 20;
   auto randam_tri = std::vector<Polygon_Mesh>{};
-  size_t num = 10;
   double tri_s = 0.9;
   while (num-- > 0)
   {
@@ -216,18 +216,8 @@ int main(int, char **)
 
     for (const auto &mesh : meshes)
     {
-      auto timeValue = (float)glfwGetTime();
-      auto g_color = sin(timeValue) / 2.0f + 0.5f;
-      shader.setVec3("ourColor", glm::vec3{0, g_color, 0});
-      // glEnable(GL_DEPTH_TEST);
-      mesh.render();
-
-      // glDisable(GL_DEPTH_TEST);
-      shader.setVec3("ourColor", glm::vec3{1, 0.5, 0.5});
-      glLineWidth(5.0f);
-      glPolygonOffset(1.0f, 1.0f);
-      glEnable(GL_POLYGON_OFFSET_LINE);
-      mesh.render_boundary();
+      mesh.render_rand(shader);
+      mesh.render_boundary(shader);
     }
 
     // Render UI
