@@ -13,6 +13,8 @@ set(KSR_SOURCES
         "src/cgal_object.h"
         "src/cgal_object.cpp"
         "src/intersection.cpp"
+        # "src/kinetic.cpp"
+        # "src/kinetic.h"
         )
 add_executable(KSR_imp ${KSR_SOURCES})
 set_target_properties(KSR_imp PROPERTIES

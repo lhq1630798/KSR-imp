@@ -8,7 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <CGAL/Random.h>
+#include "cgal_object.h"
 
 class Shader
 {
@@ -204,14 +204,44 @@ private:
     GLuint vao = 0, vbo = 0, ebo = 0;
 };
 
-class Polygon_3;
-
 class Polygon_GL
 {
-    inline static auto color_rand = CGAL::Random{0};
-
 public:
-    explicit Polygon_GL(std::vector<Vec3> verts) : _verts(std::move(verts))
+    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0,0,0}) : _verts(std::move(verts)),_color(color) { init(); }
+
+    explicit Polygon_GL(const Polygon_3 &polygon_3)
+    {
+        for (const auto &point : polygon_3.points_3())
+        {
+            _verts.push_back(Vec3{
+                (float)CGAL::to_double(point.x()),
+                (float)CGAL::to_double(point.y()),
+                (float)CGAL::to_double(point.z()),
+            });
+        }
+        _color = polygon_3._color;
+        init();
+    }
+
+    void render() const
+    {
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, (GLuint)_verts.size());
+        glBindVertexArray(0);
+    }
+
+    void render_boundary() const
+    {
+        glBindVertexArray(vao);
+        glDrawArrays(GL_LINE_LOOP, 0, (GLuint)_verts.size());
+        glBindVertexArray(0);
+    }
+
+    Vec3 _color;
+    std::vector<Vec3> _verts;
+
+private:
+    void init()
     {
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
@@ -225,35 +255,18 @@ public:
 
         glBindVertexArray(0);
 
-        color = Vec3{(float)color_rand.get_double(0, 0.8), (float)color_rand.get_double(0.2, 1), (float)color_rand.get_double(0.2, 1)};
     }
-    void render() const
-    {
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, (GLuint)_verts.size());
-        glBindVertexArray(0);
-    }
-    void render_boundary() const
-    {
-        glBindVertexArray(vao);
-        glDrawArrays(GL_LINE_LOOP, 0, (GLuint)_verts.size());
-        glBindVertexArray(0);
-    }
-
-    Vec3 color;
-    std::vector<Vec3> _verts;
-
-private:
     GLuint vao = 0, vbo = 0;
 };
 
 class Polygon_Mesh
-{
+{ // a Polygon_GL soup
 private:
     std::vector<Polygon_GL> _polygons;
+
 public:
     explicit Polygon_Mesh(std::vector<Polygon_GL> polygons) : _polygons(std::move(polygons)) {}
-    explicit Polygon_Mesh(std::vector<Polygon_3> polygons_3);
+    explicit Polygon_Mesh(const std::vector<Polygon_3> &polygons_3) : _polygons(polygons_3.begin(), polygons_3.end()) {}
     void render(Shader &shader) const
     {
         shader.use();
@@ -262,7 +275,7 @@ public:
         glEnable(GL_POLYGON_OFFSET_LINE);
         for (const auto &poly : _polygons)
         {
-            shader.setVec3("ourColor", poly.color);
+            shader.setVec3("ourColor", poly._color);
             poly.render();
             shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
             poly.render_boundary();

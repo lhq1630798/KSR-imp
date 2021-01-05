@@ -10,7 +10,6 @@
 #include "cgal_object.h"
 #include "camera.h"
 
-
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
@@ -98,7 +97,6 @@ int main(int, char **)
   glfwSwapInterval(1); // Enable vsync
   glfwSetScrollCallback(window, scroll_callback);
 
-  // if (glewInit() != GLEW_OK)
   if (!gladLoadGL())
   {
     fprintf(stderr, "Failed to initialize OpenGL loader!\n");
@@ -121,6 +119,7 @@ int main(int, char **)
   ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
   float depth = 1;
 
+  auto timer = Timer{};
   auto shader = Shader{"../../src/7.4.camera.vs", "../../src/7.4.camera.fs"};
 
   // auto verts = std::vector<Vec3>{
@@ -134,10 +133,14 @@ int main(int, char **)
   //                                      1, 2, 3};
   // auto mesh = Mesh{verts, idxs};
 
-  auto polys_3 = generate_poly_3(20);
-  polys_3 = decompose(polys_3);
-  const auto &mesh = Polygon_Mesh{polys_3};
+  // auto polys_3 = timer("generation", generate_poly_3, 100);
+  auto polys_3 = timer("generation", generate_box);
+  polys_3 = timer("decompose", decompose, polys_3);
 
+  // const auto &mesh = Polygon_Mesh{polys_3};
+  auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
+  // auto is_free = check_intersect_free(polys_3);
+  // std::cout << "intersect free : " << (is_free ? "true" : "false") << std::endl;
 
   glEnable(GL_DEPTH_TEST);
   glClearDepth(depth);
@@ -203,6 +206,11 @@ int main(int, char **)
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
 
+    // timer("update kinetic polygon", [&]() {
+      for (auto &k_poly : k_polys)
+        k_poly.update(k_poly.move_dt(0.002));
+    // });
+    auto mesh = Polygon_Mesh{std::vector<Polygon_GL>(k_polys.begin(), k_polys.end())};
     mesh.render(shader);
 
     // Render UI
