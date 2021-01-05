@@ -266,7 +266,7 @@ private:
 
 public:
     explicit Polygon_Mesh(std::vector<Polygon_GL> polygons) : _polygons(std::move(polygons)) {}
-    explicit Polygon_Mesh(const std::vector<Polygon_3> &polygons_3) : _polygons(polygons_3.begin(), polygons_3.end()) {}
+    explicit Polygon_Mesh(const Polygons_3 &polygons_3) : _polygons(polygons_3.begin(), polygons_3.end()) {}
     void render(Shader &shader) const
     {
         shader.use();

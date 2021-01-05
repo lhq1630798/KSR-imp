@@ -10,16 +10,23 @@
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
 // using K = CGAL::Simple_cartesian<CGAL::Gmpq>;
-using Point_3 = CGAL::Point_3<K>;
 using Point_2 = CGAL::Point_2<K>;
+using Points_2 = std::vector<Point_2>;
+using Point_3 = CGAL::Point_3<K>;
+using Points_3 = std::vector<Point_3>;
 using Plane_3 = CGAL::Plane_3<K>;
-using Line_3 = CGAL::Line_3<K>;
 using Line_2 = CGAL::Line_2<K>;
-using Segment_3 = CGAL::Segment_3<K>;
+using Line_3 = CGAL::Line_3<K>;
+using Ray_2 = CGAL::Ray_2<K>;
 using Segment_2 = CGAL::Segment_2<K>;
-using Vector_3 = CGAL::Vector_3<K>;
+using Segments_2 = std::vector<Segment_2>;
+using Segment_3 = CGAL::Segment_3<K>;
+using Segments_3 = std::vector<Segment_3>;
 using Vector_2 = CGAL::Vector_2<K>;
+using Vector_3 = CGAL::Vector_3<K>;
 using Polygon_2 = CGAL::Polygon_2<K>;
+class Polygon_3;
+using Polygons_3 = std::vector<Polygon_3>;
 using FT = K::FT;
 
 class Timer
@@ -29,7 +36,8 @@ public:
     template <typename Callable, typename... Args>
     decltype(auto) operator()(const std::string &func_name, Callable &&func, Args &&... args)
     {
-        if (!enable) return func(args...);
+        if (!enable)
+            return func(args...);
         struct time
         {
             double start_time;
@@ -46,16 +54,43 @@ class Polygon_3
     //Plane_3 + Polygon_2
 public:
     Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color = rand_color())
-        : _plane(plane), _polygon_2(std::move(polygon)), _color(color) { update_points_3(); }
-    Polygon_3(Plane_3 plane, const std::vector<Point_2> &points, Vec3 color = rand_color())
+        : _plane(plane), _polygon_2(std::move(polygon)), _color(color)
+    {
+        update_points_3();
+        assert(_polygon_2.is_simple());
+        assert(_polygon_2.is_convex());
+    }
+    Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
-    const std::vector<Point_2> &points_2() const { return _polygon_2.container(); }
+    const Points_2 &points_2() const { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
     const Polygon_2 &polygon_2() const { return _polygon_2; }
-    const std::vector<Point_3> &points_3() const { return _points_3; }
-    std::vector<Segment_3> edges_3() const;
+    const Points_3 &points_3() const { return _points_3; }
+    Segments_3 edges_3() const;
     std::optional<Line_2> intersect(const Polygon_3 &) const;
+
+    Point_2 project_2(const Point_3 &point_3) const
+    {
+        return plane().to_2d(point_3);
+    }
+    Line_2 project_2(const Line_3 &line_3) const
+    {
+        auto p1 = project_2(line_3.point(0)), p2 = project_2(line_3.point(1));
+        return Line_2{p1, p2};
+    }
+    Segment_2 project_2(const Segment_3 &segment_3) const
+    {
+        auto p1 = project_2(segment_3.point(0)), p2 = project_2(segment_3.point(1));
+        return Segment_2{p1, p2};
+    }
+    Polygon_2 project_2(const Polygon_3 &polygon_3) const
+    {
+        auto points_2 = Points_2{};
+        for (const auto &p_3 : polygon_3.points_3())
+            points_2.push_back(project_2(p_3));
+        return Polygon_2{points_2.begin(), points_2.end()};
+    }
     Vec3 _color;
 
 private:
@@ -66,82 +101,68 @@ private:
                     (float)color_rand.get_double(0.2, 1),
                     (float)color_rand.get_double(0.2, 1)};
     }
+
 protected:
     void update_points_3()
-    {   
+    {
         _points_3.clear();
         _points_3.reserve(points_2().size());
         for (const auto &p : points_2())
             _points_3.push_back(_plane.to_3d(p));
     }
+    // _plane, _polygon_2, _points_3 must be consistent with each other !
+    // Derived class must be responsible for that !
     Plane_3 _plane;
     Polygon_2 _polygon_2;
-    std::vector<Point_3> _points_3;
+    Points_3 _points_3;
 };
 
-// class K_Polygon_3
-// {
-//     enum mode {frozen,sliding,normal};
-//     Polygon_3 _polygon_3;
-//     std::vector<Vector_2> _speed;
-//     std::vector<mode> _status;
-// public:
-//     explicit K_Polygon_3(Polygon_3 poly_3) : _polygon_3(poly_3)
-//     {
-//         auto center = Vector_2{};
-//         for (const auto &point_2 : poly_3.points_2())
-//             center += point_2 - CGAL::ORIGIN;
-//         center = center / poly_3.points_2().size();
-//         for (const auto &point_2 : poly_3.points_2()){
-//             _speed.push_back(point_2 - (CGAL::ORIGIN + center));
-//             _status.push_back(normal);
-//         }
-//     }
-//     const Polygon_3 &polygon_3() const { return _polygon_3; }
-//     void update(Polygon_3 poly_3)
-//     {
-//         _polygon_3 = std::move(poly_3);
-//     }
-//     Polygon_3 move_dt(FT t)
-//     {
-//         auto new_points_2 = std::vector<Point_2>{};
-//         for (size_t i = 0; i < _polygon_3.points_2().size(); i++)
-//             new_points_2.push_back(_polygon_3.points_2()[i] + _speed[i] * t);
-//         return Polygon_3{_polygon_3.plane(), new_points_2, _polygon_3._color};
-//     }
-// };
 
-class K_Polygon_3 : public Polygon_3
+Polygons_3 generate_poly_3(size_t num);
+Polygons_3 generate_box();
+Polygons_3 decompose(const Polygons_3 &);
+
+inline bool line_polygon_intersect_2(const Line_2 &line, const Polygon_2 &poly)
 {
-    enum mode {frozen,sliding,normal};
-    std::vector<Vector_2> _speed;
-    std::vector<mode> _status;
-public:
-    explicit K_Polygon_3(Polygon_3 poly_3) : Polygon_3(poly_3)
+    for (auto edge = poly.edges_begin(); edge != poly.edges_end(); edge++)
     {
-        auto center = Vector_2{};
-        for (const auto &point_2 : poly_3.points_2())
-            center += point_2 - CGAL::ORIGIN;
-        center = center / poly_3.points_2().size();
-        for (const auto &point_2 : poly_3.points_2()){
-            _speed.push_back(point_2 - (CGAL::ORIGIN + center));
-            _status.push_back(normal);
-        }
+        auto res = CGAL::intersection(*edge, line);
+        if (res)
+            return true;
     }
-    void update(Polygon_2 poly_2)
+    return false;
+}
+inline bool segment_polygon_intersect_2(const Segment_2 &segment_2, const Polygon_2 &poly)
+{
+    // auto segment = Polygon_2{};
+    // segment.push_back(segment_2.point(0));
+    // segment.push_back(segment_2.point(1));
+    // if (CGAL::do_intersect(segment, poly)) return true;
+    for (auto edge = poly.edges_begin(); edge != poly.edges_end(); edge++)
     {
-        _polygon_2 = std::move(poly_2);
-        update_points_3();
+        auto res = CGAL::intersection(*edge, segment_2);
+        if (res)
+            return true;
     }
-    Polygon_2 move_dt(FT t)
-    {
-        auto new_points_2 = std::vector<Point_2>{};
-        for (size_t i = 0; i < points_2().size(); i++)
-            new_points_2.push_back(points_2()[i] + _speed[i] * t);
-        return Polygon_2{new_points_2.begin(), new_points_2.end()};
-    }
-};
+    return false;
+}
 
-std::vector<Polygon_3> generate_poly_3(size_t num);
-std::vector<Polygon_3> generate_box();
-std::vector<Polygon_3> decompose(const std::vector<Polygon_3> &);
+inline Point_2 project_line_2(const Line_2 &line_2, const Point_2 &point_2)
+{
+    return line_2.projection(point_2);
+}
+inline Segment_2 project_line_2(const Line_2 &line_2, const Segment_2 &segment_2)
+{
+    auto p1 = project_line_2(line_2, segment_2.point(0)), p2 = project_line_2(line_2, segment_2.point(1));
+    return Segment_2{p1, p2};
+}
+inline Segment_2 project_line_2(const Line_2 &line_2, const Polygon_2 &polygon_2)
+{
+    auto points_2 = Points_2{};
+    for (const auto &p_2 : polygon_2.container())
+        points_2.push_back(project_line_2(line_2, p_2));
+    return Segment_2{*CGAL::left_vertex_2(points_2.begin(), points_2.end()),
+                     *CGAL::right_vertex_2(points_2.begin(), points_2.end())};
+}
+
+void check_intersect_free(Polygons_3 &);

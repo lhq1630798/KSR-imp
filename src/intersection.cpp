@@ -1,10 +1,11 @@
 #include <algorithm>
 #include "cgal_object.h"
+// #include <CGAL/Boolean_set_operations_2.h>
 
-std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon, Line_2 line)
+std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon_2, Line_2 line)
 {
     auto p_s = std::vector<std::pair<Point_2, Segment_2>>{};
-    for (auto edge = polygon.edges_begin(); edge != polygon.edges_end(); edge++)
+    for (auto edge = polygon_2.edges_begin(); edge != polygon_2.edges_end(); edge++)
     {
         auto res = CGAL::intersection(*edge, line);
         if (res)
@@ -17,9 +18,9 @@ std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon, Line_2 line)
         }
     }
     assert(p_s.size() == 2);
-    auto poly1 = std::vector<Point_2>{}, poly2 = std::vector<Point_2>{};
+    auto poly1 = Points_2{}, poly2 = Points_2{};
     auto poly_p = &poly1;
-    for (auto edge = polygon.edges_begin(); edge != polygon.edges_end(); edge++)
+    for (auto edge = polygon_2.edges_begin(); edge != polygon_2.edges_end(); edge++)
     {
         poly_p->push_back(edge->start());
         if (*edge == p_s[0].second)
@@ -37,17 +38,17 @@ std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon, Line_2 line)
             poly_p->push_back(p_s[1].first);
         }
     }
-    assert((poly1.size() + poly2.size()) == (polygon.size() + 4));
+    assert((poly1.size() + poly2.size()) == (polygon_2.size() + 4));
     return {
         Polygon_2{poly1.begin(), poly1.end()},
         Polygon_2{poly2.begin(), poly2.end()},
     };
 }
 
-std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect(const Plane_3 &plane, const Polygon_3 &polygon)
+std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon)
 {
     auto segments_3 = polygon.edges_3();
-    auto inters = std::vector<Point_3>{};
+    auto inters = Points_3{};
     for (const auto &seg : segments_3)
     {
         auto result = CGAL::intersection(seg, plane);
@@ -72,7 +73,7 @@ std::optional<Line_2> Polygon_3::intersect(const Polygon_3 &other) const
 {
     if (plane() == other.plane())
         return {};
-    auto inter_points = plane_polygon_intersect(plane(), other);
+    auto inter_points = plane_polygon_intersect_3(plane(), other);
     if (!inter_points)
         return {};
     auto [p1, p2] = *inter_points;
@@ -101,14 +102,9 @@ std::optional<Line_2> Polygon_3::intersect(const Polygon_3 &other) const
         polygon_2().has_on_bounded_side(p2_on_poly1))
         return line_2;
 
-    auto segment = Segment_2{p1_on_poly1, p2_on_poly1};
-    for (auto edge = polygon_2().edges_begin(); edge != polygon_2().edges_end(); edge++)
-    {
-        //todo: corner case
-        auto res = CGAL::intersection(*edge, segment);
-        if (res)
-            return line_2;
-    }
+    //todo: corner case
+    if (segment_polygon_intersect_2(Segment_2{p1_on_poly1,p2_on_poly1}, polygon_2()))
+        return line_2;
     return {};
 }
 
@@ -124,13 +120,12 @@ std::optional<std::pair<Polygon_3, Polygon_3>> split_by(const Polygon_3 &poly1, 
 }
 
 //decompose polygons into intersection-free ones
-std::vector<Polygon_3> decompose(const std::vector<Polygon_3> &polygons_3)
+Polygons_3 decompose(const Polygons_3 &polygons_3)
 {
-
     auto decomposed_polygons = polygons_3;
     for (const auto &origin_p : polygons_3)
     {
-        auto temp = std::vector<Polygon_3>{};
+        auto temp = Polygons_3{};
         for (const auto &decomposed_p : decomposed_polygons)
         {
             auto split = split_by(decomposed_p, origin_p);
@@ -148,4 +143,18 @@ std::vector<Polygon_3> decompose(const std::vector<Polygon_3> &polygons_3)
     }
 
     return decomposed_polygons;
+}
+
+void check_intersect_free(Polygons_3 &polys){
+    std::cout << "num of polygons " << polys.size() << std::endl;
+    for (auto &_this:polys)
+        for (auto &_other:polys) 
+            if(_this.intersect(_other).has_value()){
+                _this._color = Vec3{1,0,0};
+                _other._color = Vec3{0,0,0};
+                std::cout << "intersection free check fails!" << std::endl;
+                return;
+            }
+        
+    std::cout << "intersection free check success" << std::endl;
 }

@@ -8,6 +8,7 @@
 #include <iostream>
 #include "gl_object.h"
 #include "cgal_object.h"
+#include "kinetic.h"
 #include "camera.h"
 
 // settings
@@ -23,6 +24,24 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
+
+auto cmp = [](const Event &_this, const Event &_other) 
+{
+    //smallest prior
+    return _this.t > _other.t;
+};
+
+std::priority_queue<Event, std::vector<Event>, decltype(cmp)> queue(cmp);
+
+void init_queue(std::vector<K_Polygon_3> &k_polys_3){
+    std::cout << "num of polygons " << k_polys_3.size() << std::endl;
+    for (auto &_this:k_polys_3)
+        for (auto &_other:k_polys_3) {
+            auto t = collide(_this, _other);
+            if(t) queue.push(Event{&_this, &_other, *t});
+        }
+    std::cout << "queue size " << queue.size() << std::endl;
+}
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -114,8 +133,7 @@ int main(int, char **)
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
 
-  bool show_demo_window = true;
-  bool show_another_window = false;
+  bool rotate = true;
   ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
   float depth = 1;
 
@@ -133,14 +151,15 @@ int main(int, char **)
   //                                      1, 2, 3};
   // auto mesh = Mesh{verts, idxs};
 
-  // auto polys_3 = timer("generation", generate_poly_3, 100);
+  // auto polys_3 = timer("generation", generate_poly_3, 10);
+
   auto polys_3 = timer("generation", generate_box);
   polys_3 = timer("decompose", decompose, polys_3);
+  timer("intersection free check", check_intersect_free, polys_3);
 
-  // const auto &mesh = Polygon_Mesh{polys_3};
   auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
-  // auto is_free = check_intersect_free(polys_3);
-  // std::cout << "intersect free : " << (is_free ? "true" : "false") << std::endl;
+  timer("init_queue", init_queue, k_polys);
+  FT kinetic_time = 0;
 
   glEnable(GL_DEPTH_TEST);
   glClearDepth(depth);
@@ -171,18 +190,27 @@ int main(int, char **)
 
       ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
-      ImGui::Text("This is some useful text.");          // Display some text (you can use a format strings too)
-      ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
-      ImGui::Checkbox("Another Window", &show_another_window);
+      ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+      ImGui::Checkbox("rotate", &rotate);       // Edit bools storing our window open/close state
 
       ImGui::SliderFloat("float", &f, 0.0f, 1.0f);             // Edit 1 float using a slider from 0.0f to 1.0f
       ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
       ImGui::SliderFloat("depth", &depth, -1, 1);
 
-      if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
-        counter++;
+      if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
+      {
+        if (!queue.empty())
+        {
+          auto &event = queue.top();
+          queue.pop();
+          for (auto &k_poly : k_polys)
+            k_poly.update(k_poly.move_dt(event.t - kinetic_time));
+          kinetic_time = event.t;
+          std::cout << "kinetic_time " << kinetic_time << std::endl;
+        }
+      }
       ImGui::SameLine();
-      ImGui::Text("counter = %d", counter);
+      ImGui::Text("queue size = %d", queue.size());
 
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::End();
@@ -201,14 +229,17 @@ int main(int, char **)
     glm::mat4 projection(1); //projection矩阵，投影矩阵
     projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-    // 向着色器中传入参数
-    shader.setMat4("model", model);
-    shader.setMat4("view", view);
-    shader.setMat4("projection", projection);
+    if (rotate)
+    {
+      // 向着色器中传入参数
+      shader.setMat4("model", model);
+      shader.setMat4("view", view);
+      shader.setMat4("projection", projection);
+    }
 
     // timer("update kinetic polygon", [&]() {
-      for (auto &k_poly : k_polys)
-        k_poly.update(k_poly.move_dt(0.002));
+    // for (auto &k_poly : k_polys)
+    //   k_poly.update(k_poly.move_dt(0.002));
     // });
     auto mesh = Polygon_Mesh{std::vector<Polygon_GL>(k_polys.begin(), k_polys.end())};
     mesh.render(shader);
