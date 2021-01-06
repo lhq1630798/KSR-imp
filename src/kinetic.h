@@ -55,15 +55,14 @@ public:
         : this_p(_this), other_p(_other), point_3(p_3), t(t) {}
 };
 
+inline static auto cmp = [](const Event &_this, const Event &_other) { return _this.t > _other.t; };
 class Kinetic_queue
 { //smallest prior
-    inline static auto cmp = [](const Event &_this, const Event &_other) { return _this.t > _other.t; };
 
 public:
     std::priority_queue<Event, std::vector<Event>, decltype(cmp)> queue;
     Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3);
     std::optional<FT> next_event();
-
 
 private:
     void collide(K_Polygon_3 &_this, K_Polygon_3 &_other);

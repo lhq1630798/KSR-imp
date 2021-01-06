@@ -2,11 +2,13 @@
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/random_convex_hull_in_disc_2.h>
+#include <CGAL/convex_hull_2.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
 #include <vector>
 #include <GLFW/glfw3.h>
 #include "math/vec3.h"
+#include "region_growing.h"
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
 // using K = CGAL::Simple_cartesian<CGAL::Gmpq>;
@@ -70,12 +72,12 @@ public:
     Segments_3 edges_3() const;
     std::optional<Line_2> intersect(const Polygon_3 &) const;
 
-    bool has_on(const Point_3 &point_3) const
-    {
-        if (!plane().has_on(point_3))
-            return false;
-        return !polygon_2().has_on_unbounded_side(plane().to_2d(point_3));
-    }
+	bool has_on(const Point_3 &point_3) const
+	{
+		if (!plane().has_on(point_3))
+			return false;
+		return !polygon_2().has_on_unbounded_side(plane().to_2d(point_3));
+	}
 
     Point_2 project_2(const Point_3 &point_3) const
     {
@@ -124,16 +126,19 @@ protected:
     Points_3 _points_3;
 };
 
+
 Polygons_3 generate_poly_3(size_t num);
 Polygons_3 generate_box();
 Polygons_3 decompose(const Polygons_3 &);
+Polygons_3 get_convex(std::string path);
 
 inline bool line_polygon_intersect_2(const Line_2 &line, const Polygon_2 &poly)
 {
     for (auto edge = poly.edges_begin(); edge != poly.edges_end(); edge++)
+    {
         if (auto res = CGAL::intersection(*edge, line))
             return true;
-
+    }
     return false;
 }
 inline bool segment_polygon_intersect_2(const Segment_2 &segment_2, const Polygon_2 &poly)
@@ -141,10 +146,12 @@ inline bool segment_polygon_intersect_2(const Segment_2 &segment_2, const Polygo
     // auto segment = Polygon_2{};
     // segment.push_back(segment_2.point(0));
     // segment.push_back(segment_2.point(1));
-    // return CGAL::do_intersect(segment, poly);
+	// return CGAL::do_intersect(segment, poly);
     for (auto edge = poly.edges_begin(); edge != poly.edges_end(); edge++)
+    {
         if (auto res = CGAL::intersection(*edge, segment_2))
             return true;
+    }
     return false;
 }
 
