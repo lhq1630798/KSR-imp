@@ -61,6 +61,8 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
   if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
   {
+	lastX = xpos;
+	lastY = ypos;
 	return;
   }
 
@@ -208,7 +210,7 @@ int main(int, char **)
 
     shader.use();
     glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
-    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+    //model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
     glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
     view = camera.GetViewMatrix();
     glm::mat4 projection(1); //projection矩阵，投影矩阵
