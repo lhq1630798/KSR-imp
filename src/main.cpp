@@ -25,24 +25,6 @@ bool firstMouse = true;
 float deltaTime = 0.0f; // time between current frame and last frame
 float lastFrame = 0.0f;
 
-auto cmp = [](const Event &_this, const Event &_other) 
-{
-    //smallest prior
-    return _this.t > _other.t;
-};
-
-std::priority_queue<Event, std::vector<Event>, decltype(cmp)> queue(cmp);
-
-void init_queue(std::vector<K_Polygon_3> &k_polys_3){
-    std::cout << "num of polygons " << k_polys_3.size() << std::endl;
-    for (auto &_this:k_polys_3)
-        for (auto &_other:k_polys_3) {
-            auto t = collide(_this, _other);
-            if(t) queue.push(Event{&_this, &_other, *t});
-        }
-    std::cout << "queue size " << queue.size() << std::endl;
-}
-
 static void glfw_error_callback(int error, const char *description)
 {
   fprintf(stderr, "Glfw Error %d: %s\n", error, description);
@@ -152,13 +134,12 @@ int main(int, char **)
   // auto mesh = Mesh{verts, idxs};
 
   // auto polys_3 = timer("generation", generate_poly_3, 10);
-
   auto polys_3 = timer("generation", generate_box);
   polys_3 = timer("decompose", decompose, polys_3);
   timer("intersection free check", check_intersect_free, polys_3);
 
   auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
-  timer("init_queue", init_queue, k_polys);
+  auto k_queue = Kinetic_queue{k_polys};
   FT kinetic_time = 0;
 
   glEnable(GL_DEPTH_TEST);
@@ -190,27 +171,23 @@ int main(int, char **)
 
       ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
-      ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
-      ImGui::Checkbox("rotate", &rotate);       // Edit bools storing our window open/close state
+      ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 
-      ImGui::SliderFloat("float", &f, 0.0f, 1.0f);             // Edit 1 float using a slider from 0.0f to 1.0f
       ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
       ImGui::SliderFloat("depth", &depth, -1, 1);
 
       if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
       {
-        if (!queue.empty())
+        if (auto maybe_t = k_queue.next_event())
         {
-          auto &event = queue.top();
-          queue.pop();
           for (auto &k_poly : k_polys)
-            k_poly.update(k_poly.move_dt(event.t - kinetic_time));
-          kinetic_time = event.t;
-          std::cout << "kinetic_time " << kinetic_time << std::endl;
+            k_poly.update(k_poly.move_dt(*maybe_t - kinetic_time));
+          kinetic_time = *maybe_t;
         }
       }
       ImGui::SameLine();
-      ImGui::Text("queue size = %d", queue.size());
+      ImGui::Text("queue size = %d", k_queue.queue.size());
+      ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::End();
@@ -237,10 +214,6 @@ int main(int, char **)
       shader.setMat4("projection", projection);
     }
 
-    // timer("update kinetic polygon", [&]() {
-    // for (auto &k_poly : k_polys)
-    //   k_poly.update(k_poly.move_dt(0.002));
-    // });
     auto mesh = Polygon_Mesh{std::vector<Polygon_GL>(k_polys.begin(), k_polys.end())};
     mesh.render(shader);
 

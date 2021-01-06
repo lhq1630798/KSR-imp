@@ -4,7 +4,6 @@
 
 static const auto INF = FT{99999};
 
-
 class K_Polygon_3 : public Polygon_3
 {
     enum mode
@@ -51,26 +50,21 @@ public:
     FT t;
     K_Polygon_3 *this_p;
     K_Polygon_3 *other_p;
-    Event(K_Polygon_3 *_this, K_Polygon_3 *_other, FT t)
-        : this_p(_this), other_p(_other), t(t) {}
+    Point_3 point_3;
+    Event(K_Polygon_3 *_this, K_Polygon_3 *_other, Point_3 p_3, FT t)
+        : this_p(_this), other_p(_other), point_3(p_3), t(t) {}
 };
 
-// class Kinetic_queue
-// {//smallest prior
-// static auto cmp = [](const Event &_this, const Event &_other) { return _this.t > _other.t;};    
-// std::priority_queue<Event, std::vector<Event>, decltype(cmp)> queue{cmp};
-// public:
-//     Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3) : {
-//     std::cout << "num of polygons " << k_polys_3.size() << std::endl;
-//     for (auto &_this:k_polys_3)
-//         for (auto &_other:k_polys_3) {
-//             auto t = collide(_this, _other);
-//             if(t) queue.push(Event{&_this, &_other, *t});
-//         }
-//     std::cout << "queue size " << queue.size() << std::endl;
-//     }
-// };
+class Kinetic_queue
+{ //smallest prior
+    inline static auto cmp = [](const Event &_this, const Event &_other) { return _this.t > _other.t; };
+
+public:
+    std::priority_queue<Event, std::vector<Event>, decltype(cmp)> queue;
+    Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3);
+    std::optional<FT> next_event();
 
 
-std::optional<FT> collide(const K_Polygon_3 &_this,const K_Polygon_3 &_other);
-
+private:
+    void collide(K_Polygon_3 &_this, K_Polygon_3 &_other);
+};

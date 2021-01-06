@@ -7,8 +7,8 @@ std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon_2, Line_2 line
     auto p_s = std::vector<std::pair<Point_2, Segment_2>>{};
     for (auto edge = polygon_2.edges_begin(); edge != polygon_2.edges_end(); edge++)
     {
-        auto res = CGAL::intersection(*edge, line);
-        if (res)
+
+        if (auto res = CGAL::intersection(*edge, line))
         {
             if (auto inters_point = boost::get<Point_2>(&*res))
                 p_s.push_back(std::make_pair(*inters_point, *edge));
@@ -51,8 +51,8 @@ std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane
     auto inters = Points_3{};
     for (const auto &seg : segments_3)
     {
-        auto result = CGAL::intersection(seg, plane);
-        if (result)
+
+        if (auto result = CGAL::intersection(seg, plane))
         {
             if (auto inters_point = boost::get<Point_3>(&*result))
                 inters.push_back(*inters_point);
