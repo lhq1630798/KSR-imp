@@ -12,8 +12,8 @@
 #include "camera.h"
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
 
 // camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
@@ -59,6 +59,13 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 // -------------------------------------------------------
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
+  if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
+  {
+	lastX = xpos;
+	lastY = ypos;
+	return;
+  }
+
   if (firstMouse)
   {
     lastX = xpos;
@@ -91,12 +98,13 @@ int main(int, char **)
   const char *glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-  GLFWwindow *window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
   if (window == NULL)
     return 1;
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); // Enable vsync
   glfwSetScrollCallback(window, scroll_callback);
+  glfwSetCursorPosCallback(window, mouse_callback);
 
   if (!gladLoadGL())
   {
@@ -120,7 +128,7 @@ int main(int, char **)
   float depth = 1;
 
   auto timer = Timer{};
-  auto shader = Shader{"../../src/7.4.camera.vs", "../../src/7.4.camera.fs"};
+  auto shader = Shader{"7.4.camera.vs", "7.4.camera.fs"};
 
   // auto verts = std::vector<Vec3>{
   //     {0.5f, 0.5f, 0.0f},
@@ -134,12 +142,14 @@ int main(int, char **)
   // auto mesh = Mesh{verts, idxs};
 
   // auto polys_3 = timer("generation", generate_poly_3, 10);
+
   auto polys_3 = timer("generation", generate_box);
+  //auto polys_3 = timer("generation", get_convex, "data/cube.pwn");
   polys_3 = timer("decompose", decompose, polys_3);
   timer("intersection free check", check_intersect_free, polys_3);
 
   auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
-  auto k_queue = Kinetic_queue{k_polys};
+  auto k_queue = Kinetic_queue{ k_polys };
   FT kinetic_time = 0;
 
   glEnable(GL_DEPTH_TEST);
@@ -171,23 +181,23 @@ int main(int, char **)
 
       ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
-      ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
+	  ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 
       ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
       ImGui::SliderFloat("depth", &depth, -1, 1);
 
       if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
       {
-        if (auto maybe_t = k_queue.next_event())
+		if (auto maybe_t = k_queue.next_event())
         {
           for (auto &k_poly : k_polys)
-            k_poly.update(k_poly.move_dt(*maybe_t - kinetic_time));
-          kinetic_time = *maybe_t;
+			  k_poly.update(k_poly.move_dt(*maybe_t - kinetic_time));
+		  kinetic_time = *maybe_t;
         }
       }
       ImGui::SameLine();
-      ImGui::Text("queue size = %d", k_queue.queue.size());
-      ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
+	  ImGui::Text("queue size = %d", k_queue.queue.size());
+	  ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 
       ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
       ImGui::End();
@@ -200,7 +210,7 @@ int main(int, char **)
 
     shader.use();
     glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
-    model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+    //model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
     glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
     view = camera.GetViewMatrix();
     glm::mat4 projection(1); //projection矩阵，投影矩阵

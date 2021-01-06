@@ -62,3 +62,4 @@ std::optional<FT> Kinetic_queue::next_event()
     }
     return {};
 }
+

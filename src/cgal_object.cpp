@@ -83,3 +83,30 @@ Polygons_3 generate_box()
     return polys_3;
 }
 
+Polygons_3 get_convex(std::string path) {
+	std::vector<Detected_shape> detected_shape = region_growing(path);
+	Polygons_3 results;
+	for (auto shape : detected_shape) {
+		Plane p = shape.first;
+		auto plane = Plane_3{
+			FT{p.a()},
+			FT{p.b()},
+			FT{p.c()},
+			FT{p.d()} };
+
+		std::vector<Point_2> points2;
+		for (auto v : shape.second) {
+			auto point = Point_3{ FT{v.x()}, FT{v.y()}, FT{v.z()} };
+			Point_3 project_point = plane.projection(point);
+			points2.push_back(plane.to_2d(project_point));
+		}
+
+		//get convex point
+		std::vector<Point_2> convex_points;
+		CGAL::convex_hull_2(points2.begin(), points2.end(), std::back_inserter(convex_points));
+		Polygon_2 polygon2 = Polygon_2(convex_points.begin(), convex_points.end());
+		assert(polygon2.is_simple());
+		results.push_back(Polygon_3{ plane,polygon2 });
+	}
+	return results;
+}
