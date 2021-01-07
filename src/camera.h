@@ -19,7 +19,7 @@ enum Camera_Movement {
 const float YAW         = -90.0f;
 const float PITCH       =  0.0f;
 const float SPEED       =  2.5f;
-const float SENSITIVITY =  0.1f;
+const float SENSITIVITY =  0.3f;
 const float ZOOM        =  30.0f;
 
 
@@ -28,10 +28,10 @@ class Camera
 {
 public:
     // camera Attributes
-    glm::vec3 Position;//相机位置
-    glm::vec3 Front;//观察的方向
-    glm::vec3 Up;//上向量
-    glm::vec3 Right;//右向量
+    glm::vec3 Position;
+    glm::vec3 Front;
+    glm::vec3 Up;
+    glm::vec3 Right;
     glm::vec3 WorldUp;
     // euler Angles
     float Yaw;
@@ -93,7 +93,7 @@ public:
         yoffset *= MouseSensitivity;
 
         Yaw   += xoffset;
-        Pitch += yoffset;
+        Pitch -= yoffset;
 
         // make sure that when pitch is out of bounds, screen doesn't get flipped
         if (constrainPitch)

@@ -15,6 +15,12 @@ set(KSR_SOURCES
         "src/intersection.cpp"
         "src/kinetic.cpp"
         "src/kinetic.h"
+        "src/platform.h"
+        "src/platform.cpp"
+        "src/ransac.h"
+        "src/ransac.cpp"
+        "src/region_growing.h"
+        "src/region_growing.cpp"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})
