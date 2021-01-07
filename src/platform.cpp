@@ -150,14 +150,14 @@ void Platform::render_imgui(Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_
 void Platform::render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys) {
 
 	shader.use();
-	glm::mat4 model(1); //model¾ØÕó£¬¾Ö²¿×ø±ê±ä»»ÖÁÊÀ½ç×ø±ê
+	glm::mat4 model(1); //modelçŸ©é˜µï¼Œå±€éƒ¨åæ ‡å˜æ¢è‡³ä¸–ç•Œåæ ‡
 	//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-	glm::mat4 view(1); //view¾ØÕó£¬ÊÀ½ç×ø±ê±ä»»ÖÁ¹Û²ì×ø±êÏµ
+	glm::mat4 view(1); //viewçŸ©é˜µï¼Œä¸–ç•Œåæ ‡å˜æ¢è‡³è§‚å¯Ÿåæ ‡ç³»
 	view = camera.GetViewMatrix();
-	glm::mat4 projection(1); //projection¾ØÕó£¬Í¶Ó°¾ØÕó
+	glm::mat4 projection(1); //projectionçŸ©é˜µï¼ŒæŠ•å½±çŸ©é˜µ
 	projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-	// Ïò×ÅÉ«Æ÷ÖĞ´«Èë²ÎÊı
+	// å‘ç€è‰²å™¨ä¸­ä¼ å…¥å‚æ•°
 	shader.setMat4("model", model);
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
