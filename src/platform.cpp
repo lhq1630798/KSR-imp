@@ -1,5 +1,25 @@
 #include "platform.h"
 
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+
+// settings
+ const unsigned int SCR_WIDTH = 1280;
+ const unsigned int SCR_HEIGHT = 720;
+
+// camera
+ float lastX = SCR_WIDTH / 2.0f;
+ float lastY = SCR_HEIGHT / 2.0f;
+ bool firstMouse = true;
+
+// timing
+ float deltaTime = 0.0f; // time between current frame and last frame
+ float lastFrame = 0.0f;
+
+//bool rotate = true;
+ ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
+ float depth = 1;
+ bool rotate = false;
+
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
@@ -67,7 +87,7 @@ void Platform::platform_init() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
+ 	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
 	glfwMakeContextCurrent(window);
 
 	glfwSwapInterval(1); // Enable vsync
@@ -120,30 +140,26 @@ void Platform::complete_frame() {
 
 void Platform::render_imgui(Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
 
-	static float f = 0.0f;
-	static int counter = 0;
+    static float f = 0.0f;
+    static int counter = 0;
 
-	ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
+    ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
 
-	ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
-	ImGui::SliderFloat("depth", &depth, -1, 1);
+	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 
-	if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
-	{
-		if (auto maybe_t = k_queue.next_event())
-		{
-			for (auto &k_poly : k_polys)
-				k_poly.update(k_poly.move_dt(*maybe_t - kinetic_time));
-			kinetic_time = *maybe_t;
-		}
-	}
+    ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
+    ImGui::SliderFloat("depth", &depth, -1, 1);
 
-	ImGui::SameLine();
-	ImGui::Text("queue size = %d", k_queue.queue.size());
-	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
+    if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
+    {
+      kinetic_time = k_queue.next_event();
+    }
+    ImGui::SameLine();
+    ImGui::Text("queue size = %d", k_queue.size());
+    ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 
-	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-	ImGui::End();
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
 
 }
 
@@ -151,7 +167,7 @@ void Platform::render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys) {
 
 	shader.use();
 	glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
-	//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+    if (rotate) model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
 	glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
 	view = camera.GetViewMatrix();
 	glm::mat4 projection(1); //projection矩阵，投影矩阵

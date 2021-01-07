@@ -2,6 +2,9 @@
 #include "cgal_object.h"
 // #include <CGAL/Boolean_set_operations_2.h>
 
+
+
+
 std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon_2, Line_2 line)
 {
     auto p_s = std::vector<std::pair<Point_2, Segment_2>>{};
@@ -139,7 +142,7 @@ Polygons_3 decompose(const Polygons_3 &polygons_3)
         }
         decomposed_polygons = std::move(temp);
     }
-
+    std::cout << "num of polygons\n\tbefore: " << polygons_3.size() << "\n\tafter: " << decomposed_polygons.size() << std::endl;
     return decomposed_polygons;
 }
 
