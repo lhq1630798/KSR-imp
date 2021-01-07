@@ -1,7 +1,6 @@
 #include "platform.h"
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
-// ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window)
 {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -16,8 +15,7 @@ void processInput(GLFWwindow *window)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
-// glfw: whenever the window size changed (by OS or user resize) this callback function executes
-// ---------------------------------------------------------------------------------------------
+//whenever the window size changed (by OS or user resize) this callback function executes
 void framebuffer_size_callback(GLFWwindow *window,int width, int height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and
@@ -25,8 +23,7 @@ void framebuffer_size_callback(GLFWwindow *window,int width, int height)
 	glViewport(0, 0, width, height);
 }
 
- //glfw: whenever the mouse moves, this callback is called
- //-------------------------------------------------------
+ //whenever the mouse moves, this callback is called
 void mouse_callback(GLFWwindow *window,double xpos, double ypos)
 {
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
@@ -52,8 +49,7 @@ void mouse_callback(GLFWwindow *window,double xpos, double ypos)
 	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
+//whenever the mouse scroll wheel scrolls, this callback is called
 void scroll_callback(GLFWwindow *window,double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
@@ -65,16 +61,21 @@ Platform::Platform() { platform_init(); }
 Platform::~Platform() { platform_shutdown(); }
 
 void Platform::platform_init() {
-	glfwInit();
+
+	if (!glfwInit()) { std::cout << "glfw init failure" << std::endl; }
 	const char *glsl_version = "#version 130";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+
+	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
 	glfwMakeContextCurrent(window);
+
 	glfwSwapInterval(1); // Enable vsync
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
-	gladLoadGL();
+	
+	if (!gladLoadGL()) { std::cout << "glad init failure" << std::endl; }
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -109,13 +110,20 @@ void Platform::begin_frame() {
 	ImGui::NewFrame();
 }
 
-void Platform::draw_imgui(Kinetic_queue k_queue, std::vector<K_Polygon_3> k_polys, FT& kinetic_time) {
+void Platform::complete_frame() {
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+}
+
+
+void Platform::render_imgui(Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
+
 	static float f = 0.0f;
 	static int counter = 0;
 
 	ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
-
-	//ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 
 	ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
 	ImGui::SliderFloat("depth", &depth, -1, 1);
@@ -129,15 +137,54 @@ void Platform::draw_imgui(Kinetic_queue k_queue, std::vector<K_Polygon_3> k_poly
 			kinetic_time = *maybe_t;
 		}
 	}
+
 	ImGui::SameLine();
 	ImGui::Text("queue size = %d", k_queue.queue.size());
 	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
+
 }
 
-void Platform::loop(Shader shader,Kinetic_queue k_queue, std::vector<K_Polygon_3> k_polys, FT& kinetic_time) {
+void Platform::render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys) {
+
+	shader.use();
+	glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
+	//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+	glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
+	view = camera.GetViewMatrix();
+	glm::mat4 projection(1); //projection矩阵，投影矩阵
+	projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+	// 向着色器中传入参数
+	shader.setMat4("model", model);
+	shader.setMat4("view", view);
+	shader.setMat4("projection", projection);
+
+	auto mesh = Polygon_Mesh{ std::vector<Polygon_GL>(k_polys.begin(), k_polys.end()) };
+	mesh.render(shader);
+
+}
+
+void Platform::clear() {
+
+	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClearDepth(depth);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+}
+
+void Platform::render(Shader& shader, Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
+
+	render_imgui(k_queue, k_polys, kinetic_time);
+	clear();
+	render_3d(shader, k_polys);
+
+}
+
+void Platform::loop(Shader& shader,Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
 
 	// Main loop
 	while (!glfwWindowShouldClose(window))
@@ -145,43 +192,15 @@ void Platform::loop(Shader shader,Kinetic_queue k_queue, std::vector<K_Polygon_3
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
+
 		glfwPollEvents();
 		processInput(window);
 
-		// Start the Dear ImGui frame
 		begin_frame();
 
-		int display_w, display_h;
-		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
+		render(shader, k_queue, k_polys, kinetic_time);
 
-		//Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-		draw_imgui(k_queue, k_polys, kinetic_time);
-
-		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glClearDepth(depth);
-		glClear(GL_DEPTH_BUFFER_BIT);
-
-		shader.use();
-		glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
-		//model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-		glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
-		view = camera.GetViewMatrix();
-		glm::mat4 projection(1); //projection矩阵，投影矩阵
-		projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-
-		// 向着色器中传入参数
-		shader.setMat4("model", model);
-		shader.setMat4("view", view);
-		shader.setMat4("projection", projection);
-
-		auto mesh = Polygon_Mesh{ std::vector<Polygon_GL>(k_polys.begin(), k_polys.end()) };
-		mesh.render(shader);
-
-		// Render UI
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		complete_frame();
 
 		glfwSwapBuffers(window);
 	}

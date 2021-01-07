@@ -1,8 +1,9 @@
+#include "platform.h"
 
-#include"platform.h"
 
 int main() {
 	Platform plt;
+
 	auto timer = Timer{};
     auto shader = Shader{"7.4.camera.vs", "7.4.camera.fs"};
     
@@ -27,6 +28,7 @@ int main() {
     auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
     auto k_queue = Kinetic_queue{ k_polys };
     FT kinetic_time = 0;
+
 	plt.loop(shader,k_queue,k_polys,kinetic_time);
 
 	return 0;
