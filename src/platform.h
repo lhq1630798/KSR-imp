@@ -15,25 +15,6 @@
 #include "kinetic.h"
 #include "camera.h"
 
-inline static Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-inline GLFWwindow *window = nullptr;
-
-// settings
-inline const unsigned int SCR_WIDTH = 1280;
-inline const unsigned int SCR_HEIGHT = 720;
-
-// camera
-inline float lastX = SCR_WIDTH / 2.0f;
-inline float lastY = SCR_HEIGHT / 2.0f;
-inline bool firstMouse = true;
-
-// timing
-inline float deltaTime = 0.0f; // time between current frame and last frame
-inline float lastFrame = 0.0f;
-
-//bool rotate = true;
-inline ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
-inline float depth = 1;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -59,4 +40,5 @@ private:
 	void render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys);
 	void clear();
 	void render(Shader& shader, Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time);
+	GLFWwindow *window = nullptr;
 };
