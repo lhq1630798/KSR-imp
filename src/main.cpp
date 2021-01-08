@@ -18,14 +18,15 @@ int main() {
     //                                      1, 2, 3};
     // auto mesh = Mesh{verts, idxs};
     
-    // auto polys_3 = timer("generation", generate_poly_3, 10);
-    
-    auto polys_3 = timer("generation", generate_box);
-    //auto polys_3 = timer("generation", get_convex, "data/cube.pwn");
+    // auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 10);
+    auto polys_3 = timer("generate_polys_3", generate_polys_3);
+    //auto polys_3 = timer("get_convex", get_convex, "data/cube.pwn");
     polys_3 = timer("decompose", decompose, polys_3);
     timer("intersection free check", check_intersect_free, polys_3);
     
+    
     auto k_polys = std::vector<K_Polygon_3>(polys_3.begin(), polys_3.end());
+    add_bounding_box(k_polys);
     auto k_queue = Kinetic_queue{ k_polys };
     FT kinetic_time = 0;
 

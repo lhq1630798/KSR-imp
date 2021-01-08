@@ -127,8 +127,8 @@ protected:
 };
 
 
-Polygons_3 generate_poly_3(size_t num);
-Polygons_3 generate_box();
+Polygons_3 generate_rand_polys_3(size_t num);
+Polygons_3 generate_polys_3();
 Polygons_3 decompose(const Polygons_3 &);
 Polygons_3 get_convex(std::string path);
 
