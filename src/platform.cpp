@@ -20,6 +20,7 @@ ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
 float depth = 1;
 bool rotate = false;
 bool grow = false;
+float grow_speed = -1;
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
@@ -152,24 +153,11 @@ void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_
 	static int counter = 0;
 	static double last_time = glfwGetTime();
 	static FT next_kinetic_t = k_queue.next_time();
-	
+	static auto k_poly_bak = k_polys;
+
 	double dt = glfwGetTime() - last_time;
 	last_time = last_time + dt;
-	dt /= 10;
-
-	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
-	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
-	ImGui::SliderFloat("depth", &depth, -1, 1);
-
-	if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
-	{
-		kinetic_time = k_queue.to_next_event();
-	}
-	ImGui::SameLine();
-	ImGui::Text("queue size = %d", k_queue.size());
-	ImGui::Checkbox("growing", &grow);
-
-	static auto k_poly_bak = k_polys;
+	dt = std::powf(10, grow_speed) * dt;
 	if (grow)
 	{
 		kinetic_time += dt;
@@ -186,6 +174,24 @@ void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_
 				k_poly.update(k_poly.move_dt(dt));
 		}
 	}
+
+	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
+	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
+	ImGui::SliderFloat("depth", &depth, -1, 1);
+
+	ImGui::Checkbox("growing", &grow);
+	ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
+
+	if (ImGui::Button("next event"))
+	{
+		k_polys = k_poly_bak;
+		kinetic_time = k_queue.to_next_event();
+		k_poly_bak = k_polys;
+		next_kinetic_t = k_queue.next_time();
+	}
+	ImGui::SameLine();
+	ImGui::Text("queue size = %d", k_queue.size());
+
 
 	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 	ImGui::Text("next time = %.3f", CGAL::to_double(next_kinetic_t));

@@ -1,118 +1,141 @@
 #include "kinetic.h"
 #include <limits>
 
-void K_Polygon_3::update_certificate(size_t ind, Event &event, Kinetic_queue &queue)
+bool Kinetic_queue::update_certificate(const Event &event)
 {
+
+    auto &_this = *event.this_p;
+
+    std::cout << "find index: id ";
+    auto ind = _this.get_index(event.id).value();
+    std::cout << event.id << " at _ids[" << ind << "]" << std::endl;
+
     auto line_2 = event.line_2;
+    auto &points_2 = _this.points_2();
+    auto &_speed = _this._speed;
+    auto &_status = _this._status;
+    auto &_ids = _this._ids;
     assert(ind >= 0);
-    assert(ind < points_2().size());
-    const auto &point_2 = points_2()[ind];
-    auto prev_ind = ind == 0 ? points_2().size() - 1 : ind - 1;
-    auto next_ind = ind == points_2().size() - 1 ? 0 : ind + 1;
-    assert(line_2.has_on(point_2));
+    assert(ind < points_2.size());
+    const auto &point_2 = points_2[ind];
+    auto prev_ind = ind == 0 ? points_2.size() - 1 : ind - 1;
+    auto next_ind = ind == points_2.size() - 1 ? 0 : ind + 1;
+
+    if (_status[ind] == K_Polygon_3::Normal)
+    {
+        if (points_2[prev_ind] == points_2[ind])
+        {
+            std::cout << "vert collision" << std::endl;
+            assert(_status[prev_ind] == K_Polygon_3::Sliding_Next);
+            auto next_speed = _this.sliding_speed(ind, next_ind, line_2);
+            _speed[ind] = next_speed;
+            _status[ind] = K_Polygon_3::Sliding_Next;
+            _ids[ind] = K_Polygon_3::next_id();
+            erase_vert(_this, prev_ind);
+            return true;
+        }
+        else if (points_2[ind] == points_2[next_ind])
+        {
+            std::cout << "vert collision" << std::endl;
+            assert(_status[next_ind] == K_Polygon_3::Sliding_Pre);
+            auto prev_speed = _this.sliding_speed(prev_ind, ind, line_2);
+            _speed[ind] = prev_speed;
+            _status[ind] = K_Polygon_3::Sliding_Pre;
+            _ids[ind] = K_Polygon_3::next_id();
+            erase_vert(_this, next_ind);
+            return true;
+        }
+    }
+
+    // auto dt = event.t - last_t;
+    // assert(dt > 0);
+    // auto &_other = *event.other_p;
+    // if (!Polygon_3{_other.plane(), _other.move_dt(dt)}.has_on(event.point_3))
+    //     return false;
+    if (!event.other_p->has_on(event.point_3))
+        return false;
 
     switch (_status[ind])
     {
-    case Normal: //type a
-        if (points_2()[prev_ind] == points_2()[ind])
-        {
-            std::cout << "type a half" << std::endl;
-            assert(_status[prev_ind] == Sliding_Next);
-            auto next_speed = sliding_speed(ind, next_ind, line_2);
-            _speed[ind] = next_speed;
-            _status[ind] = Sliding_Next;
-            _ids[ind] = next_id();
-            queue.erase_vert(*this, prev_ind);
-        }
-        else if (points_2()[ind] == points_2()[next_ind])
-        {
-            std::cout << "type a half" << std::endl;
-            assert(_status[next_ind] == Sliding_Pre);
-            auto prev_speed = sliding_speed(prev_ind, ind, line_2);
-            _speed[ind] = prev_speed;
-            _status[ind] = Sliding_Pre;
-            _ids[ind] = next_id();
-            queue.erase_vert(*this, next_ind);
-        }
-        else if (Line_2{points_2()[prev_ind], points_2()[ind]} == line_2)
+    case K_Polygon_3::Normal: //type a
+        if (Line_2{points_2[prev_ind], points_2[ind]} == line_2)
         {
             std::cout << "type a edge" << std::endl;
-            auto next_speed = sliding_speed(ind, next_ind, line_2);
+            auto next_speed = _this.sliding_speed(ind, next_ind, line_2);
             _speed[ind] = next_speed;
-            _status[ind] = Sliding_Next;
-            _ids[ind] = next_id();
+            _status[ind] = K_Polygon_3::Sliding_Next;
+            _ids[ind] = K_Polygon_3::next_id();
         }
-        else if (Line_2{points_2()[ind], points_2()[next_ind]} == line_2)
+        else if (Line_2{points_2[ind], points_2[next_ind]} == line_2)
         {
             std::cout << "type a edge" << std::endl;
-            auto prev_speed = sliding_speed(prev_ind, ind, line_2);
+            auto prev_speed = _this.sliding_speed(prev_ind, ind, line_2);
             _speed[ind] = prev_speed;
-            _status[ind] = Sliding_Pre;
-            _ids[ind] = next_id();
+            _status[ind] = K_Polygon_3::Sliding_Pre;
+            _ids[ind] = K_Polygon_3::next_id();
         }
         else
         {
             std::cout << "type a" << std::endl;
-            assert(_status[prev_ind] != Frozen);
-            assert(_status[next_ind] != Frozen);
-            auto prev_speed = sliding_speed(prev_ind, ind, line_2);
-            auto next_speed = sliding_speed(ind, next_ind, line_2);
+            assert(_status[prev_ind] != K_Polygon_3::Frozen);
+            assert(_status[next_ind] != K_Polygon_3::Frozen);
+            auto prev_speed = _this.sliding_speed(prev_ind, ind, line_2);
+            auto next_speed = _this.sliding_speed(ind, next_ind, line_2);
             assert(-prev_speed.direction() == next_speed.direction());
 
             _speed[ind] = next_speed;
-            _status[ind] = Sliding_Next;
-            _ids[ind] = next_id();
+            _status[ind] = K_Polygon_3::Sliding_Next;
+            _ids[ind] = K_Polygon_3::next_id();
 
-            _polygon_2.insert(_polygon_2.begin() + ind, point_2);
+            _this._polygon_2.insert(_this._polygon_2.begin() + ind, point_2);
             _speed.insert(_speed.begin() + ind, prev_speed);
-            _status.insert(_status.begin() + ind, Sliding_Pre);
-            _ids.insert(_ids.begin() + ind, next_id());
+            _status.insert(_status.begin() + ind, K_Polygon_3::Sliding_Pre);
+            _ids.insert(_ids.begin() + ind, K_Polygon_3::next_id());
         }
         break;
-    case Sliding_Next:
-        if (points_2()[next_ind] == points_2()[ind])
+    case K_Polygon_3::Sliding_Next:
+        if (points_2[next_ind] == points_2[ind])
         { //type c
-            assert(_status[next_ind] == Sliding_Pre);
+            assert(_status[next_ind] == K_Polygon_3::Sliding_Pre);
             std::cout << "type c" << std::endl;
-            _status[ind] = Frozen;
-            queue.erase_vert(*this, next_ind);
+            _status[ind] = K_Polygon_3::Frozen;
+            erase_vert(_this, next_ind);
         }
         else
         { //type b
             std::cout << "type b Sliding_Next" << std::endl;
-            auto next_speed = sliding_speed(ind, next_ind, line_2);
+            auto next_speed = _this.sliding_speed(ind, next_ind, line_2);
             assert(_speed[ind] != next_speed);
             _speed[ind] = next_speed;
-            _status[ind] = Sliding_Next;
-            _ids[ind] = next_id();
-            insert_frozen(ind, point_2);
+            _status[ind] = K_Polygon_3::Sliding_Next;
+            _ids[ind] = K_Polygon_3::next_id();
+            _this.insert_frozen(ind, point_2);
         }
         break;
-    case Sliding_Pre:
-        if (points_2()[prev_ind] == points_2()[ind])
+    case K_Polygon_3::Sliding_Pre:
+        if (points_2[prev_ind] == points_2[ind])
         { //type c
-            assert(_status[prev_ind] == Sliding_Next);
+            assert(_status[prev_ind] == K_Polygon_3::Sliding_Next);
             std::cout << "type c" << std::endl;
-            _status[ind] = Frozen;
-            queue.erase_vert(*this, prev_ind);
+            _status[ind] = K_Polygon_3::Frozen;
+            erase_vert(_this, prev_ind);
         }
         else
         { //type b
             std::cout << "type b Sliding_Pre" << std::endl;
-            auto prev_speed = sliding_speed(prev_ind, ind, line_2);
+            auto prev_speed = _this.sliding_speed(prev_ind, ind, line_2);
             assert(_speed[ind] != prev_speed);
             _speed[ind] = prev_speed;
-            _status[ind] = Sliding_Pre;
-            _ids[ind] = next_id();
-            insert_frozen(next_ind, point_2);
+            _status[ind] = K_Polygon_3::Sliding_Pre;
+            _ids[ind] = K_Polygon_3::next_id();
+            _this.insert_frozen(next_ind, point_2);
         }
 
         break;
     default:
         assert(false);
     }
-    update_points_3();
-    return;
+    return true;
 }
 
 Kinetic_queue::Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3) : k_polygons_3(k_polys_3)
@@ -191,19 +214,13 @@ void Kinetic_queue::erase_vert(K_Polygon_3 &k_poly_3, size_t ind)
         remove(rm_event);
     // erase AFTER we update queue
     k_poly_3.erase(ind);
+    k_poly_3.update_points_3();
 }
 
 FT Kinetic_queue::next_time()
 {
-    auto begin = queue.begin();
-    while(begin != queue.end()){
-        auto &event = *begin;
-        auto dt = event.t - last_t;
-        auto &_this = *event.this_p, _other = *event.other_p;
-        if (Polygon_3{_other.plane(), _other.move_dt(dt)}.has_on(event.point_3))
-            return event.t;
-        begin++;
-    }
+    if (!queue.empty())
+        return top().t;
     return INF;
 }
 
@@ -215,35 +232,25 @@ FT Kinetic_queue::to_next_event()
         auto event = top();
         pop();
         auto dt = event.t - last_t;
-        assert(dt > 0);
-        auto &_this = *event.this_p, _other = *event.other_p;
-        assert(_this.plane().has_on(event.point_3));
-        assert(_other.plane().has_on(event.point_3));
-        if (Polygon_3{_other.plane(), _other.move_dt(dt)}.has_on(event.point_3))
-        {
-            last_t = event.t; //update last_t before detect next collide
-            auto old_id_max = K_Polygon_3::max_id();
+        assert(dt >= 0);
+        for (auto &k_poly : k_polygons_3)
+            k_poly.update_nocheck(k_poly.move_dt(dt));
+        assert(event.this_p->plane().has_on(event.point_3));
+        assert(event.other_p->plane().has_on(event.point_3));
 
+        auto old_id_max = K_Polygon_3::max_id(); //get old_id_max before update_certificate
+        if (update_certificate(event)) //assume k_polygons_3 have already growed
+        {
             for (const auto &rm_event : id_events[event.id])
                 remove(rm_event);
-            for (auto &k_poly : k_polygons_3)
-                k_poly.update_nocheck(k_poly.move_dt(dt));
-
-            // split point
-            std::cout << "find index: id ";
-            for (size_t ind = 0; ind < _this.points_2().size(); ind++)
-            {
-                if (_this._ids[ind] == event.id)
-                {
-                    std::cout << event.id << " at _ids[" << ind << "]" << std::endl;
-                    _this.update_certificate(ind, event, *this);
-                }
-            }
-
+            last_t = event.t; //update last_t before detect next collide()
             for (auto &_other : k_polygons_3)
-                collide(_this, _other, old_id_max); // update queue only if id>old_id_max
-
+                collide(*event.this_p, _other, old_id_max); // update queue only if id>old_id_max
             break;
+        }
+        else
+        {
+            last_t = event.t;
         }
     }
     return last_t;
@@ -256,13 +263,13 @@ void add_bounding_box(std::vector<K_Polygon_3> &k_polys_3)
     for (const auto &polys_3 : k_polys_3)
         box += CGAL::bbox_3(polys_3.points_3().begin(), polys_3.points_3().end());
 
-    auto scale = 1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
-                              std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
+    auto scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
+                                std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
     auto square = Points_2{};
-    square.push_back(Point_2{scale, scale});
-    square.push_back(Point_2{-scale, scale});
-    square.push_back(Point_2{-scale, -scale});
-    square.push_back(Point_2{scale, -scale});
+    square.push_back(Point_2{scale + 0.1, scale + 0.1});
+    square.push_back(Point_2{-scale - 0.1, scale + 0.1});
+    square.push_back(Point_2{-scale - 0.1, -scale - 0.1});
+    square.push_back(Point_2{scale + 0.1, -scale - 0.1});
 
     {
         auto plane = Plane_3{1, 0, 0, scale};

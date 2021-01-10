@@ -53,46 +53,47 @@ Polygons_3 generate_polys_3()
             point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
         polys_3.push_back(Polygon_3{plane, v});
     }
-    // {
-    //     auto plane = Plane_3{1, 0, 0, -S};
-    //     Points_2 v;
-    //     random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
-    //     for (auto &point_2 : v)
-    //         point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
-    //     polys_3.push_back(Polygon_3{plane, v});
-    // }
-    // {
-    //     auto plane = Plane_3{0, 1, 0, S};
-    //     Points_2 v;
-    //     random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
-    //     for (auto &point_2 : v)
-    //         point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
-    //     polys_3.push_back(Polygon_3{plane, v});
-    // }
-    // {
-    //     auto plane = Plane_3{0, 1, 0, -S};
-    //     Points_2 v;
-    //     random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
-    //     for (auto &point_2 : v)
-    //         point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
-    //     polys_3.push_back(Polygon_3{plane, v});
-    // }
-    // {
-    //     auto plane = Plane_3{0, 0, 1, S};
-    //     Points_2 v;
-    //     random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
-    //     for (auto &point_2 : v)
-    //         point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
-    //     polys_3.push_back(Polygon_3{plane, v});
-    // }
-    // {
-    //     auto plane = Plane_3{0, 0, 1, -S};
-    //     Points_2 v;
-    //     random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
-    //     for (auto &point_2 : v)
-    //         point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
-    //     polys_3.push_back(Polygon_3{plane, v});
-    // }
+    {
+        auto plane = Plane_3{1, 0, 0, -S};
+        Points_2 v;
+        random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
+        for (auto &point_2 : v)
+            point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
+        polys_3.push_back(Polygon_3{plane, v});
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, S};
+        Points_2 v;
+        random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
+        for (auto &point_2 : v)
+            point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
+        polys_3.push_back(Polygon_3{plane, v});
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, -S};
+        Points_2 v;
+        random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
+        for (auto &point_2 : v)
+            point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
+        polys_3.push_back(Polygon_3{plane, v});
+    }
+    {
+        auto plane = Plane_3{0, 0, 1, S};
+        Points_2 v;
+        random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
+        for (auto &point_2 : v)
+            point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
+        polys_3.push_back(Polygon_3{plane, v});
+    }
+    {
+        auto plane = Plane_3{0, 0, 1, -S};
+        Points_2 v;
+        random_convex_hull_in_disc_2(N, RADIUS, gen, std::back_inserter(v), K());
+        for (auto &point_2 : v)
+            point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
+        polys_3.push_back(Polygon_3{plane, v});
+    }
+    // polys_3.erase(polys_3.begin());
     return polys_3;
 }
 

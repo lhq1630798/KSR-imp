@@ -36,8 +36,17 @@ public:
             _status[i] = Frozen;
         }
     }
-    size_t next_id() { return _next_id++; }
-    static size_t max_id() { return _next_id-1; }
+    static size_t next_id() { return _next_id++; }
+    static size_t max_id() { return _next_id - 1; }
+
+    std::optional<size_t> get_index(size_t id)
+    {
+        for (size_t ind = 0; ind < points_2().size(); ind++)
+            if (_ids[ind] == id)
+                return ind;
+        return {};
+    }
+
     K_Polygon_3 &update(Polygon_2 poly_2)
     {
         assert(poly_2.is_simple());
@@ -59,7 +68,6 @@ public:
             new_points_2.push_back(points_2()[i] + _speed[i] * move_dt);
         }
         auto polygon_2 = Polygon_2{new_points_2.begin(), new_points_2.end()};
-        assert(polygon_2.is_convex());
 
         return polygon_2;
     }
@@ -88,9 +96,10 @@ private:
         assert(false);
         return Vector_2{};
     }
-    void update_certificate(size_t ind, Event &, Kinetic_queue &);
+
     K_Polygon_3 &update_nocheck(Polygon_2 poly_2)
     {
+        assert(poly_2.is_convex());
         assert(poly_2.size() == _polygon_2.size());
         _polygon_2 = std::move(poly_2);
         update_points_3();
@@ -121,7 +130,7 @@ private:
     };
     std::vector<mode> _status;
     //Kinetic_queue::collide() old_id_max default value is zero, so id must start from 1
-    inline static size_t _next_id = 1; 
+    inline static size_t _next_id = 1;
     friend Kinetic_queue;
 };
 
@@ -173,10 +182,11 @@ private:
     }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
-    
+
     void erase_vert(K_Polygon_3 &, size_t ind);
     void collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_id_max = 0);
     void vert_collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t i, Line_2 &line_2);
+    bool update_certificate(const Event &);
 
     std::vector<K_Polygon_3> &k_polygons_3;
     std::set<Event> queue;

@@ -76,7 +76,10 @@ public:
 	{
 		if (!plane().has_on(point_3))
 			return false;
-		return !polygon_2().has_on_unbounded_side(plane().to_2d(point_3));
+		// return !polygon_2().has_on_unbounded_side(plane().to_2d(point_3));
+        auto point_2 = plane().to_2d(point_3);
+        if (polygon_2().has_on_boundary(point_2)) std::cout << "warning: Polygon_3::has_on(const Point_3&)" <<std::endl;
+		return polygon_2().has_on_bounded_side(point_2);
 	}
 
     Point_2 project_2(const Point_3 &point_3) const
