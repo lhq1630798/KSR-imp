@@ -5,6 +5,7 @@
 static const auto INF = FT{99999};
 
 class Kinetic_queue;
+class Event;
 
 class K_Polygon_3 : public Polygon_3
 {
@@ -15,12 +16,14 @@ public:
     explicit K_Polygon_3(Polygon_3 poly_3) : Polygon_3(poly_3)
     {
         auto center = Vector_2{};
+        // auto area = CGAL::abs(polygon_2().area());
         for (const auto &point_2 : poly_3.points_2())
             center += point_2 - CGAL::ORIGIN;
         _center = CGAL::ORIGIN + center * (1 / poly_3.points_2().size());
         for (const auto &point_2 : poly_3.points_2())
         {
-            _speed.push_back(point_2 - _center);
+            // _speed.push_back((point_2 - _center)/area);
+            _speed.push_back((point_2 - _center));
             _status.push_back(Normal);
             _ids.push_back(next_id());
         }
@@ -34,6 +37,7 @@ public:
         }
     }
     size_t next_id() { return _next_id++; }
+    static size_t max_id() { return _next_id-1; }
     K_Polygon_3 &update(Polygon_2 poly_2)
     {
         assert(poly_2.is_simple());
@@ -84,7 +88,7 @@ private:
         assert(false);
         return Vector_2{};
     }
-    void update_certificate(size_t ind, const Line_2 line_2, Kinetic_queue &);
+    void update_certificate(size_t ind, Event &, Kinetic_queue &);
     K_Polygon_3 &update_nocheck(Polygon_2 poly_2)
     {
         assert(poly_2.size() == _polygon_2.size());
@@ -116,7 +120,8 @@ private:
         Normal
     };
     std::vector<mode> _status;
-    inline static size_t _next_id = 0;
+    //Kinetic_queue::collide() old_id_max default value is zero, so id must start from 1
+    inline static size_t _next_id = 1; 
     friend Kinetic_queue;
 };
 
@@ -153,7 +158,8 @@ class Kinetic_queue
 
 public:
     Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3);
-    FT next_event();
+    FT to_next_event();
+    FT next_time();
     size_t size() { return queue.size(); }
 
 private:
@@ -167,15 +173,14 @@ private:
     }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
-
-    void check_update(K_Polygon_3 &, Polygon_2 &&);
+    
     void erase_vert(K_Polygon_3 &, size_t ind);
+    void collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_id_max = 0);
+    void vert_collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t i, Line_2 &line_2);
+
     std::vector<K_Polygon_3> &k_polygons_3;
     std::set<Event> queue;
-    // std::unordered_map<CGAL::Handle::Id_type, std::vector<Event>> id_events;
     std::unordered_map<size_t, std::vector<Event>> id_events;
-    void collide(K_Polygon_3 &_this, K_Polygon_3 &_other);
-    void Kinetic_queue::kinetic_check(K_Polygon_3 &k_poly_3);
     FT last_t = 0;
     friend K_Polygon_3;
 };

@@ -5,7 +5,7 @@ int main() {
 	Platform plt;
 
 	auto timer = Timer{};
-    auto shader = Shader{"7.4.camera.vs", "7.4.camera.fs"};
+    auto shader = Shader{"src/7.4.camera.vs", "src/7.4.camera.fs"};
     
     // auto verts = std::vector<Vec3>{
     //     {0.5f, 0.5f, 0.0f},

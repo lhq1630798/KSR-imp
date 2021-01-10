@@ -1,8 +1,9 @@
 #include "kinetic.h"
 #include <limits>
 
-void K_Polygon_3::update_certificate(size_t ind, const Line_2 line_2, Kinetic_queue &queue)
+void K_Polygon_3::update_certificate(size_t ind, Event &event, Kinetic_queue &queue)
 {
+    auto line_2 = event.line_2;
     assert(ind >= 0);
     assert(ind < points_2().size());
     const auto &point_2 = points_2()[ind];
@@ -80,6 +81,7 @@ void K_Polygon_3::update_certificate(size_t ind, const Line_2 line_2, Kinetic_qu
         { //type b
             std::cout << "type b Sliding_Next" << std::endl;
             auto next_speed = sliding_speed(ind, next_ind, line_2);
+            assert(_speed[ind] != next_speed);
             _speed[ind] = next_speed;
             _status[ind] = Sliding_Next;
             _ids[ind] = next_id();
@@ -98,9 +100,10 @@ void K_Polygon_3::update_certificate(size_t ind, const Line_2 line_2, Kinetic_qu
         { //type b
             std::cout << "type b Sliding_Pre" << std::endl;
             auto prev_speed = sliding_speed(prev_ind, ind, line_2);
+            assert(_speed[ind] != prev_speed);
             _speed[ind] = prev_speed;
             _status[ind] = Sliding_Pre;
-            // _ids[ind] = next_id();
+            _ids[ind] = next_id();
             insert_frozen(next_ind, point_2);
         }
 
@@ -122,7 +125,7 @@ Kinetic_queue::Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3) : k_polygons_3
     std::cout << "queue size " << queue.size() << std::endl;
 }
 
-void Kinetic_queue::collide(K_Polygon_3 &_this, K_Polygon_3 &_other)
+void Kinetic_queue::collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_id_max)
 {
     if (_this.plane() == _other.plane())
         return;
@@ -137,46 +140,48 @@ void Kinetic_queue::collide(K_Polygon_3 &_this, K_Polygon_3 &_other)
     //type a, b, c
     for (size_t i = 0; i < _this.points_2().size(); i++)
     {
-        if (_this._status[i] == _this.Frozen)
-            continue;
-        auto &point_2 = _this.points_2()[i];
-        auto &speed = _this._speed[i];
-        auto &id = _this._ids[i];
-
-        auto r = Ray_2{point_2, speed};
-        assert(r.opposite().has_on(point_2));
-        if (auto res = CGAL::intersection(r, line_2))
-        {
-            if (boost::get<Ray_2>(&*res)) //sliding
-                continue;
-            if (auto point_2_p = boost::get<Point_2>(&*res))
-            {
-                assert(*point_2_p != point_2);
-                auto diff = *point_2_p - point_2;
-                auto t = last_t;
-                if (speed.x() != 0)
-                {
-                    t += diff.x() / speed.x();
-                }
-                else
-                {
-                    assert(speed.y() != 0);
-                    t += diff.y() / speed.y();
-                }
-                // if(diff.squared_length() == 0){
-                //     std::cout << "Simultaneous collisions" <<std::endl;
-                //     continue;
-                // }
-                auto point_3 = _this.plane().to_3d(*point_2_p);
-                auto event = Event{&_this, &_other, id, point_3, line_2, t};
-                id_events[id].push_back(event);
-                insert(event);
-            }
-        }
+        if (_this._ids[i] > old_id_max) // id start from zero
+            vert_collide(_this, _other, i, line_2);
     }
     if (line_polygon_intersect_2(line_2, _this.polygon_2()))
     //type d
     {
+    }
+}
+
+void Kinetic_queue::vert_collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t i, Line_2 &line_2)
+{
+    if (_this._status[i] == _this.Frozen)
+        return;
+    auto &point_2 = _this.points_2()[i];
+    auto &speed = _this._speed[i];
+    auto &id = _this._ids[i];
+
+    auto r = Ray_2{point_2, speed};
+    if (auto res = CGAL::intersection(r, line_2))
+    {
+        if (boost::get<Ray_2>(&*res)) //sliding
+            return;
+        if (auto point_2_p = boost::get<Point_2>(&*res))
+        {
+            if (*point_2_p == point_2) // that means the point is about to leave the plane
+                return;
+            auto diff = *point_2_p - point_2;
+            auto t = last_t;
+            if (speed.x() != 0)
+            {
+                t += diff.x() / speed.x();
+            }
+            else
+            {
+                assert(speed.y() != 0);
+                t += diff.y() / speed.y();
+            }
+            auto point_3 = _this.plane().to_3d(*point_2_p);
+            auto event = Event{&_this, &_other, id, point_3, line_2, t};
+            id_events[id].push_back(event);
+            insert(event);
+        }
     }
 }
 
@@ -188,51 +193,21 @@ void Kinetic_queue::erase_vert(K_Polygon_3 &k_poly_3, size_t ind)
     k_poly_3.erase(ind);
 }
 
-void Kinetic_queue::kinetic_check(K_Polygon_3 &k_poly_3)
+FT Kinetic_queue::next_time()
 {
-    auto &poly_2 = k_poly_3.polygon_2();
-    while (!poly_2.is_simple())
-    {
-        for (size_t ind = 0; ind < poly_2.size(); ind++)
-        {
-            auto next = ind + 1;
-            if (next == poly_2.size())
-                next = 0;
-            // type c or type a edge
-            if (poly_2[ind] == poly_2[next])
-            {
-                assert(k_poly_3._status[ind] == k_poly_3.Sliding_Next ||
-                       k_poly_3._status[next] == k_poly_3.Sliding_Pre);
-                if (k_poly_3._status[ind] == k_poly_3.Normal)
-                {
-                    std::cout << "type a edge" << std::endl;
-                    // k_poly_3._status[ind] = k_poly_3.Sliding_Pre;
-                    erase_vert(k_poly_3, next);
-                }
-                else if (k_poly_3._status[next] == k_poly_3.Normal)
-                {
-                    std::cout << "type a edge" << std::endl;
-                    // k_poly_3._status[next] = k_poly_3.Sliding_Pre;
-                    erase_vert(k_poly_3, ind);
-                }
-                else
-                {
-                    std::cout << "type c" << std::endl;
-                    assert(k_poly_3._status[ind] == k_poly_3.Sliding_Next &&
-                           k_poly_3._status[next] == k_poly_3.Sliding_Pre);
-                    k_poly_3._status[ind] = k_poly_3.Frozen;
-                    for (const auto &rm_event : id_events[k_poly_3._ids[ind]])
-                        remove(rm_event);
-                    erase_vert(k_poly_3, next);
-                }
-
-                continue;
-            }
-        }
+    auto begin = queue.begin();
+    while(begin != queue.end()){
+        auto &event = *begin;
+        auto dt = event.t - last_t;
+        auto &_this = *event.this_p, _other = *event.other_p;
+        if (Polygon_3{_other.plane(), _other.move_dt(dt)}.has_on(event.point_3))
+            return event.t;
+        begin++;
     }
+    return INF;
 }
 
-FT Kinetic_queue::next_event()
+FT Kinetic_queue::to_next_event()
 {
 
     while (!queue.empty())
@@ -240,17 +215,19 @@ FT Kinetic_queue::next_event()
         auto event = top();
         pop();
         auto dt = event.t - last_t;
-        assert(dt >= 0);
+        assert(dt > 0);
         auto &_this = *event.this_p, _other = *event.other_p;
         assert(_this.plane().has_on(event.point_3));
         assert(_other.plane().has_on(event.point_3));
         if (Polygon_3{_other.plane(), _other.move_dt(dt)}.has_on(event.point_3))
         {
+            last_t = event.t; //update last_t before detect next collide
+            auto old_id_max = K_Polygon_3::max_id();
+
             for (const auto &rm_event : id_events[event.id])
                 remove(rm_event);
-            if (dt != 0)
-                for (auto &k_poly : k_polygons_3)
-                    k_poly.update_nocheck(k_poly.move_dt(dt));
+            for (auto &k_poly : k_polygons_3)
+                k_poly.update_nocheck(k_poly.move_dt(dt));
 
             // split point
             std::cout << "find index: id ";
@@ -259,13 +236,12 @@ FT Kinetic_queue::next_event()
                 if (_this._ids[ind] == event.id)
                 {
                     std::cout << event.id << " at _ids[" << ind << "]" << std::endl;
-                    _this.update_certificate(ind, event.line_2, *this);
+                    _this.update_certificate(ind, event, *this);
                 }
             }
 
-            last_t = event.t; //before next collide
             for (auto &_other : k_polygons_3)
-                collide(_this, _other);
+                collide(_this, _other, old_id_max); // update queue only if id>old_id_max
 
             break;
         }
@@ -325,4 +301,3 @@ void add_bounding_box(std::vector<K_Polygon_3> &k_polys_3)
         k_polys_3.push_back(std::move(k_poy_3));
     }
 }
-

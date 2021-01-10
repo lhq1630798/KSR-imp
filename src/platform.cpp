@@ -3,22 +3,23 @@
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 // settings
- const unsigned int SCR_WIDTH = 1280;
- const unsigned int SCR_HEIGHT = 720;
+const unsigned int SCR_WIDTH = 1280;
+const unsigned int SCR_HEIGHT = 720;
 
 // camera
- float lastX = SCR_WIDTH / 2.0f;
- float lastY = SCR_HEIGHT / 2.0f;
- bool firstMouse = true;
+float lastX = SCR_WIDTH / 2.0f;
+float lastY = SCR_HEIGHT / 2.0f;
+bool firstMouse = true;
 
 // timing
- float deltaTime = 0.0f; // time between current frame and last frame
- float lastFrame = 0.0f;
+float deltaTime = 0.0f; // time between current frame and last frame
+float lastFrame = 0.0f;
 
 //bool rotate = true;
- ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
- float depth = 1;
- bool rotate = false;
+ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
+float depth = 1;
+bool rotate = false;
+bool grow = false;
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
@@ -36,15 +37,15 @@ void processInput(GLFWwindow *window)
 }
 
 //whenever the window size changed (by OS or user resize) this callback function executes
-void framebuffer_size_callback(GLFWwindow *window,int width, int height)
+void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
 	// make sure the viewport matches the new window dimensions; note that width and
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
 }
 
- //whenever the mouse moves, this callback is called
-void mouse_callback(GLFWwindow *window,double xpos, double ypos)
+//whenever the mouse moves, this callback is called
+void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
 	{
@@ -70,32 +71,38 @@ void mouse_callback(GLFWwindow *window,double xpos, double ypos)
 }
 
 //whenever the mouse scroll wheel scrolls, this callback is called
-void scroll_callback(GLFWwindow *window,double xoffset, double yoffset)
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(yoffset);
 }
-
 
 Platform::Platform() { platform_init(); }
 
 Platform::~Platform() { platform_shutdown(); }
 
-void Platform::platform_init() {
+void Platform::platform_init()
+{
 
-	if (!glfwInit()) { std::cout << "glfw init failure" << std::endl; }
+	if (!glfwInit())
+	{
+		std::cout << "glfw init failure" << std::endl;
+	}
 	const char *glsl_version = "#version 130";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
- 	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
+	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
 	glfwMakeContextCurrent(window);
 
 	glfwSwapInterval(1); // Enable vsync
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
-	
-	if (!gladLoadGL()) { std::cout << "glad init failure" << std::endl; }
+
+	if (!gladLoadGL())
+	{
+		std::cout << "glad init failure" << std::endl;
+	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -112,7 +119,8 @@ void Platform::platform_init() {
 	glClearDepth(depth);
 }
 
-void Platform::platform_shutdown() {
+void Platform::platform_shutdown()
+{
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
@@ -122,52 +130,77 @@ void Platform::platform_shutdown() {
 	glfwTerminate();
 }
 
-
-void Platform::begin_frame() {
+void Platform::begin_frame()
+{
 	// Start the Dear ImGui frame
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 }
 
-void Platform::complete_frame() {
+void Platform::complete_frame()
+{
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
 }
 
+void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+{
 
-void Platform::render_imgui(Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
+	static float f = 0.0f;
+	static int counter = 0;
+	static double last_time = glfwGetTime();
+	static FT next_kinetic_t = k_queue.next_time();
+	
+	double dt = glfwGetTime() - last_time;
+	last_time = last_time + dt;
+	dt /= 10;
 
-    static float f = 0.0f;
-    static int counter = 0;
-
-    ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
-
+	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
+	ImGui::SliderFloat("depth", &depth, -1, 1);
 
-    ImGui::ColorEdit3("clear color", (float *)&clear_color); // Edit 3 floats representing a color
-    ImGui::SliderFloat("depth", &depth, -1, 1);
+	if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
+	{
+		kinetic_time = k_queue.to_next_event();
+	}
+	ImGui::SameLine();
+	ImGui::Text("queue size = %d", k_queue.size());
+	ImGui::Checkbox("growing", &grow);
 
-    if (ImGui::Button("next event")) // Buttons return true when clicked (most widgets return true when edited/activated)
-    {
-      kinetic_time = k_queue.next_event();
-    }
-    ImGui::SameLine();
-    ImGui::Text("queue size = %d", k_queue.size());
-    ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
+	static auto k_poly_bak = k_polys;
+	if (grow)
+	{
+		kinetic_time += dt;
+		if (kinetic_time >= next_kinetic_t)
+		{
+			k_polys = k_poly_bak;
+			kinetic_time = k_queue.to_next_event();
+			k_poly_bak = k_polys;
+			next_kinetic_t = k_queue.next_time();
+		}
+		else
+		{
+			for (auto &k_poly : k_polys)
+				k_poly.update(k_poly.move_dt(dt));
+		}
+	}
 
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::End();
+	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
+	ImGui::Text("next time = %.3f", CGAL::to_double(next_kinetic_t));
 
+	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	ImGui::End();
 }
 
-void Platform::render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys) {
+void Platform::render_3d(Shader &shader, std::vector<K_Polygon_3> &k_polys)
+{
 
 	shader.use();
 	glm::mat4 model(1); //model矩阵，局部坐标变换至世界坐标
-    if (rotate) model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
+	if (rotate)
+		model = glm::rotate(model, (float)glfwGetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
 	glm::mat4 view(1); //view矩阵，世界坐标变换至观察坐标系
 	view = camera.GetViewMatrix();
 	glm::mat4 projection(1); //projection矩阵，投影矩阵
@@ -178,29 +211,29 @@ void Platform::render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys) {
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
-	auto mesh = Polygon_Mesh{ std::vector<Polygon_GL>(k_polys.begin(), k_polys.end()) };
+	auto mesh = Polygon_Mesh{std::vector<Polygon_GL>(k_polys.begin(), k_polys.end() - 6)};
 	mesh.render(shader);
-
 }
 
-void Platform::clear() {
+void Platform::clear()
+{
 
 	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearDepth(depth);
 	glClear(GL_DEPTH_BUFFER_BIT);
-
 }
 
-void Platform::render(Shader& shader, Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
+void Platform::render(Shader &shader, Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+{
 
 	render_imgui(k_queue, k_polys, kinetic_time);
 	clear();
 	render_3d(shader, k_polys);
-
 }
 
-void Platform::loop(Shader& shader,Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time) {
+void Platform::loop(Shader &shader, Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+{
 
 	// Main loop
 	while (!glfwWindowShouldClose(window))
