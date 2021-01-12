@@ -16,10 +16,10 @@ bool Kinetic_queue::update_certificate(const Event &event)
     auto &_status = _this._status;
     auto &_ids = _this._ids;
     assert(ind >= 0);
-    assert(ind < points_2.size());
+    assert(ind < _this.size());
     const auto &point_2 = points_2[ind];
-    auto prev_ind = ind == 0 ? points_2.size() - 1 : ind - 1;
-    auto next_ind = ind == points_2.size() - 1 ? 0 : ind + 1;
+    auto prev_ind = ind == 0 ? _this.size() - 1 : ind - 1;
+    auto next_ind = ind == _this.size() - 1 ? 0 : ind + 1;
 
     if (_status[ind] == K_Polygon_3::Normal)
     {
@@ -161,14 +161,59 @@ void Kinetic_queue::collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_
     auto line_2 = _this.project_2(line_3);
 
     //type a, b, c
-    for (size_t i = 0; i < _this.points_2().size(); i++)
+    for (size_t i = 0; i < _this.size(); i++)
     {
         if (_this._ids[i] > old_id_max) // id start from zero
             vert_collide(_this, _other, i, line_2);
     }
-    if (line_polygon_intersect_2(line_2, _this.polygon_2()))
     //type d
+    // auto index_pair = std::vector<size_t>{};
+    // if (auto res = plane_seg_intersect_3(_this.plane(), _other.edges_3(), index_pair))
+    // {
+    //     auto points_3_dt = std::vector<Point_3>{};
+    //     for (auto ind : index_pair)
+    //     {
+    //         auto next_ind = (ind + 1) == _other.size() ? 0 : ind + 1;
+    //         auto point_3 = _other.plane().to_3d(_other.points_2()[ind] + _other.speed(ind) * 1);
+    //         auto next_point_3 = _other.plane().to_3d(_other.points_2()[next_ind] + _other.speed(next_ind) * 1);
+    //         auto res_dt = CGAL::intersection(Line_3{point_3, next_point_3}, _this.plane());
+    //         points_3_dt.push_back(*(boost::get<Point_3>(&*res_dt)));
+    //     }
+    //     assert(2 == points_3_dt.size());
+    //     type_d_collide(_this, *res,
+    //                    std::make_pair(points_3_dt[0] - res->first, points_3_dt[1] - res->second));
+    // }
+}
+void Kinetic_queue::type_d_collide(K_Polygon_3 &_this, std::pair<Point_3, Point_3> point_3, std::pair<Vector_3, Vector_3> speed)
+{
+    auto p1 = _this.project_2(point_3.first);
+    auto p2 = _this.project_2(point_3.second);
+    auto speed1 = _this.project_2(speed.first);
+    auto speed2 = _this.project_2(speed.first);
+
+    for (size_t ind = 0; ind < _this.size(); ind++)
     {
+        auto vertical = _this.polygon_2().edge(ind).supporting_line().perpendicular(_this._center);
+        {
+            auto vert = project_line_2(vertical, _this.points_2()[ind]);
+            auto vert_speed = project_line_2(vertical, _this.speed(ind));
+            auto p1_v = project_line_2(vertical, p1);
+            auto speed1_v = project_line_2(vertical, speed1);
+
+            assert (vert != p1_v) ;
+            auto diff = p1_v - vert;
+            auto speed = speed1_v - vert_speed;
+            auto t = last_t;
+            if (speed.x() != 0)
+            {
+                t += diff.x() / speed.x();
+            }
+            else
+            {
+                assert(speed.y() != 0);
+                t += diff.y() / speed.y();
+            }
+        }
     }
 }
 
@@ -227,7 +272,7 @@ FT Kinetic_queue::next_time()
 FT Kinetic_queue::to_next_event()
 {
 
-    while (!queue.empty())
+    if (!queue.empty())
     {
         auto event = top();
         pop();
@@ -239,14 +284,14 @@ FT Kinetic_queue::to_next_event()
         assert(event.other_p->plane().has_on(event.point_3));
 
         auto old_id_max = K_Polygon_3::max_id(); //get old_id_max before update_certificate
-        if (update_certificate(event)) //assume k_polygons_3 have already growed
+        if (update_certificate(event))           //assume k_polygons_3 have already growed
         {
             for (const auto &rm_event : id_events[event.id])
                 remove(rm_event);
             last_t = event.t; //update last_t before detect next collide()
             for (auto &_other : k_polygons_3)
                 collide(*event.this_p, _other, old_id_max); // update queue only if id>old_id_max
-            break;
+            // break;
         }
         else
         {

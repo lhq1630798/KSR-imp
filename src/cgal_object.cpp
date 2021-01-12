@@ -5,9 +5,9 @@ Segments_3 Polygon_3::edges_3() const
     auto segments_3 = Segments_3{};
     auto num = _points_3.size();
     assert(num >= 3);
-    segments_3.push_back(Segment_3{_points_3[num - 1], _points_3[0]});
     for (size_t i = 1; i < num; i++)
-        segments_3.push_back(Segment_3{_points_3[i - 1], _points_3[i]});
+        segments_3.push_back(Segment_3{_points_3[i - 1], _points_3[i]}); //edges_3[0] corresponds to points_3[0,1]
+    segments_3.push_back(Segment_3{_points_3[num - 1], _points_3[0]});
     return segments_3;
 }
 
@@ -93,6 +93,7 @@ Polygons_3 generate_polys_3()
             point_2 = point_2 + Vector_2{rand.get_double(0, 1) * float_min, rand.get_double(0, 1) * float_min};
         polys_3.push_back(Polygon_3{plane, v});
     }
+
     // polys_3.erase(polys_3.begin());
     return polys_3;
 }

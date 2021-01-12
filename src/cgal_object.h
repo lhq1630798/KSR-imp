@@ -65,6 +65,7 @@ public:
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
+    size_t size() const {return points_2().size();};
     const Points_2 &points_2() const { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
     const Polygon_2 &polygon_2() const { return _polygon_2; }
@@ -78,7 +79,8 @@ public:
 			return false;
 		// return !polygon_2().has_on_unbounded_side(plane().to_2d(point_3));
         auto point_2 = plane().to_2d(point_3);
-        if (polygon_2().has_on_boundary(point_2)) std::cout << "warning: Polygon_3::has_on(const Point_3&)" <<std::endl;
+        if (polygon_2().has_on_boundary(point_2)) //TODO: 
+            std::cout << "warning: Polygon_3::has_on(const Point_3&)" <<std::endl;
 		return polygon_2().has_on_bounded_side(point_2);
 	}
 
@@ -95,6 +97,10 @@ public:
     {
         auto p1 = project_2(segment_3.point(0)), p2 = project_2(segment_3.point(1));
         return Segment_2{p1, p2};
+    }
+    Vector_2 project_2(const Vector_3 &vector_3) const
+    {
+        return project_2(CGAL::ORIGIN + vector_3) - CGAL::ORIGIN;
     }
     Polygon_2 project_2(const Polygon_3 &polygon_3) const
     {
@@ -118,7 +124,7 @@ protected:
     void update_points_3()
     {
         _points_3.clear();
-        _points_3.reserve(points_2().size());
+        _points_3.reserve(size());
         for (const auto &p : points_2())
             _points_3.push_back(_plane.to_3d(p));
     }
@@ -158,6 +164,9 @@ inline bool segment_polygon_intersect_2(const Segment_2 &segment_2, const Polygo
     return false;
 }
 
+std::optional<std::pair<Point_3, Point_3>> plane_seg_intersect_3(const Plane_3 &, const Segments_3 &, std::vector<size_t> &);
+
+
 inline Point_2 project_line_2(const Line_2 &line_2, const Point_2 &point_2)
 {
     return line_2.projection(point_2);
@@ -166,6 +175,10 @@ inline Segment_2 project_line_2(const Line_2 &line_2, const Segment_2 &segment_2
 {
     auto p1 = project_line_2(line_2, segment_2.point(0)), p2 = project_line_2(line_2, segment_2.point(1));
     return Segment_2{p1, p2};
+}
+inline Vector_2 project_line_2(const Line_2 &line_2, const Vector_2 &vector_2)
+{
+    return project_line_2(line_2, CGAL::ORIGIN + vector_2) - CGAL::ORIGIN;
 }
 inline Segment_2 project_line_2(const Line_2 &line_2, const Polygon_2 &polygon_2)
 {

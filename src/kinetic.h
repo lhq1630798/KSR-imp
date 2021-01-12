@@ -19,7 +19,7 @@ public:
         // auto area = CGAL::abs(polygon_2().area());
         for (const auto &point_2 : poly_3.points_2())
             center += point_2 - CGAL::ORIGIN;
-        _center = CGAL::ORIGIN + center * (1 / poly_3.points_2().size());
+        _center = CGAL::ORIGIN + center * (1 / poly_3.size());
         for (const auto &point_2 : poly_3.points_2())
         {
             // _speed.push_back((point_2 - _center)/area);
@@ -30,7 +30,7 @@ public:
     }
     void freeze()
     {
-        for (size_t i = 0; i < points_2().size(); i++)
+        for (size_t i = 0; i < size(); i++)
         {
             _speed[i] = Vector_2{0, 0};
             _status[i] = Frozen;
@@ -41,7 +41,7 @@ public:
 
     std::optional<size_t> get_index(size_t id)
     {
-        for (size_t ind = 0; ind < points_2().size(); ind++)
+        for (size_t ind = 0; ind < size(); ind++)
             if (_ids[ind] == id)
                 return ind;
         return {};
@@ -62,14 +62,15 @@ public:
             return polygon_2();
         }
         auto new_points_2 = Points_2{};
-        for (size_t i = 0; i < points_2().size(); i++)
-        {
-            auto move_dt = _status[i] == Frozen ? FT{0} : dt;
-            new_points_2.push_back(points_2()[i] + _speed[i] * move_dt);
-        }
+        for (size_t i = 0; i < size(); i++)
+            new_points_2.push_back(points_2()[i] + speed(i) * dt);
+
         auto polygon_2 = Polygon_2{new_points_2.begin(), new_points_2.end()};
 
         return polygon_2;
+    }
+    const Vector_2& speed(size_t i) const {
+        return _status[i] == Frozen ? zero_speed : _speed[i];
     }
 
 private:
@@ -129,6 +130,7 @@ private:
         Normal
     };
     std::vector<mode> _status;
+    inline static Vector_2 zero_speed = Vector_2{0, 0};
     //Kinetic_queue::collide() old_id_max default value is zero, so id must start from 1
     inline static size_t _next_id = 1;
     friend Kinetic_queue;
@@ -185,7 +187,8 @@ private:
 
     void erase_vert(K_Polygon_3 &, size_t ind);
     void collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_id_max = 0);
-    void vert_collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t i, Line_2 &line_2);
+    void vert_collide(K_Polygon_3 &, K_Polygon_3 &, size_t, Line_2 &);
+    void type_d_collide(K_Polygon_3 &, std::pair<Point_3, Point_3> , std::pair<Vector_3, Vector_3> );
     bool update_certificate(const Event &);
 
     std::vector<K_Polygon_3> &k_polygons_3;

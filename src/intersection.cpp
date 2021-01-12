@@ -47,16 +47,18 @@ std::pair<Polygon_2, Polygon_2> split_polygon_2(Polygon_2 polygon_2, Line_2 line
     };
 }
 
-std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon)
-{
-    auto segments_3 = polygon.edges_3();
+std::optional<std::pair<Point_3, Point_3>> plane_seg_intersect_3(const Plane_3 &plane, const Segments_3 &segments_3, std::vector<size_t> &index){
     auto inters = Points_3{};
-    for (const auto &seg : segments_3)
+    for (size_t i = 0; i < segments_3.size(); i++ )
     {
+        const auto &seg = segments_3[i];
         if (auto result = CGAL::intersection(seg, plane))
         {
             if (auto inters_point = boost::get<Point_3>(&*result))
+            {
                 inters.push_back(*inters_point);
+                index.push_back(i);
+            }
             else if (auto inters_seg = boost::get<Segment_3>(&*result)){
                 // std::cout << "Segment_3 on plane\n";
                 return {};
@@ -67,6 +69,11 @@ std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane
         return {};
     assert(inters.size() == 2);
     return {{inters[0], inters[1]}};
+}
+
+std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon)
+{
+    return plane_seg_intersect_3(plane, polygon.edges_3(), std::vector<size_t>{});
 }
 
 
