@@ -1,156 +1,462 @@
 #pragma once
-#include <queue>
+#include "gl_object.h"
 #include "cgal_object.h"
+#include <list>
+#include <queue>
 
 static const auto INF = FT{99999};
 
-class Kinetic_queue;
-class Event;
+extern size_t next_id;
 
-class K_Polygon_3 : public Polygon_3
+class KPoint_2;
+class KLine_2;
+class KSegment;
+class KPolygon_2;
+class KPolygons_2;
+class KPolygons_SET;
+
+using KP_Ref = std::list<KPoint_2>::iterator;
+using KLine_Ref = std::list<KLine_2>::iterator;
+using KSeg_Ref = std::list<KSegment>::iterator;
+using KPoly_Ref = std::list<KPolygon_2>::iterator;
+using KPolys_Ref = std::list<KPolygons_2>::iterator;
+
+// class KP_Circ
+// { // circular iterator
+// public:
+//     KP_Circ() = default;
+
+//     KP_Circ(KPolygon_2 *kpoly_2, KP_Ref kp) : kpoly_2(kpoly_2), kp(kp) {}
+
+//     operator KP_Ref() { return kp; } //cast
+
+//     KPoint_2 &operator*()
+//     {
+//         return *kp;
+//     }
+//     KPoint_2 *operator->()
+//     {
+//         return &this->operator*();
+//     }
+//     KP_Circ &operator++(); //前置
+
+//     KP_Circ &operator--(); //前置
+
+//     KP_Circ operator++(int) //后置
+//     {
+//         KP_Circ ret = *this;
+//         ++*this;
+//         return ret;
+//     }
+//     KP_Circ operator--(int) //后置
+//     {
+//         KP_Circ ret = *this;
+//         --*this;
+//         return ret;
+//     }
+
+// private:
+//     KP_Ref kp;
+//     KPolygon_2 *kpoly_2;
+// };
+
+enum class Mode
+{
+    Frozen,
+    Sliding,
+    Normal
+};
+
+class KPoint_2 : public Point_2
 {
 public:
-    std::vector<Vector_2> _speed;
-    std::vector<size_t> _ids;
-    Point_2 _center;
-    explicit K_Polygon_3(Polygon_3 poly_3) : Polygon_3(poly_3)
+    KPoint_2(const Point_2 &point_2, const Vector_2 &speed, Mode status)
+        : Point_2(point_2), _speed(speed), _status(status)
     {
-        auto center = Vector_2{};
-        // auto area = CGAL::abs(polygon_2().area());
-        for (const auto &point_2 : poly_3.points_2())
-            center += point_2 - CGAL::ORIGIN;
-        _center = CGAL::ORIGIN + center * (1 / poly_3.size());
-        for (const auto &point_2 : poly_3.points_2())
-        {
-            // _speed.push_back((point_2 - _center)/area);
-            _speed.push_back((point_2 - _center));
-            _status.push_back(Normal);
-            _ids.push_back(next_id());
-        }
-    }
-    void freeze()
-    {
-        for (size_t i = 0; i < size(); i++)
-        {
-            _speed[i] = Vector_2{0, 0};
-            _status[i] = Frozen;
-        }
-    }
-    static size_t next_id() { return _next_id++; }
-    static size_t max_id() { return _next_id - 1; }
-
-    std::optional<size_t> get_index(size_t id)
-    {
-        for (size_t ind = 0; ind < size(); ind++)
-            if (_ids[ind] == id)
-                return ind;
-        return {};
+        assert((_speed == CGAL::NULL_VECTOR) != (_status != Mode::Frozen));
     }
 
-    K_Polygon_3 &update(Polygon_2 poly_2)
+    Point_2 move_dt(::FT dt)
     {
-        assert(poly_2.is_simple());
-        return update_nocheck(std::move(poly_2));
+        return *this + dt * _speed;
     }
 
-    Polygon_2 move_dt(FT dt)
+    KPoint_2 &operator=(const Point_2 &point)
+    {
+        Point_2::operator=(point);
+        return *this;
+    }
+    KPoint_2 &operator=(Point_2 &&point)
+    {
+        Point_2::operator=(std::move(point));
+        return *this;
+    }
+
+    void sliding(const Vector_2 &speed)
+    {
+        assert(speed != CGAL::NULL_VECTOR);
+        _speed = speed;
+        _status = Mode::Sliding;
+    }
+
+    void frozen()
+    {
+        _status = Mode::Frozen;
+        _speed = CGAL::NULL_VECTOR;
+    }
+    const Point_2 &point() const { return *this; }
+
+    size_t id() const { return _id; }
+
+    KP_Ref twin; // for sliding twin point on the same plane
+    KPolygon_2 *face = nullptr;
+    Vector_2 *twin_speed = nullptr; // for speed on the twin plane
+    Vector_2 _speed = CGAL::NULL_VECTOR;
+    Mode _status = Mode::Frozen;
+
+private:
+    size_t _id = -1;
+    friend class KPolygon_2;
+    friend class KPolygons_SET;
+};
+
+/*
+    Some algorithms need to know how to hash references (std::unordered_map)
+    Here we simply hash the unique ID of the element.
+*/
+// namespace std
+// {
+//     template <>
+//     struct hash<KP_Ref>
+//     {
+//         uint64_t operator()(KP_Ref key) const
+//         {
+//             static const std::hash<size_t> h;
+//             return h(key->id());
+//         }
+//     };
+// } // namespace std
+
+class KPolygon_2
+{
+    friend class KPolygons_2;
+
+public:
+    KPolygon_2() = default;
+
+    KPolygon_2(KPolygon_2 &&kpolygon_2) = default;
+    // KPolygon_2(KPolygon_2 &&kpolygon_2)
+    //     : _polygon_2(std::move(kpolygon_2.polygon_2())), dirty(false)
+    // {
+    //     // Using list::splice, No iterators or references become invalidated
+    //     // https://stackoverflow.com/questions/26378894/stdlist-are-the-iterators-invalidated-on-move
+    //     _kpoints_2.splice(_kpoints_2.begin(), kpolygon_2._kpoints_2);
+    // }
+
+    // explicit KPolygon_2(std::list<KPoint_2> &&kpoints_2)
+    // {
+    //     _kpoints_2.splice(_kpoints_2.begin(), std::move(kpoints_2));
+    // }
+
+    void init(Polygon_2 poly_2) //should only called by heap object
+    {
+        _polygon_2 = std::move(poly_2);
+        dirty = false;
+
+        Vector_2 center_V = CGAL::NULL_VECTOR;
+        for (const auto &point_2 : _polygon_2.container())
+            center_V += point_2 - CGAL::ORIGIN;
+        Point_2 center_P = CGAL::ORIGIN + center_V * (1 / _polygon_2.size());
+        assert(_polygon_2.has_on_bounded_side(center_P));
+        for (const auto &point_2 : _polygon_2.container())
+            insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+    }
+
+    KP_Ref insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
+    {
+        auto ref = _kpoints_2.insert(pos, kpoint);
+        ref->face = this;
+        ref->_id = next_id++;
+        return ref;
+    }
+    KP_Ref insert_KP(const KPoint_2 &kpoint)
+    { //insert at end
+        return insert_KP(_kpoints_2.end(), kpoint);
+    }
+
+    const Polygon_2 &polygon_2() const
+    {
+        check();
+        return _polygon_2;
+    }
+    size_t size() const { return _kpoints_2.size(); };
+
+    // const std::list<KPoint_2> &kpoints_2() const { return _kpoints_2; }
+    std::list<KPoint_2> &kpoints_2() { return _kpoints_2; }
+
+    void move_dt(FT dt)
     {
         assert(dt >= 0);
         if (dt == 0)
         {
             std::cout << "zero dt" << std::endl;
-            return polygon_2();
+            return;
         }
-        auto new_points_2 = Points_2{};
-        for (size_t i = 0; i < size(); i++)
-            new_points_2.push_back(points_2()[i] + speed(i) * dt);
 
-        auto polygon_2 = Polygon_2{new_points_2.begin(), new_points_2.end()};
+        for (auto &kpoint_2 : _kpoints_2)
+            kpoint_2 = kpoint_2.move_dt(dt);
+        dirty = true;
 
-        return polygon_2;
+        assert(polygon_2().is_convex());
     }
-    const Vector_2& speed(size_t i) const {
-        return _status[i] == Frozen ? zero_speed : _speed[i];
+
+    void erase(KP_Ref kp)
+    {
+        _kpoints_2.erase(kp);
+        dirty = true;
     }
+
+    KP_Ref next(KP_Ref kp)
+    {
+        kp++;
+        if (kp == _kpoints_2.end())
+            kp = _kpoints_2.begin();
+        return kp;
+    }
+
+    KP_Ref prev(KP_Ref kp)
+    {
+        if (kp == _kpoints_2.begin())
+            kp = _kpoints_2.end();
+        kp--;
+        return kp;
+    }
+
+    class Edge
+    {
+    public:
+        Edge(KP_Ref kp1, KP_Ref kp2) : kp1(kp1), kp2(kp2) {}
+        KP_Ref kp1, kp2;
+        Segment_2 seg() const { return Segment_2{*kp1, *kp2}; }
+        Line_2 line() const { return Line_2{*kp1, *kp2}; }
+        Line_2 moved_line() const { return Line_2{kp1->move_dt(1), kp2->move_dt(1)}; }
+        Vector_2 sliding_speed(const Line_2 &line_2) const;
+    };
+
+    std::vector<Edge> get_edges()
+    {
+        std::vector<Edge> edges;
+        for (auto kp = _kpoints_2.begin(); kp != _kpoints_2.end(); kp++)
+            edges.emplace_back(kp, next(kp));
+        return edges;
+    }
+
+    Vec3 _color = rand_color();
+    size_t id = -1;
+    KPolygons_2 *parent = nullptr;
 
 private:
-    Vector_2 sliding_speed(size_t ind1, size_t ind2, const Line_2 line_2)
+    void check() const
     {
-        if (auto res = CGAL::intersection(Line_2{points_2()[ind1], points_2()[ind2]}, line_2))
+        if (dirty)
         {
-            if (auto cur_point = boost::get<Point_2>(&*res))
-            {
-                const auto &poly_dt = move_dt(1);
-                if (auto res_dt = CGAL::intersection(Line_2{poly_dt.container()[ind1], poly_dt.container()[ind2]}, line_2))
-                {
-                    if (auto point_dt = boost::get<Point_2>(&*res_dt))
-                    {
-                        auto speed = *point_dt - *cur_point;
-                        assert(speed.squared_length() > 0);
-                        assert(line_2.direction() == speed.direction() ||
-                               -line_2.direction() == speed.direction());
-                        return speed;
-                    }
-                }
-            }
+            update_polygon_2();
+            dirty = false;
         }
-        assert(false);
-        return Vector_2{};
     }
 
-    K_Polygon_3 &update_nocheck(Polygon_2 poly_2)
+    void update_polygon_2() const
     {
-        assert(poly_2.is_convex());
-        assert(poly_2.size() == _polygon_2.size());
-        _polygon_2 = std::move(poly_2);
-        update_points_3();
-        return *this;
+        _polygon_2 = Polygon_2{_kpoints_2.begin(), _kpoints_2.end()};
     }
-    void erase(size_t ind)
+
+    static Vec3 rand_color()
     {
-        _status.erase(_status.begin() + ind);
-        _speed.erase(_speed.begin() + ind);
-        _ids.erase(_ids.begin() + ind);
-        _polygon_2.erase(_polygon_2.begin() + ind);
-        update_points_3();
+        static auto color_rand = CGAL::Random{0};
+        return Vec3{(float)color_rand.get_double(0, 0.8),
+                    (float)color_rand.get_double(0.2, 1),
+                    (float)color_rand.get_double(0.2, 1)};
     }
-    void insert_frozen(size_t ind, Point_2 point_2)
+
+    mutable bool dirty = true;
+    mutable Polygon_2 _polygon_2;
+    std::list<KPoint_2> _kpoints_2;
+};
+
+class KSegment
+{
+public:
+    KSegment(Point_2 p1, Point_2 p2, Vector_2 sp1, Vector_2 sp2)
+        : point1(p1), point2(p2), speed1(sp1), speed2(sp2) {}
+    void move_dt(FT dt)
     {
-        _status.insert(_status.begin() + ind, Frozen);
-        _speed.insert(_speed.begin() + ind, Vector_2{0, 0});
-        _ids.insert(_ids.begin() + ind, next_id());
-        _polygon_2.insert(_polygon_2.begin() + ind, point_2);
-        update_points_3();
+        point1 = point1 + dt * speed1;
+        point2 = point2 + dt * speed2;
     }
-    enum mode
+    bool has_on(Point_2 p) const
     {
-        Frozen,
-        Sliding_Pre,  //to previous index
-        Sliding_Next, //to next index
-        Normal
-    };
-    std::vector<mode> _status;
-    inline static Vector_2 zero_speed = Vector_2{0, 0};
-    //Kinetic_queue::collide() old_id_max default value is zero, so id must start from 1
-    inline static size_t _next_id = 1;
-    friend Kinetic_queue;
+        return Segment_2{point1, point2}.has_on(p);
+    }
+    Point_2 point1, point2;
+    Vector_2 speed1, speed2;
+};
+
+class KLine_2
+{
+public:
+    KLine_2(Line_2 line_2, KPolygons_2 *kpolygons)
+        : _line_2(line_2), kpolygons(kpolygons){};
+    KSeg_Ref insert_seg(const KSegment &kseg)
+    {
+        assert(_line_2.has_on(kseg.point1) && _line_2.has_on(kseg.point2));
+        return _ksegments.insert(_ksegments.end(), kseg);
+    }
+    bool has_on(Point_2 p) const
+    {
+        for (auto &seg : _ksegments)
+            if (seg.has_on(p))
+                return true;
+        return false;
+    }
+    void move_dt(FT dt)
+    {
+        for (auto &seg : _ksegments)
+            seg.move_dt(dt);
+    }
+    Point_2 transform2twin(const Point_2 &point) const;
+    std::pair<Point_2, Vector_2> transform2twin(const KPoint_2 &kpoint) const;
+    std::list<KSegment> _ksegments;
+    Line_2 _line_2;
+    KPolygons_2 *kpolygons = nullptr;
+    KLine_Ref twin; // KLine_2 on the other supporting plane
+};
+
+class KPolygons_2
+{
+    // set of 2D polygonal partitions in a common supporting plane
+    friend class KPolygons_SET;
+
+public:
+    // private:
+    KPolygons_2(const Polygon_3 &poly_3) : _plane(poly_3.plane())
+    {
+        insert_kpoly_2(KPolygon_2{})->init(poly_3.polygon_2());
+    }
+
+    Plane_3 _plane;
+    std::list<KPolygon_2> _kpolygons_2;
+    std::list<KLine_2> _klines;
+
+    KPolygons_2 &operator=(const KPolygons_2 &) = delete;
+
+    KLine_Ref insert_kline(const Line_2 &line_2)
+    {
+        return _klines.insert(_klines.end(), KLine_2{line_2, this});
+    }
+
+    KPoly_Ref insert_kpoly_2(KPolygon_2 kpoly_2)
+    {
+        auto ref = _kpolygons_2.insert(_kpolygons_2.end(), std::move(kpoly_2));
+        ref->parent = this;
+        ref->id = next_id++;
+        return ref;
+    }
+
+    const std::list<KLine_2> &klines() const { return _klines; }
+
+    const Plane_3 &plane() const { return _plane; }
+
+    void move_dt(FT dt)
+    {
+        for (auto &kpoly : _kpolygons_2)
+            kpoly.move_dt(dt);
+        for (auto &kline : _klines)
+            kline.move_dt(dt);
+    }
+
+    bool try_split(KPoly_Ref, const KLine_2 &);
+
+    Point_2 project_2(const Point_3 &point_3) const
+    {
+        return plane().to_2d(point_3);
+    }
+
+    Line_2 project_2(const Line_3 &line_3) const
+    {
+        auto p1 = project_2(line_3.point(0)), p2 = project_2(line_3.point(1));
+        return Line_2{p1, p2};
+    }
+
+    Segment_2 project_2(const Segment_3 &segment_3) const
+    {
+        auto p1 = project_2(segment_3.start()), p2 = project_2(segment_3.end());
+        return Segment_2{p1, p2};
+    }
+
+    Point_3 to_3d(const Point_2 &point_2)
+    {
+        return plane().to_3d(point_2);
+    }
+
+    Segment_3 to_3d(const Segment_2 &segment_2)
+    {
+        return Segment_3{to_3d(segment_2.start()), to_3d(segment_2.end())};
+    }
+
+    Polygons_3 polygons_3() const
+    {
+        Polygons_3 result;
+        for (const auto &kpoly_2 : _kpolygons_2)
+            result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
+        return result;
+    }
+};
+
+class KPolygons_SET
+{
+    // set of KPolygons_2 in different supporting planes
+public:
+    std::list<KPolygons_2> _kpolygons_set;
+    KPolygons_SET(const Polygons_3 &polygons_3);
+
+    size_t size() const { return _kpolygons_set.size(); }
+
+    void move_dt(FT dt)
+    {
+        for (auto &kpolys : _kpolygons_set)
+            kpolys.move_dt(dt);
+    }
+
+    Polygon_Mesh Get_mesh()
+    {
+        Polygons_3 polys_3;
+        for (const auto &kpolys : _kpolygons_set)
+        {
+            auto tmp = kpolys.polygons_3();
+            polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
+        }
+        return Polygon_Mesh{std::vector<Polygon_GL>(polys_3.begin(), polys_3.end())};
+    }
 };
 
 class Event
 {
 public:
     FT t;
-    K_Polygon_3 *this_p;
-    K_Polygon_3 *other_p;
-    size_t id;
-    Point_3 point_3;
-    Line_2 line_2;
-    Event(K_Polygon_3 *_this, K_Polygon_3 *_other, size_t id, Point_3 p_3, Line_2 line_2, FT t)
-        : this_p(_this), other_p(_other), id(id), point_3(p_3), line_2(line_2), t(t)
+    KP_Ref kp;
+    KLine_Ref kline;
+    Event(FT t, KP_Ref kp, KLine_Ref kline)
+        : t(t), kp(kp), kline(kline)
     {
-        assert(t >= 0);
+        assert(t > 0);
+        assert(kp->face);
+        assert(kp->face->parent);
+        assert(kp->id() < next_id);
     }
 };
+
+class Kinetic_queue;
+class Event;
 
 /* Comparison operator for Event so std::set will properly order them */
 inline bool operator<(const Event &r1, const Event &r2)
@@ -159,16 +465,16 @@ inline bool operator<(const Event &r1, const Event &r2)
     {
         return r1.t < r2.t;
     }
-    // very likely (r1.point_3 == r2.point_3)
-    assert(r1.point_3 == r2.point_3);
-    return r1.point_3.id() < r2.point_3.id();
+    assert(r1.kp == r2.kp ||
+           r1.kp->face->next(r1.kp) == r2.kp ||
+           r2.kp->face->next(r2.kp) == r1.kp);
+    return &*r1.kp < &*r2.kp;
 }
 
 class Kinetic_queue
 {
-
 public:
-    Kinetic_queue(std::vector<K_Polygon_3> &k_polys_3);
+    Kinetic_queue(KPolygons_SET &kpolygons_set);
     FT to_next_event();
     FT next_time();
     size_t size() { return queue.size(); }
@@ -182,21 +488,25 @@ private:
             queue.erase(event);
         }
     }
+    void remove_events(KP_Ref kp)
+    {
+        for (const auto &rm_event : id_events[kp->id()])
+            remove(rm_event);
+    }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
 
-    void erase_vert(K_Polygon_3 &, size_t ind);
-    void collide(K_Polygon_3 &_this, K_Polygon_3 &_other, size_t old_id_max = 0);
-    void vert_collide(K_Polygon_3 &, K_Polygon_3 &, size_t, Line_2 &);
-    void type_d_collide(K_Polygon_3 &, std::pair<Point_3, Point_3> , std::pair<Vector_3, Vector_3> );
-    bool update_certificate(const Event &);
+    void Kinetic_queue::kp_collide(KP_Ref kp);
+    void Kinetic_queue::erase_kp(KP_Ref kp);
 
-    std::vector<K_Polygon_3> &k_polygons_3;
+    std::vector<KP_Ref> update_certificate(const Event &);
+
+    KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
     FT last_t = 0;
-    friend K_Polygon_3;
 };
 
-void add_bounding_box(std::vector<K_Polygon_3> &k_polys_3);
-void inf_perturb(Polygons_3 &polygons_3);
+void add_bounding_box(KPolygons_SET &KPolygons_set);
+// void inf_perturb(Polygons_3 &polygons_3);
+FT Vec_div(Vector_2 v1, Vector_2 v2);

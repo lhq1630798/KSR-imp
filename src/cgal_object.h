@@ -39,7 +39,7 @@ public:
     decltype(auto) operator()(const std::string &func_name, Callable &&func, Args &&... args)
     {
         if (!enable)
-            return func(args...);
+            return func(std::forward<Args>(args)...);
         struct time
         {
             double start_time;
@@ -47,7 +47,7 @@ public:
             time(const std::string &func_name) : _name(func_name), start_time(glfwGetTime()) {}
             ~time() { std::cout << "time for " + _name + " : " << glfwGetTime() - start_time << "s" << std::endl; }
         } t(func_name);
-        return func(args...);
+        return func(std::forward<Args>(args)...);
     }
 };
 
@@ -98,10 +98,12 @@ public:
         auto p1 = project_2(segment_3.point(0)), p2 = project_2(segment_3.point(1));
         return Segment_2{p1, p2};
     }
-    Vector_2 project_2(const Vector_3 &vector_3) const
-    {
-        return project_2(CGAL::ORIGIN + vector_3) - CGAL::ORIGIN;
-    }
+
+    //Vector project is wrong
+    // Vector_2 project_2(const Vector_3 &vector_3) const
+    // {
+    //     return project_2(CGAL::ORIGIN + vector_3) - CGAL::ORIGIN;
+    // }
     Polygon_2 project_2(const Polygon_3 &polygon_3) const
     {
         auto points_2 = Points_2{};

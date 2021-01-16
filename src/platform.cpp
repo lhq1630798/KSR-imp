@@ -146,33 +146,34 @@ void Platform::complete_frame()
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, FT &kinetic_time)
 {
 
 	static float f = 0.0f;
 	static int counter = 0;
 	static double last_time = glfwGetTime();
 	static FT next_kinetic_t = k_queue.next_time();
-	static auto k_poly_bak = k_polys;
+	// static auto k_poly_bak = kpolys_set;
 
 	double dt = glfwGetTime() - last_time;
 	last_time = last_time + dt;
 	dt = std::powf(10, grow_speed) * dt;
 	if (grow)
 	{
+		kpolys_set.move_dt(dt);
 		kinetic_time += dt;
-		if (kinetic_time >= next_kinetic_t)
-		{
-			k_polys = k_poly_bak;
-			kinetic_time = k_queue.to_next_event();
-			k_poly_bak = k_polys;
-			next_kinetic_t = k_queue.next_time();
-		}
-		else
-		{
-			for (auto &k_poly : k_polys)
-				k_poly.update(k_poly.move_dt(dt));
-		}
+		// if (kinetic_time >= next_kinetic_t)
+		// {
+		// 	k_polys = k_poly_bak;
+		// 	kinetic_time = k_queue.to_next_event();
+		// 	k_poly_bak = k_polys;
+		// 	next_kinetic_t = k_queue.next_time();
+		// }
+		// else
+		// {
+		// 	for (auto &k_poly : k_polys)
+		// 		k_poly.update(k_poly.move_dt(dt));
+		// }
 	}
 
 	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
@@ -184,9 +185,7 @@ void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_
 
 	if (ImGui::Button("next event"))
 	{
-		k_polys = k_poly_bak;
 		kinetic_time = k_queue.to_next_event();
-		k_poly_bak = k_polys;
 		next_kinetic_t = k_queue.next_time();
 	}
 	ImGui::SameLine();
@@ -200,7 +199,7 @@ void Platform::render_imgui(Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_
 	ImGui::End();
 }
 
-void Platform::render_3d(Shader &shader, std::vector<K_Polygon_3> &k_polys)
+void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
 {
 
 	shader.use();
@@ -217,7 +216,7 @@ void Platform::render_3d(Shader &shader, std::vector<K_Polygon_3> &k_polys)
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
-	auto mesh = Polygon_Mesh{std::vector<Polygon_GL>(k_polys.begin(), k_polys.end() - 6)};
+	auto mesh = kpolys_set.Get_mesh();
 	mesh.render(shader);
 }
 
@@ -230,15 +229,15 @@ void Platform::clear()
 	glClear(GL_DEPTH_BUFFER_BIT);
 }
 
-void Platform::render(Shader &shader, Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+void Platform::render(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET& kpolys_set, FT &kinetic_time)
 {
 
-	render_imgui(k_queue, k_polys, kinetic_time);
+	render_imgui(k_queue, kpolys_set, kinetic_time);
 	clear();
-	render_3d(shader, k_polys);
+	render_3d(shader, kpolys_set);
 }
 
-void Platform::loop(Shader &shader, Kinetic_queue &k_queue, std::vector<K_Polygon_3> &k_polys, FT &kinetic_time)
+void Platform::loop(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET& kpolys_set, FT &kinetic_time)
 {
 
 	// Main loop
@@ -253,7 +252,7 @@ void Platform::loop(Shader &shader, Kinetic_queue &k_queue, std::vector<K_Polygo
 
 		begin_frame();
 
-		render(shader, k_queue, k_polys, kinetic_time);
+		render(shader, k_queue, kpolys_set, kinetic_time);
 
 		complete_frame();
 
