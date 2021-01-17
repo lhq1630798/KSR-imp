@@ -74,7 +74,7 @@ public:
 
     KP_Circ twin; // for sliding twin point on the same plane
     KPolygon_2 *face = nullptr;
-    Vector_2 *twin_speed = nullptr; // for speed on the twin plane
+    Vector_2 *seg_twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
     Mode _status = Mode::Frozen;
 
@@ -139,6 +139,12 @@ public:
         return insert_KP(_kpoints_2.end(), kpoint);
     }
 
+    KP_Circ insert_KP(const KPoint_2 &&kpoint){
+        //should update all pointers pointing to this element
+        auto kp = insert_KP(kpoint);
+        if(kp->twin != nullptr) kp->twin->twin = kp;
+        return kp;
+    }
     void move_dt(FT dt)
     {
         dirty = true;
@@ -178,8 +184,12 @@ public:
         KP_Circ kp1, kp2;
         Segment_2 seg() const { return Segment_2{*kp1, *kp2}; }
         Line_2 line() const { return Line_2{*kp1, *kp2}; }
-        Line_2 moved_line() const { return Line_2{kp1->move_dt(1), kp2->move_dt(1)}; }
         Vector_2 sliding_speed(const Line_2 &line_2) const;
+        friend bool operator==(const Edge &a, const Edge &b) {return a.id == b.id;}
+    private:
+        Line_2 moved_line() const { return Line_2{kp1->move_dt(1), kp2->move_dt(1)}; }
+        size_t id = next_edge_id++;
+        inline static size_t next_edge_id = 0;
     };
 
     std::vector<Edge> get_edges()
@@ -230,10 +240,10 @@ private:
     KP_Circ insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
     {
         dirty = true;
-        auto ref = _kpoints_2.insert(pos, kpoint);
+        auto ref = KP_Circ{&_kpoints_2, _kpoints_2.insert(pos, kpoint)};
         ref->face = this;
         ref->_id = next_id++;
-        return KP_Circ{&_kpoints_2, ref};
+        return ref;
     }
 
     mutable bool dirty = true;

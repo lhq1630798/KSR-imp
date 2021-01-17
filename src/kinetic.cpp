@@ -18,24 +18,36 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
         if (prev_kp->point() == kp->point())
         {
             std::cout << "vert collision" << std::endl;
-            assert(prev_kp->_status == Mode::Sliding);
-            // prev_kp->twin->face->insert_KP(prev_kp->twin, KPoint_2{kp->point(), kp->_speed, Mode::Normal});
+            auto sliding_kp = prev_kp;
+            assert(sliding_kp->_status == Mode::Sliding);
+            auto sliding_twin = sliding_kp->twin;
+            bool has_twin = (sliding_twin != nullptr);
+            auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
             auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
-            kp->sliding(next_speed);
-            // kp->twin->sliding(next_speed);
-            erase_kp(prev_kp);
-            return {kp};
+            sliding_kp->sliding(next_speed);
+            erase_kp(kp);
+            if (!has_twin)
+                return {sliding_kp};
+            auto crossed_kp = sliding_twin->face->insert_KP(sliding_twin, kpoint);
+            sliding_twin->sliding(next_speed);
+            return {sliding_kp, sliding_twin, crossed_kp};
         }
         else if (kp->point() == next_kp->point())
         {
             std::cout << "vert collision" << std::endl;
-            assert(next_kp->_status == Mode::Sliding);
-            // next_kp->twin->face->insert_KP(next(kp), KPoint_2{kp->point(), kp->_speed, Mode::Normal});
-            auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-            kp->sliding(prev_speed);
-            // next_kp->twin->sliding(prev_speed);
-            erase_kp(next_kp);
-            return {kp};
+            auto sliding_kp = next_kp;
+            assert(sliding_kp->_status == Mode::Sliding);
+            auto sliding_twin = sliding_kp->twin;
+            bool has_twin = (sliding_twin != nullptr);
+            auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
+            auto next_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
+            sliding_kp->sliding(next_speed);
+            erase_kp(kp);
+            if (!has_twin)
+                return {sliding_kp};
+            auto crossed_kp = sliding_twin->face->insert_KP(next(sliding_twin), kpoint);
+            sliding_twin->sliding(next_speed);
+            return {sliding_kp, sliding_twin, crossed_kp};
         }
     }
 
@@ -303,7 +315,6 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, const KLine_2 &kline_2)
                     KPoint_2{*point_2, speed, mode},
                     edge));
             }
-
             //todo: corner case
             else
                 assert(false);
@@ -319,33 +330,38 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, const KLine_2 &kline_2)
     auto [p1t, sp1t] = kline_2.transform2twin(new_kp1);
     auto [p2t, sp2t] = kline_2.transform2twin(new_kp2);
 
-    auto segRef = kline_2.twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t});
+    auto seg_twin = kline_2.twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t});
 
     KPoly_Ref poly1 = insert_kpoly_2(KPolygon_2{}), poly2 = insert_kpoly_2(KPolygon_2{});
     KPoly_Ref poly_p = poly1;
-    for (const auto &edge : edges)
+    auto old_size = kpoly_2->size();
+    for (auto &edge : edges)
     {
-        poly_p->insert_KP(*edge.kp1);
-        if (edge.kp1 == e1.kp1)
+        poly_p->insert_KP(std::move(*edge.kp1));
+        if (edge == e1)
         {
             assert(poly_p == poly1);
-            auto kpRef = poly_p->insert_KP(new_kp1);
-            kpRef->twin_speed = &segRef->speed1;
+            auto kpCirc1 = poly_p->insert_KP(new_kp1);
+            kpCirc1->seg_twin_speed = &seg_twin->speed1;
             poly_p = poly2; //switch
-            kpRef = poly_p->insert_KP(new_kp1);
-            kpRef->twin_speed = &segRef->speed1;
+            auto kpCirc2 = poly_p->insert_KP(new_kp1);
+            kpCirc2->seg_twin_speed = &seg_twin->speed1;
+            kpCirc1->twin = kpCirc2;
+            kpCirc2->twin = kpCirc1;
         }
-        else if (edge.kp1 == e2.kp1)
+        else if (edge == e2)
         {
             assert(poly_p == poly2);
-            auto kpRef = poly_p->insert_KP(new_kp2);
-            kpRef->twin_speed = &segRef->speed2;
+            auto kpCirc2 = poly_p->insert_KP(new_kp2);
+            kpCirc2->seg_twin_speed = &seg_twin->speed2;
             poly_p = poly1; //switch
-            kpRef = poly_p->insert_KP(new_kp2);
-            kpRef->twin_speed = &segRef->speed2;
+            auto kpCirc1 = poly_p->insert_KP(new_kp2);
+            kpCirc1->seg_twin_speed = &seg_twin->speed2;
+            kpCirc1->twin = kpCirc2;
+            kpCirc2->twin = kpCirc1;
         }
     }
-    assert((poly1->size() + poly2->size()) == (kpoly_2->size() + 4));
+    assert((poly1->size() + poly2->size()) == (old_size + 4));
     return true;
 }
 
@@ -380,7 +396,6 @@ std::pair<Point_2, Vector_2> KLine_2::transform2twin(const KPoint_2 &kpoint) con
            twin->_line_2.direction() == -vector_twin.direction());
     return {point_twin, vector_twin};
 }
-
 
 void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
 {
