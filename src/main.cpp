@@ -18,8 +18,8 @@ int main()
     //                                      1, 2, 3};
     // auto mesh = Mesh{verts, idxs};
 
-    // auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
-    auto polys_3 = timer("generate_polys_3", generate_polys_3);
+    auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
+    // auto polys_3 = timer("generate_polys_3", generate_polys_3);
     //auto polys_3 = timer("get_convex", get_convex, "data/cube.pwn");
 
     auto kpolys_set = KPolygons_SET{polys_3};

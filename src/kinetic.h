@@ -115,7 +115,7 @@ public:
     Mode _status = Mode::Frozen;
 
 private:
-    size_t _id = -1;
+    size_t _id = (size_t)-1;
     friend class KPolygon_2;
     friend class KPolygons_SET;
 };
@@ -166,7 +166,8 @@ public:
         Vector_2 center_V = CGAL::NULL_VECTOR;
         for (const auto &point_2 : _polygon_2.container())
             center_V += point_2 - CGAL::ORIGIN;
-        Point_2 center_P = CGAL::ORIGIN + center_V * (1 / _polygon_2.size());
+        center_V = center_V / _polygon_2.size();
+        Point_2 center_P = CGAL::ORIGIN + center_V;
         assert(_polygon_2.has_on_bounded_side(center_P));
         for (const auto &point_2 : _polygon_2.container())
             insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
@@ -252,7 +253,7 @@ public:
     }
 
     Vec3 _color = rand_color();
-    size_t id = -1;
+    size_t id = (size_t)-1;
     KPolygons_2 *parent = nullptr;
 
 private:
@@ -465,9 +466,7 @@ inline bool operator<(const Event &r1, const Event &r2)
     {
         return r1.t < r2.t;
     }
-    assert(r1.kp == r2.kp ||
-           r1.kp->face->next(r1.kp) == r2.kp ||
-           r2.kp->face->next(r2.kp) == r1.kp);
+    assert(r1.kp->face->parent == r2.kp->face->parent);
     return &*r1.kp < &*r2.kp;
 }
 

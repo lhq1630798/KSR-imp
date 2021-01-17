@@ -289,10 +289,8 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, const KLine_2 &kline_2)
         return false;
     assert(p_e.size() == 2);
 
-    auto &new_kp1 = p_e[0].first;
-    auto &new_kp2 = p_e[1].first;
-    auto &e1 = p_e[0].second;
-    auto &e2 = p_e[1].second;
+    const auto &[new_kp1, e1] = p_e[0];
+    const auto &[new_kp2, e2] = p_e[1];
 
     auto [p1t, sp1t] = kline_2.transform2twin(new_kp1);
     auto [p2t, sp2t] = kline_2.transform2twin(new_kp2);
