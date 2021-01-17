@@ -8,6 +8,9 @@ static const auto INF = FT{99999};
 
 extern size_t next_id;
 
+// void inf_perturb(Polygons_3 &polygons_3);
+FT Vec_div(Vector_2 v1, Vector_2 v2);
+
 class KPoint_2;
 class KLine_2;
 class KSegment;
@@ -22,7 +25,6 @@ using KPoly_Ref = std::list<KPolygon_2>::iterator;
 using KPolys_Ref = std::list<KPolygons_2>::iterator;
 
 using KP_Circ = CGAL::Circulator_from_container<std::list<KPoint_2>>;
-
 
 enum class Mode
 {
@@ -56,11 +58,12 @@ public:
         return *this;
     }
 
-    void sliding(const Vector_2 &speed)
+    void sliding_speed(const Vector_2 &speed)
     {
-        assert(speed != CGAL::NULL_VECTOR);
+        assert(seg_twin_speed);
+        assert(_status == Mode::Sliding);
+        *seg_twin_speed *= Vec_div(speed, _speed);
         _speed = speed;
-        _status = Mode::Sliding;
     }
 
     void frozen()
@@ -139,10 +142,12 @@ public:
         return insert_KP(_kpoints_2.end(), kpoint);
     }
 
-    KP_Circ insert_KP(const KPoint_2 &&kpoint){
+    KP_Circ insert_KP(const KPoint_2 &&kpoint)
+    {
         //should update all pointers pointing to this element
         auto kp = insert_KP(kpoint);
-        if(kp->twin != nullptr) kp->twin->twin = kp;
+        if (kp->twin != nullptr)
+            kp->twin->twin = kp;
         return kp;
     }
     void move_dt(FT dt)
@@ -176,7 +181,6 @@ public:
             kpoint_2.frozen();
     }
 
-
     class Edge
     {
     public:
@@ -185,7 +189,8 @@ public:
         Segment_2 seg() const { return Segment_2{*kp1, *kp2}; }
         Line_2 line() const { return Line_2{*kp1, *kp2}; }
         Vector_2 sliding_speed(const Line_2 &line_2) const;
-        friend bool operator==(const Edge &a, const Edge &b) {return a.id == b.id;}
+        friend bool operator==(const Edge &a, const Edge &b) { return a.id == b.id; }
+
     private:
         Line_2 moved_line() const { return Line_2{kp1->move_dt(1), kp2->move_dt(1)}; }
         size_t id = next_edge_id++;
@@ -236,7 +241,7 @@ private:
                     (float)color_rand.get_double(0.2, 1),
                     (float)color_rand.get_double(0.2, 1)};
     }
-    
+
     KP_Circ insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
     {
         dirty = true;
@@ -278,6 +283,14 @@ public:
     {
         assert(_line_2.has_on(kseg.point1) && _line_2.has_on(kseg.point2));
         return _ksegments.insert(_ksegments.end(), kseg);
+    }
+    void add_seg_twin(KP_Circ sliding_prev, KP_Circ sliding_next)
+    {
+        auto [p1t, sp1t] = transform2twin(*sliding_prev);
+        auto [p2t, sp2t] = transform2twin(*sliding_next);
+        auto seg_twin = twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t});
+        sliding_prev->seg_twin_speed = &seg_twin->speed1;
+        sliding_next->seg_twin_speed = &seg_twin->speed2;
     }
     bool has_on(Point_2 p) const
     {
@@ -330,7 +343,7 @@ public:
         return ref;
     }
 
-    const std::list<KLine_2> &klines() const { return _klines; }
+    std::list<KLine_2> &klines() { return _klines; }
 
     const Plane_3 &plane() const { return _plane; }
 
@@ -342,7 +355,7 @@ public:
             kline.move_dt(dt);
     }
 
-    bool try_split(KPoly_Ref, const KLine_2 &);
+    bool try_split(KPoly_Ref, KLine_2 &);
 
     Point_2 project_2(const Point_3 &point_3) const
     {
@@ -474,6 +487,3 @@ private:
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
 };
-
-// void inf_perturb(Polygons_3 &polygons_3);
-FT Vec_div(Vector_2 v1, Vector_2 v2);
