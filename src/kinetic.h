@@ -21,44 +21,8 @@ using KSeg_Ref = std::list<KSegment>::iterator;
 using KPoly_Ref = std::list<KPolygon_2>::iterator;
 using KPolys_Ref = std::list<KPolygons_2>::iterator;
 
-// class KP_Circ
-// { // circular iterator
-// public:
-//     KP_Circ() = default;
+using KP_Circ = CGAL::Circulator_from_container<std::list<KPoint_2>>;
 
-//     KP_Circ(KPolygon_2 *kpoly_2, KP_Ref kp) : kpoly_2(kpoly_2), kp(kp) {}
-
-//     operator KP_Ref() { return kp; } //cast
-
-//     KPoint_2 &operator*()
-//     {
-//         return *kp;
-//     }
-//     KPoint_2 *operator->()
-//     {
-//         return &this->operator*();
-//     }
-//     KP_Circ &operator++(); //前置
-
-//     KP_Circ &operator--(); //前置
-
-//     KP_Circ operator++(int) //后置
-//     {
-//         KP_Circ ret = *this;
-//         ++*this;
-//         return ret;
-//     }
-//     KP_Circ operator--(int) //后置
-//     {
-//         KP_Circ ret = *this;
-//         --*this;
-//         return ret;
-//     }
-
-// private:
-//     KP_Ref kp;
-//     KPolygon_2 *kpoly_2;
-// };
 
 enum class Mode
 {
@@ -108,7 +72,7 @@ public:
 
     size_t id() const { return _id; }
 
-    KP_Ref twin; // for sliding twin point on the same plane
+    KP_Circ twin; // for sliding twin point on the same plane
     KPolygon_2 *face = nullptr;
     Vector_2 *twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
@@ -145,58 +109,39 @@ public:
     KPolygon_2() = default;
 
     KPolygon_2(KPolygon_2 &&kpolygon_2) = default;
-    // KPolygon_2(KPolygon_2 &&kpolygon_2)
-    //     : _polygon_2(std::move(kpolygon_2.polygon_2())), dirty(false)
-    // {
-    //     // Using list::splice, No iterators or references become invalidated
-    //     // https://stackoverflow.com/questions/26378894/stdlist-are-the-iterators-invalidated-on-move
-    //     _kpoints_2.splice(_kpoints_2.begin(), kpolygon_2._kpoints_2);
-    // }
 
-    // explicit KPolygon_2(std::list<KPoint_2> &&kpoints_2)
-    // {
-    //     _kpoints_2.splice(_kpoints_2.begin(), std::move(kpoints_2));
-    // }
+    // ===================================================================
+    // ============ methods that should mark dirty========================
 
     void init(Polygon_2 poly_2) //should only called by heap object
     {
-        _polygon_2 = std::move(poly_2);
         dirty = false;
+        _polygon_2 = std::move(poly_2);
 
         Vector_2 center_V = CGAL::NULL_VECTOR;
         for (const auto &point_2 : _polygon_2.container())
             center_V += point_2 - CGAL::ORIGIN;
         center_V = center_V / _polygon_2.size();
         Point_2 center_P = CGAL::ORIGIN + center_V;
+
         assert(_polygon_2.has_on_bounded_side(center_P));
         for (const auto &point_2 : _polygon_2.container())
             insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
     }
 
-    KP_Ref insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
+    KP_Circ insert_KP(KP_Circ pos, const KPoint_2 &kpoint)
     {
-        auto ref = _kpoints_2.insert(pos, kpoint);
-        ref->face = this;
-        ref->_id = next_id++;
-        return ref;
+        return insert_KP(pos.current_iterator(), kpoint);
     }
-    KP_Ref insert_KP(const KPoint_2 &kpoint)
+
+    KP_Circ insert_KP(const KPoint_2 &kpoint)
     { //insert at end
         return insert_KP(_kpoints_2.end(), kpoint);
     }
 
-    const Polygon_2 &polygon_2() const
-    {
-        check();
-        return _polygon_2;
-    }
-    size_t size() const { return _kpoints_2.size(); };
-
-    // const std::list<KPoint_2> &kpoints_2() const { return _kpoints_2; }
-    std::list<KPoint_2> &kpoints_2() { return _kpoints_2; }
-
     void move_dt(FT dt)
     {
+        dirty = true;
         assert(dt >= 0);
         if (dt == 0)
         {
@@ -206,38 +151,31 @@ public:
 
         for (auto &kpoint_2 : _kpoints_2)
             kpoint_2 = kpoint_2.move_dt(dt);
-        dirty = true;
 
         assert(polygon_2().is_convex());
     }
 
-    void erase(KP_Ref kp)
+    void erase(KP_Circ kp)
     {
-        _kpoints_2.erase(kp);
         dirty = true;
+        _kpoints_2.erase(kp.current_iterator());
     }
 
-    KP_Ref next(KP_Ref kp)
+    // ============ methods that should mark dirty========================
+    // ===================================================================
+
+    void frozen()
     {
-        kp++;
-        if (kp == _kpoints_2.end())
-            kp = _kpoints_2.begin();
-        return kp;
+        for (auto &kpoint_2 : _kpoints_2)
+            kpoint_2.frozen();
     }
 
-    KP_Ref prev(KP_Ref kp)
-    {
-        if (kp == _kpoints_2.begin())
-            kp = _kpoints_2.end();
-        kp--;
-        return kp;
-    }
 
     class Edge
     {
     public:
-        Edge(KP_Ref kp1, KP_Ref kp2) : kp1(kp1), kp2(kp2) {}
-        KP_Ref kp1, kp2;
+        Edge(KP_Circ kp1, KP_Circ kp2) : kp1(kp1), kp2(kp2) {}
+        KP_Circ kp1, kp2;
         Segment_2 seg() const { return Segment_2{*kp1, *kp2}; }
         Line_2 line() const { return Line_2{*kp1, *kp2}; }
         Line_2 moved_line() const { return Line_2{kp1->move_dt(1), kp2->move_dt(1)}; }
@@ -247,10 +185,20 @@ public:
     std::vector<Edge> get_edges()
     {
         std::vector<Edge> edges;
-        for (auto kp = _kpoints_2.begin(); kp != _kpoints_2.end(); kp++)
+        auto kp = kp_circulator(), end = kp;
+        CGAL_For_all(kp, end)
             edges.emplace_back(kp, next(kp));
         return edges;
     }
+
+    const Polygon_2 &polygon_2() const
+    {
+        check();
+        return _polygon_2;
+    }
+    size_t size() const { return _kpoints_2.size(); };
+
+    KP_Circ kp_circulator() { return KP_Circ{&_kpoints_2}; }
 
     Vec3 _color = rand_color();
     size_t id = (size_t)-1;
@@ -277,6 +225,15 @@ private:
         return Vec3{(float)color_rand.get_double(0, 0.8),
                     (float)color_rand.get_double(0.2, 1),
                     (float)color_rand.get_double(0.2, 1)};
+    }
+    
+    KP_Circ insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
+    {
+        dirty = true;
+        auto ref = _kpoints_2.insert(pos, kpoint);
+        ref->face = this;
+        ref->_id = next_id++;
+        return KP_Circ{&_kpoints_2, ref};
     }
 
     mutable bool dirty = true;
@@ -428,12 +385,14 @@ public:
             kpolys.move_dt(dt);
     }
 
+    void add_bounding_box(const Polygons_3 &polygons_3);
+
     Polygon_Mesh Get_mesh()
     {
         Polygons_3 polys_3;
-        for (const auto &kpolys : _kpolygons_set)
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
         {
-            auto tmp = kpolys.polygons_3();
+            auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
         }
         return Polygon_Mesh{std::vector<Polygon_GL>(polys_3.begin(), polys_3.end())};
@@ -444,9 +403,9 @@ class Event
 {
 public:
     FT t;
-    KP_Ref kp;
+    KP_Circ kp;
     KLine_Ref kline;
-    Event(FT t, KP_Ref kp, KLine_Ref kline)
+    Event(FT t, KP_Circ kp, KLine_Ref kline)
         : t(t), kp(kp), kline(kline)
     {
         assert(t > 0);
@@ -455,9 +414,6 @@ public:
         assert(kp->id() < next_id);
     }
 };
-
-class Kinetic_queue;
-class Event;
 
 /* Comparison operator for Event so std::set will properly order them */
 inline bool operator<(const Event &r1, const Event &r2)
@@ -476,6 +432,7 @@ public:
     Kinetic_queue(KPolygons_SET &kpolygons_set);
     FT to_next_event();
     FT next_time();
+    FT move_to_time(FT t);
     size_t size() { return queue.size(); }
 
 private:
@@ -487,7 +444,7 @@ private:
             queue.erase(event);
         }
     }
-    void remove_events(KP_Ref kp)
+    void remove_events(KP_Circ kp)
     {
         for (const auto &rm_event : id_events[kp->id()])
             remove(rm_event);
@@ -495,17 +452,18 @@ private:
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
 
-    void Kinetic_queue::kp_collide(KP_Ref kp);
-    void Kinetic_queue::erase_kp(KP_Ref kp);
+    void Kinetic_queue::kp_collide(KP_Circ kp);
+    void Kinetic_queue::erase_kp(KP_Circ kp);
 
-    std::vector<KP_Ref> update_certificate(const Event &);
+    std::vector<KP_Circ> update_certificate(const Event &);
 
     KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
+
+    // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
 };
 
-void add_bounding_box(KPolygons_SET &KPolygons_set);
 // void inf_perturb(Polygons_3 &polygons_3);
 FT Vec_div(Vector_2 v1, Vector_2 v2);

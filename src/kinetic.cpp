@@ -1,15 +1,15 @@
 #include "kinetic.h"
 #include <limits>
 
-std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
+std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
 {
 
     auto kline = event.kline;
     const auto &line_2 = kline->_line_2;
     auto kp = event.kp;
     auto poly = kp->face;
-    auto prev_kp = poly->prev(kp);
-    auto next_kp = poly->next(kp);
+    auto prev_kp = prev(kp);
+    auto next_kp = next(kp);
 
     assert(line_2.has_on(kp->point()));
 
@@ -19,8 +19,10 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
         {
             std::cout << "vert collision" << std::endl;
             assert(prev_kp->_status == Mode::Sliding);
+            // prev_kp->twin->face->insert_KP(prev_kp->twin, KPoint_2{kp->point(), kp->_speed, Mode::Normal});
             auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
             kp->sliding(next_speed);
+            // kp->twin->sliding(next_speed);
             erase_kp(prev_kp);
             return {kp};
         }
@@ -28,8 +30,10 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
         {
             std::cout << "vert collision" << std::endl;
             assert(next_kp->_status == Mode::Sliding);
+            // next_kp->twin->face->insert_KP(next(kp), KPoint_2{kp->point(), kp->_speed, Mode::Normal});
             auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
             kp->sliding(prev_speed);
+            // next_kp->twin->sliding(prev_speed);
             erase_kp(next_kp);
             return {kp};
         }
@@ -41,15 +45,17 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
     switch (kp->_status)
     {
     case Mode::Normal: //type a
-        if (Line_2{prev_kp->point(), kp->point()} == line_2)
+        if (line_2.has_on(prev_kp->point()) && line_2.has_on(kp->point()))
         {
+            assert(false);
             std::cout << "type a edge" << std::endl;
             auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
             kp->sliding(next_speed);
             return {kp};
         }
-        else if (Line_2{kp->point(), next_kp->point()} == line_2)
+        else if (line_2.has_on(next_kp->point()) && line_2.has_on(kp->point()))
         {
+            assert(false);
             std::cout << "type a edge" << std::endl;
             auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
             kp->sliding(prev_speed);
@@ -117,13 +123,16 @@ Kinetic_queue::Kinetic_queue(KPolygons_SET &kpolygons_set) : kpolygons_set(kpoly
     std::cout << "num of polygons set " << kpolygons_set.size() << std::endl;
     for (auto &kpolys_2 : kpolygons_set._kpolygons_set)
         for (auto &kpoly_2 : kpolys_2._kpolygons_2)
-            for (auto kp = kpoly_2.kpoints_2().begin(); kp != kpoly_2.kpoints_2().end(); kp++)
+        {
+            auto kp = kpoly_2.kp_circulator(), end = kp;
+            CGAL_For_all(kp, end)
                 kp_collide(kp);
+        }
 
     std::cout << "queue size " << queue.size() << std::endl;
 }
 
-void Kinetic_queue::kp_collide(KP_Ref kp)
+void Kinetic_queue::kp_collide(KP_Circ kp)
 {
     if (kp->_status == Mode::Frozen)
         return;
@@ -162,7 +171,8 @@ FT Vec_div(Vector_2 v1, Vector_2 v2)
         return v1.y() / v2.y();
     }
 }
-void Kinetic_queue::erase_kp(KP_Ref kp)
+
+void Kinetic_queue::erase_kp(KP_Circ kp)
 {
     remove_events(kp);
     // erase AFTER we update queue
@@ -198,9 +208,23 @@ FT Kinetic_queue::to_next_event()
 
 size_t next_id;
 
+FT Kinetic_queue::move_to_time(FT t)
+{
+    assert(t >= last_t);
+    auto next_t = next_time();
+    if (t < next_t)
+    {
+        kpolygons_set.move_dt(t - last_t);
+        last_t = t;
+        return last_t;
+    }
+    else
+        return to_next_event();
+}
+
 KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3) : _kpolygons_set(polygons_3.begin(), polygons_3.end())
 {
-
+    add_bounding_box(polygons_3);
     for (auto polys_i = _kpolygons_set.begin(); polys_i != _kpolygons_set.end(); polys_i++)
         for (auto polys_j = std::next(polys_i); polys_j != _kpolygons_set.end(); polys_j++)
             if (auto res = CGAL::intersection(polys_i->plane(), polys_j->plane()))
@@ -357,6 +381,49 @@ std::pair<Point_2, Vector_2> KLine_2::transform2twin(const KPoint_2 &kpoint) con
     return {point_twin, vector_twin};
 }
 
-void add_bounding_box(KPolygons_SET &KPolygons_set)
+
+void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
 {
+    auto box = CGAL::Bbox_3{};
+    for (const auto &poly_3 : polygons_3)
+        box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
+
+    auto scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
+                                std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
+    auto square = Points_2{};
+    square.push_back(Point_2{scale + 0.1, scale + 0.1});
+    square.push_back(Point_2{-scale - 0.1, scale + 0.1});
+    square.push_back(Point_2{-scale - 0.1, -scale - 0.1});
+    square.push_back(Point_2{scale + 0.1, -scale - 0.1});
+
+    {
+        auto plane = Plane_3{1, 0, 0, scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{1, 0, 0, -scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, -scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{0, 0, 1, scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{0, 0, 1, -scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
 }

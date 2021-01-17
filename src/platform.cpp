@@ -152,29 +152,13 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, F
 	static float f = 0.0f;
 	static int counter = 0;
 	static double last_time = glfwGetTime();
-	static FT next_kinetic_t = k_queue.next_time();
-	// static auto k_poly_bak = kpolys_set;
 
 	double dt = glfwGetTime() - last_time;
 	last_time = last_time + dt;
-	dt = std::powf(10, grow_speed) * dt;
+	
+	FT kinetic_dt = std::powf(10, grow_speed) * dt;
 	if (grow)
-	{
-		kpolys_set.move_dt(dt);
-		kinetic_time += dt;
-		// if (kinetic_time >= next_kinetic_t)
-		// {
-		// 	k_polys = k_poly_bak;
-		// 	kinetic_time = k_queue.to_next_event();
-		// 	k_poly_bak = k_polys;
-		// 	next_kinetic_t = k_queue.next_time();
-		// }
-		// else
-		// {
-		// 	for (auto &k_poly : k_polys)
-		// 		k_poly.update(k_poly.move_dt(dt));
-		// }
-	}
+		kinetic_time = k_queue.move_to_time(kinetic_time + kinetic_dt);
 
 	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
@@ -184,16 +168,13 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, F
 	ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
 
 	if (ImGui::Button("next event"))
-	{
 		kinetic_time = k_queue.to_next_event();
-		next_kinetic_t = k_queue.next_time();
-	}
+
 	ImGui::SameLine();
 	ImGui::Text("queue size = %d", k_queue.size());
 
-
 	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
-	ImGui::Text("next time = %.3f", CGAL::to_double(next_kinetic_t));
+	ImGui::Text("next time = %.3f", CGAL::to_double(k_queue.next_time()));
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
@@ -229,7 +210,7 @@ void Platform::clear()
 	glClear(GL_DEPTH_BUFFER_BIT);
 }
 
-void Platform::render(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET& kpolys_set, FT &kinetic_time)
+void Platform::render(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, FT &kinetic_time)
 {
 
 	render_imgui(k_queue, kpolys_set, kinetic_time);
@@ -237,7 +218,7 @@ void Platform::render(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET& kpo
 	render_3d(shader, kpolys_set);
 }
 
-void Platform::loop(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET& kpolys_set, FT &kinetic_time)
+void Platform::loop(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, FT &kinetic_time)
 {
 
 	// Main loop
