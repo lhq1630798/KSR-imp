@@ -380,7 +380,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     auto sliding_prev2 = new_poly2->insert_KP(*sliding_next1); //copy seg_twin_speed
     //=================================================
     // another add_seg_twin call shoule be unnecessary
-    // because pointer "seg_twin_speed" will be copied
+    // because pointer "seg_twin_speed" will be copied.
     // kline_2.add_seg_twin(sliding_prev2, sliding_next2);
     //====================================================
     // pair the sliding kp
@@ -393,17 +393,6 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     return true;
 }
 
-// KP_Circ &KP_Circ::operator++()
-// {
-//     kp = kpoly_2->next(kp);
-//     return *this;
-// }
-
-// KP_Circ &KP_Circ::operator--()
-// {
-//     kp = kpoly_2->prev(kp);
-//     return *this;
-// }
 
 Point_2 KLine_2::transform2twin(const Point_2 &point) const
 {

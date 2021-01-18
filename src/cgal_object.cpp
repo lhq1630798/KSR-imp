@@ -1,16 +1,13 @@
 #include "cgal_object.h"
 
-Segments_3 Polygon_3::edges_3() const
-{
-    auto segments_3 = Segments_3{};
-    auto num = _points_3.size();
-    assert(num >= 3);
-    for (size_t i = 1; i < num; i++)
-        segments_3.push_back(Segment_3{_points_3[i - 1], _points_3[i]}); //edges_3[0] corresponds to points_3[0,1]
-    segments_3.push_back(Segment_3{_points_3[num - 1], _points_3[0]});
-    return segments_3;
-}
-
+Vec3 rand_color()
+    {
+        static auto color_rand = CGAL::Random{0};
+        return Vec3{(float)color_rand.get_double(0, 0.8),
+                    (float)color_rand.get_double(0.2, 1),
+                    (float)color_rand.get_double(0.2, 1)};
+    }
+    
 Polygons_3 generate_rand_polys_3(size_t num)
 {
     auto rand = CGAL::Random{0};

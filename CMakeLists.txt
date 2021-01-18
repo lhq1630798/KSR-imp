@@ -12,7 +12,6 @@ set(KSR_SOURCES
         "src/gl_object.h"
         "src/cgal_object.h"
         "src/cgal_object.cpp"
-        "src/intersection.cpp"
         "src/kinetic.cpp"
         "src/kinetic.h"
         "src/platform.h"

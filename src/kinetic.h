@@ -154,6 +154,7 @@ public:
             kp->sliding_twin->sliding_twin = kp;
         return kp;
     }
+
     void move_dt(FT dt)
     {
         dirty = true;
@@ -239,13 +240,6 @@ private:
         _polygon_2 = Polygon_2{_kpoints_2.begin(), _kpoints_2.end()};
     }
 
-    static Vec3 rand_color()
-    {
-        static auto color_rand = CGAL::Random{0};
-        return Vec3{(float)color_rand.get_double(0, 0.8),
-                    (float)color_rand.get_double(0.2, 1),
-                    (float)color_rand.get_double(0.2, 1)};
-    }
 
     KP_Circ insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
     {
