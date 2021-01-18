@@ -68,14 +68,18 @@ public:
 
     void frozen()
     {
+        if (_status == Mode::Sliding)
+            sliding_speed(CGAL::NULL_VECTOR);
+        else
+            _speed = CGAL::NULL_VECTOR;
         _status = Mode::Frozen;
-        _speed = CGAL::NULL_VECTOR;
     }
+
     const Point_2 &point() const { return *this; }
 
     size_t id() const { return _id; }
 
-    KP_Circ twin; // for sliding twin point on the same plane
+    KP_Circ sliding_twin; // for sliding twin point on the same plane
     KPolygon_2 *face = nullptr;
     Vector_2 *seg_twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
@@ -146,8 +150,8 @@ public:
     {
         //should update all pointers pointing to this element
         auto kp = insert_KP(kpoint);
-        if (kp->twin != nullptr)
-            kp->twin->twin = kp;
+        if (kp->sliding_twin != nullptr)
+            kp->sliding_twin->sliding_twin = kp;
         return kp;
     }
     void move_dt(FT dt)
@@ -169,6 +173,7 @@ public:
     void erase(KP_Circ kp)
     {
         dirty = true;
+        kp->frozen();
         _kpoints_2.erase(kp.current_iterator());
     }
 
@@ -413,7 +418,7 @@ public:
     Polygon_Mesh Get_mesh()
     {
         Polygons_3 polys_3;
-        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 3); kpolys++)
         {
             auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());

@@ -20,7 +20,7 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             std::cout << "vert collision" << std::endl;
             auto sliding_kp = prev_kp;
             assert(sliding_kp->_status == Mode::Sliding);
-            auto sliding_twin = sliding_kp->twin;
+            auto sliding_twin = sliding_kp->sliding_twin;
             bool has_twin = (sliding_twin != nullptr);
             auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
             auto new_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
@@ -37,7 +37,7 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             std::cout << "vert collision" << std::endl;
             auto sliding_kp = next_kp;
             assert(sliding_kp->_status == Mode::Sliding);
-            auto sliding_twin = sliding_kp->twin;
+            auto sliding_twin = sliding_kp->sliding_twin;
             bool has_twin = (sliding_twin != nullptr);
             auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
             auto new_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
@@ -87,8 +87,22 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
 
             kline->add_seg_twin(sliding_prev, sliding_next);
 
+            if (kline->has_on(kp->point()))
+            {
+                erase_kp(kp);
+                return {sliding_prev, sliding_next};
+            }
+
+            auto extended_triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
+            auto normal_kp = extended_triangle->insert_KP(*kp);
+            auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
+            sliding_prev->sliding_twin = sliding_next2;
+            sliding_next2->sliding_twin = sliding_prev;
+            sliding_next->sliding_twin = sliding_prev2;
+            sliding_prev2->sliding_twin = sliding_next;
             erase_kp(kp);
-            return {prev_kp, next_kp};
+            return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
         }
         break;
     case Mode::Sliding:
@@ -111,21 +125,39 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
         else
         { //type b
             auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
-            if (next_speed != CGAL::NULL_VECTOR)
+            auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
+            auto prev_mode = Mode::Sliding, next_mode = Mode::Sliding;
+            if (next_speed == CGAL::NULL_VECTOR)
             {
-                std::cout << "type b Sliding_Next" << std::endl;
-                kp->sliding_speed(next_speed);
-                poly->insert_KP(kp, KPoint_2{kp->point(), CGAL::NULL_VECTOR, Mode::Frozen});
+                std::cout << "type b Sliding_Prev" << std::endl;
+                next_mode = Mode::Frozen;
             }
             else
             {
-                auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-                assert(prev_speed != CGAL::NULL_VECTOR);
-                std::cout << "type b Sliding_Prev" << std::endl;
-                kp->sliding_speed(prev_speed);
-                poly->insert_KP(next_kp, KPoint_2{kp->point(), CGAL::NULL_VECTOR, Mode::Frozen});
+                assert(prev_speed == CGAL::NULL_VECTOR);
+                std::cout << "type b Sliding_Next" << std::endl;
+                prev_mode = Mode::Frozen;
             }
-            return {kp};
+            auto sliding_prev = poly->insert_KP(kp, KPoint_2{kp->point(), prev_speed, prev_mode});
+            auto sliding_next = poly->insert_KP(kp, KPoint_2{kp->point(), next_speed, next_mode});
+            kline->add_seg_twin(sliding_prev, sliding_next);
+
+            if (kline->has_on(kp->point()))
+            {
+                erase_kp(kp);
+                return {sliding_prev, sliding_next};
+            }
+            // TODO : duplicated extended_triangle
+            auto extended_triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
+            auto normal_kp = extended_triangle->insert_KP(*kp);
+            auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
+            sliding_prev->sliding_twin = sliding_next2;
+            sliding_next2->sliding_twin = sliding_prev;
+            sliding_next->sliding_twin = sliding_prev2;
+            sliding_prev2->sliding_twin = sliding_next;
+            erase_kp(kp);
+            return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
         }
         break;
     default:
@@ -176,6 +208,8 @@ void Kinetic_queue::kp_collide(KP_Circ kp)
 
 FT Vec_div(Vector_2 v1, Vector_2 v2)
 {
+    if (v1 == CGAL::NULL_VECTOR)
+        return 0;
     assert(v1.direction() == v2.direction() || -v1.direction() == v2.direction());
     if (v2.x() != 0)
     {
@@ -332,7 +366,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     const auto &[new_kp2, e2] = p_e[1];
 
     KPoly_Ref new_poly1 = insert_kpoly_2(KPolygon_2{}), new_poly2 = insert_kpoly_2(KPolygon_2{});
-    
+
     // poly1
     auto sliding_next1 = new_poly1->insert_KP(new_kp1);
     for (auto kp = e1.kp2; kp != e2.kp2; kp++)
@@ -340,16 +374,20 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     auto sliding_prev1 = new_poly1->insert_KP(new_kp2);
     kline_2.add_seg_twin(sliding_prev1, sliding_next1);
     // poly2
-    auto sliding_next2 = new_poly2->insert_KP(new_kp2);
+    auto sliding_next2 = new_poly2->insert_KP(*sliding_prev1); //copy seg_twin_speed
     for (auto kp = e2.kp2; kp != e1.kp2; kp++)
         new_poly2->insert_KP(std::move(*kp));
-    auto sliding_prev2 = new_poly2->insert_KP(new_kp1);
-    kline_2.add_seg_twin(sliding_prev2, sliding_next2);
+    auto sliding_prev2 = new_poly2->insert_KP(*sliding_next1); //copy seg_twin_speed
+    //=================================================
+    // another add_seg_twin call shoule be unnecessary
+    // because pointer "seg_twin_speed" will be copied
+    // kline_2.add_seg_twin(sliding_prev2, sliding_next2);
+    //====================================================
     // pair the sliding kp
-    sliding_prev1->twin = sliding_next2;
-    sliding_next2->twin = sliding_prev1;
-    sliding_next1->twin = sliding_prev2;
-    sliding_prev2->twin = sliding_next1;
+    sliding_prev1->sliding_twin = sliding_next2;
+    sliding_next2->sliding_twin = sliding_prev1;
+    sliding_next1->sliding_twin = sliding_prev2;
+    sliding_prev2->sliding_twin = sliding_next1;
 
     assert((new_poly1->size() + new_poly2->size()) == (kpoly_2->size() + 4));
     return true;
@@ -407,17 +445,7 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
         _kpolygons_set.back()._kpolygons_2.back().frozen();
     }
     {
-        auto plane = Plane_3{1, 0, 0, -scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
-    }
-    {
         auto plane = Plane_3{0, 1, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
-    }
-    {
-        auto plane = Plane_3{0, 1, 0, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back()._kpolygons_2.back().frozen();
     }
@@ -426,6 +454,18 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back()._kpolygons_2.back().frozen();
     }
+
+    {
+        auto plane = Plane_3{1, 0, 0, -scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, -scale};
+        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back()._kpolygons_2.back().frozen();
+    }
+
     {
         auto plane = Plane_3{0, 0, 1, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
