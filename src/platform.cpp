@@ -20,7 +20,8 @@ ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
 float depth = 1;
 bool rotate = false;
 bool show_plane = true;
-bool show_line = true;
+bool show_seg_line = false;
+bool show_boundary = true;
 bool show_point_cloud = false;
 bool grow = false;
 float grow_speed = -1;
@@ -163,13 +164,15 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, F
 	if (grow)
 		kinetic_time = k_queue.move_to_time(kinetic_time + kinetic_dt);
 
-	ImGui::Begin("Hello, world!");				  // Create a window called "Hello, world!" and append into it.
-	ImGui::Checkbox("rotate", &rotate);			  // Edit bools storing our window open/close state
-	ImGui::Checkbox("plane", &show_plane);			 
+	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
+	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
+	ImGui::Checkbox("plane", &show_plane);
 	ImGui::SameLine();
-	ImGui::Checkbox("point_cloud", &show_point_cloud); 
+	ImGui::Checkbox("point_cloud", &show_point_cloud);
 	ImGui::SameLine();
-	ImGui::Checkbox("line", &show_line);				  
+	ImGui::Checkbox("line", &show_seg_line);
+	ImGui::SameLine();
+	ImGui::Checkbox("boundary", &show_boundary);
 	ImGui::SliderFloat("depth", &depth, -1, 1);
 
 	ImGui::Checkbox("growing", &grow);
@@ -206,14 +209,14 @@ void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
+	auto mesh = kpolys_set.Get_mesh();
 	if (show_plane)
-	{
-		auto mesh = kpolys_set.Get_mesh();
 		mesh.render(shader);
-	}
-	if (show_line)
-	{
+	if (show_boundary)
+		mesh.render_boundary(shader);
 
+	if (show_seg_line)
+	{
 		auto segs = kpolys_set.Get_Segments();
 		segs.render(shader);
 	}

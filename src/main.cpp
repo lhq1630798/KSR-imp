@@ -20,9 +20,10 @@ int main()
 
     // auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
     // auto polys_3 = timer("generate_polys_3", generate_polys_3);
-    auto polys_3 = timer("get_convex", get_convex, "data/test_input.off");
+    auto polys_3 = timer("get_convex", detect_shape, "data/test_input.off");
 
-    auto kpolys_set = KPolygons_SET{polys_3};
+    bool exhausted = true;
+    auto kpolys_set = KPolygons_SET{polys_3, exhausted};
 
     auto k_queue = Kinetic_queue{kpolys_set};
     FT kinetic_time = 0;

@@ -104,7 +104,7 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
                 return {sliding_prev, sliding_next};
             }
 
-            auto triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto triangle = poly->parent->insert_kpoly_2();
             auto normal_kp = triangle->insert_KP(*kp);
             auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
             erase_kp(kp);
@@ -153,7 +153,7 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
                 return {sliding_prev, sliding_next};
             }
             // TODO : duplicated extended_triangle
-            auto triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto triangle = poly->parent->insert_kpoly_2();
             auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
             auto normal_kp = triangle->insert_KP(*kp); //add_seg_twin?
             erase_kp(kp);
@@ -282,6 +282,48 @@ FT Kinetic_queue::move_to_time(FT t)
 KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3, bool exhausted) : _kpolygons_set(polygons_3.begin(), polygons_3.end())
 {
     add_bounding_box(polygons_3);
+    if (exhausted)
+        bbox_clip();
+
+    decompose();
+
+    if (exhausted)
+        for (auto &polys : _kpolygons_set)
+            for (auto &poly : polys._kpolygons_2)
+                poly.frozen();
+}
+
+void KPolygons_SET::bbox_clip()
+{
+    // clip supporting plane by bounding box
+
+    auto bbox_begin = prev(_kpolygons_set.end(), 6);
+    for (auto polys_i = _kpolygons_set.begin(); polys_i != bbox_begin; polys_i++)
+    {
+        std::vector<Point_2> points_2;
+        for (auto bbox = bbox_begin; bbox != _kpolygons_set.end(); bbox++)
+        {
+            if (auto res = plane_polygon_intersect_3(polys_i->plane(), bbox->polygons_3().front()))
+            {
+                auto &[p1, p2] = *res;
+                assert(polys_i->plane().has_on(p1));
+                assert(polys_i->plane().has_on(p2));
+                points_2.push_back(polys_i->plane().to_2d(p1));
+                points_2.push_back(polys_i->plane().to_2d(p2));
+            }
+        }
+        auto polygon_2 = get_convex(points_2.begin(), points_2.end());
+
+        // replace by the clipped polygon
+        assert(polys_i->_kpolygons_2.size() == 1);
+        auto inline_points = polys_i->_kpolygons_2.front().inline_points;
+        polys_i->_kpolygons_2.clear();
+        polys_i->insert_kpoly_2(polygon_2)->set_inline_points(inline_points);
+    }
+}
+
+void KPolygons_SET::decompose()
+{
     for (auto polys_i = _kpolygons_set.begin(); polys_i != _kpolygons_set.end(); polys_i++)
         for (auto polys_j = std::next(polys_i); polys_j != _kpolygons_set.end(); polys_j++)
             if (auto res = CGAL::intersection(polys_i->plane(), polys_j->plane()))
@@ -361,8 +403,8 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
                     edge));
             }
             //todo: corner case
-            else
-                assert(false);
+            // else
+            //     assert(false);
         }
     }
     if (p_e.empty())
@@ -372,7 +414,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     const auto &[new_kp1, e1] = p_e[0];
     const auto &[new_kp2, e2] = p_e[1];
 
-    KPoly_Ref new_poly1 = insert_kpoly_2(KPolygon_2{}), new_poly2 = insert_kpoly_2(KPolygon_2{});
+    KPoly_Ref new_poly1 = insert_kpoly_2(), new_poly2 = insert_kpoly_2();
 
     // poly1
     auto sliding_next1 = new_poly1->insert_KP(new_kp1);
@@ -387,6 +429,20 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
         new_poly2->insert_KP(std::move(*kp));
 
     assert((new_poly1->size() + new_poly2->size()) == (kpoly_2->size() + 4));
+
+    //split inline points
+    for (auto &point_3 : kpoly_2->inline_points){
+        auto point_2 = plane().to_2d(point_3);
+        if (new_poly1->polygon_2().has_on_bounded_side(point_2)){
+            assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
+            new_poly1->inline_points.push_back(point_3);
+        }
+        else {
+            assert(new_poly2->polygon_2().has_on_bounded_side(point_2));
+            new_poly2->inline_points.push_back(point_3);
+        }
+    }
+
     return true;
 }
 
@@ -416,13 +472,18 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     for (const auto &poly_3 : polygons_3)
         box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
 
-    auto scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
-                                std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
+    FT scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
+                              std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
     auto square = Points_2{};
-    square.push_back(Point_2{scale + 0.1, scale + 0.1});
-    square.push_back(Point_2{-scale - 0.1, scale + 0.1});
-    square.push_back(Point_2{-scale - 0.1, -scale - 0.1});
-    square.push_back(Point_2{scale + 0.1, -scale - 0.1});
+    // square.push_back(Point_2{scale + 0.1, scale + 0.1});
+    // square.push_back(Point_2{-scale - 0.1, scale + 0.1});
+    // square.push_back(Point_2{-scale - 0.1, -scale - 0.1});
+    // square.push_back(Point_2{scale + 0.1, -scale - 0.1});
+
+    square.push_back(Point_2{scale, scale});
+    square.push_back(Point_2{-scale, scale});
+    square.push_back(Point_2{-scale, -scale});
+    square.push_back(Point_2{scale, -scale});
 
     {
         auto plane = Plane_3{1, 0, 0, scale};

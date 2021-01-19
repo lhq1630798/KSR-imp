@@ -124,14 +124,20 @@ private:
 
 class KPolygon_2
 {
+private:
+    struct Ctor_Tag {};
     friend class KPolygons_2;
+    friend class KPolygons_SET;
 
+    // friend class std::list<KPolygon_2>::allocator_type;
+    // KPolygon_2 should only be constructed on heap... for example in std::list
 public:
     size_t id = (size_t)-1;
 
-    KPolygon_2() = default;
-
-    KPolygon_2(KPolygon_2 &&kpolygon_2) = default;
+    // constructor can only called by friend
+    KPolygon_2(Ctor_Tag) : KPolygon_2(){};
+    KPolygon_2(Ctor_Tag, Polygon_2 poly_2) : KPolygon_2(std::move(poly_2)){};
+    KPolygon_2(const KPolygon_2&) = delete;
 
     void set_inline_points(std::vector<Point_3> points)
     {
@@ -139,22 +145,6 @@ public:
     }
     // ===================================================================
     // ============ methods that should mark dirty========================
-
-    void init(Polygon_2 poly_2) //should only called by heap object
-    {
-        dirty = false;
-        _polygon_2 = std::move(poly_2);
-
-        Vector_2 center_V = CGAL::NULL_VECTOR;
-        for (const auto &point_2 : _polygon_2.container())
-            center_V += point_2 - CGAL::ORIGIN;
-        center_V = center_V / _polygon_2.size();
-        Point_2 center_P = CGAL::ORIGIN + center_V;
-
-        assert(_polygon_2.has_on_bounded_side(center_P));
-        for (const auto &point_2 : _polygon_2.container())
-            insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
-    }
 
     KP_Circ insert_KP(KP_Circ pos, const KPoint_2 &kpoint)
     {
@@ -248,7 +238,30 @@ public:
 
     std::vector<Point_3> inline_points;
 
+    FT area(){
+        return polygon_2().area();
+    }
+
 private:
+
+    KPolygon_2() = default;
+
+    KPolygon_2(Polygon_2 &&poly_2) //should only constructed on heap ....
+    {
+        dirty = false;
+        _polygon_2 = std::move(poly_2);
+
+        Vector_2 center_V = CGAL::NULL_VECTOR;
+        for (const auto &point_2 : _polygon_2.container())
+            center_V += point_2 - CGAL::ORIGIN;
+        center_V = center_V / _polygon_2.size();
+        Point_2 center_P = CGAL::ORIGIN + center_V;
+
+        assert(_polygon_2.has_on_bounded_side(center_P));
+        for (const auto &point_2 : _polygon_2.container())
+            insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+    }
+
     void check() const
     {
         if (dirty)
@@ -342,9 +355,7 @@ public:
     // private:
     KPolygons_2(const Polygon_3 &poly_3) : _plane(poly_3.plane())
     {
-        auto kpoly = insert_kpoly_2(KPolygon_2{});
-        kpoly->init(poly_3.polygon_2());
-        kpoly->set_inline_points(poly_3.inline_points);
+        insert_kpoly_2(poly_3.polygon_2())->set_inline_points(poly_3.inline_points);
     }
 
     Plane_3 _plane;
@@ -358,11 +369,16 @@ public:
         return _klines.insert(_klines.end(), KLine_2{line_2, this});
     }
 
-    KPoly_Ref insert_kpoly_2(KPolygon_2 kpoly_2)
+    KPoly_Ref insert_kpoly_2(const Polygon_2 &poly_2)
     {
-        auto ref = _kpolygons_2.insert(_kpolygons_2.end(), std::move(kpoly_2));
-        ref->parent = this;
-        ref->id = next_id();
+        auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), KPolygon_2::Ctor_Tag{}, poly_2);
+        init_kpoly(ref);
+        return ref;
+    }
+    KPoly_Ref insert_kpoly_2()
+    {
+        auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), KPolygon_2::Ctor_Tag{});
+        init_kpoly(ref);
         return ref;
     }
 
@@ -413,6 +429,13 @@ public:
         for (const auto &kpoly_2 : _kpolygons_2)
             result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
         return result;
+    }
+
+private:
+    void init_kpoly(KPoly_Ref ref)
+    {
+        ref->parent = this;
+        ref->id = next_id();
     }
 };
 
@@ -475,6 +498,8 @@ public:
 
 private:
     void add_bounding_box(const Polygons_3 &polygons_3);
+    void decompose();
+    void bbox_clip();
 };
 
 class Event

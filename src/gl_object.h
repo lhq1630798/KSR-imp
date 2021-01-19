@@ -269,15 +269,24 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+
+        for (const auto &poly : _polygons)
+        {
+            shader.setVec3("ourColor", poly._color);
+            poly.render();
+        }
+    }
+    void render_boundary(Shader &shader) const
+    {
+        shader.use();
         glLineWidth(5.0f);
         glPolygonOffset(1.0f, 1.0f);
         glEnable(GL_POLYGON_OFFSET_LINE);
         for (const auto &poly : _polygons)
         {
-            shader.setVec3("ourColor", poly._color);
-            poly.render();
-            // shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
-            // poly.render_boundary();
+
+            shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
+            poly.render_boundary();
         }
     }
     auto &polygons_GL() const { return _polygons; }
