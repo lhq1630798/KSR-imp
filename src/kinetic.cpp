@@ -14,7 +14,6 @@ std::pair<KP_Circ, KP_Circ> extend_sliding(KPoly_Ref extended_triangle, KP_Circ 
     return {sliding_prev2, sliding_next2};
 }
 
-
 std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
 {
 
@@ -104,7 +103,6 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
                 erase_kp(kp);
                 return {sliding_prev, sliding_next};
             }
-
 
             auto triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
             auto normal_kp = triangle->insert_KP(*kp);
@@ -281,7 +279,7 @@ FT Kinetic_queue::move_to_time(FT t)
         return to_next_event();
 }
 
-KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3) : _kpolygons_set(polygons_3.begin(), polygons_3.end())
+KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3, bool exhausted) : _kpolygons_set(polygons_3.begin(), polygons_3.end())
 {
     add_bounding_box(polygons_3);
     for (auto polys_i = _kpolygons_set.begin(); polys_i != _kpolygons_set.end(); polys_i++)

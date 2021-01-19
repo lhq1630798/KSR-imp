@@ -8,7 +8,6 @@
 #include <vector>
 #include <GLFW/glfw3.h>
 #include "math/vec3.h"
-#include "region_growing.h"
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
 // using K = CGAL::Simple_cartesian<CGAL::Gmpq>;
@@ -51,9 +50,7 @@ public:
     }
 };
 
-
 Vec3 rand_color();
-
 
 class Polygon_3
 {
@@ -69,16 +66,20 @@ public:
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
-    size_t size() const {return points_2().size();};
+    void set_inline_points(std::vector<Point_3> points)
+    {
+        inline_points = std::move(points);
+    }
+    size_t size() const { return points_2().size(); };
     const Points_2 &points_2() const { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
     const Polygon_2 &polygon_2() const { return _polygon_2; }
     const Points_3 &points_3() const { return _points_3; }
 
-
     Vec3 _color;
+    std::vector<Point_3> inline_points;
 
-private: 
+private:
     void update_points_3()
     {
         _points_3.clear();
@@ -93,12 +94,6 @@ private:
     Points_3 _points_3;
 };
 
-
 Polygons_3 generate_rand_polys_3(size_t num);
 Polygons_3 generate_polys_3();
 Polygons_3 get_convex(std::string path);
-
-
-
-
-

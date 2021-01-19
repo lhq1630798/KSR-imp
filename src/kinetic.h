@@ -69,8 +69,10 @@ public:
             *seg_twin_speed *= Vec_div(speed, _speed);
         _speed = speed;
     }
-    bool has_sliding_twin(){
-        if (sliding_twin == nullptr) return false;
+    bool has_sliding_twin()
+    {
+        if (sliding_twin == nullptr)
+            return false;
         assert_sliding_twin();
         return true;
     }
@@ -79,7 +81,7 @@ public:
         if (_status == Mode::Sliding)
             sliding_speed(CGAL::NULL_VECTOR);
         else
-        _speed = CGAL::NULL_VECTOR;
+            _speed = CGAL::NULL_VECTOR;
         _status = Mode::Frozen;
     }
 
@@ -101,7 +103,6 @@ private:
     }
     friend class KPolygon_2;
     friend class KPolygons_SET;
-
 };
 
 /*
@@ -126,10 +127,16 @@ class KPolygon_2
     friend class KPolygons_2;
 
 public:
+    size_t id = (size_t)-1;
+
     KPolygon_2() = default;
 
     KPolygon_2(KPolygon_2 &&kpolygon_2) = default;
 
+    void set_inline_points(std::vector<Point_3> points)
+    {
+        inline_points = std::move(points);
+    }
     // ===================================================================
     // ============ methods that should mark dirty========================
 
@@ -237,8 +244,9 @@ public:
     KP_Circ kp_circulator() { return KP_Circ{&_kpoints_2}; }
 
     Vec3 _color = rand_color();
-    size_t id = (size_t)-1;
     KPolygons_2 *parent = nullptr;
+
+    std::vector<Point_3> inline_points;
 
 private:
     void check() const
@@ -254,7 +262,6 @@ private:
     {
         _polygon_2 = Polygon_2{_kpoints_2.begin(), _kpoints_2.end()};
     }
-
 
     KP_Circ insert_KP(KP_Ref pos, const KPoint_2 &kpoint)
     {
@@ -335,7 +342,9 @@ public:
     // private:
     KPolygons_2(const Polygon_3 &poly_3) : _plane(poly_3.plane())
     {
-        insert_kpoly_2(KPolygon_2{})->init(poly_3.polygon_2());
+        auto kpoly = insert_kpoly_2(KPolygon_2{});
+        kpoly->init(poly_3.polygon_2());
+        kpoly->set_inline_points(poly_3.inline_points);
     }
 
     Plane_3 _plane;
@@ -412,17 +421,15 @@ class KPolygons_SET
     // set of KPolygons_2 in different supporting planes
 public:
     std::list<KPolygons_2> _kpolygons_set;
-    KPolygons_SET(const Polygons_3 &polygons_3);
+    KPolygons_SET(const Polygons_3 &polygons_3, bool exhausted = false);
 
-    size_t size() const { return _kpolygons_set.size(); }
+    size_t size() const { return _kpolygons_set.size() - 6; }
 
     void move_dt(FT dt)
     {
         for (auto &kpolys : _kpolygons_set)
             kpolys.move_dt(dt);
     }
-
-    void add_bounding_box(const Polygons_3 &polygons_3);
 
     Polygon_Mesh Get_mesh()
     {
@@ -453,6 +460,21 @@ public:
                 }
         return Lines_GL{end_points};
     }
+
+    Point_cloud_GL Get_Point_cloud()
+    {
+        std::vector<Vec3> points{};
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
+            for (auto &kpoly2 : kpolys->_kpolygons_2)
+                for (auto &inline_point : kpoly2.inline_points)
+                    points.emplace_back((float)CGAL::to_double(inline_point.x()),
+                                        (float)CGAL::to_double(inline_point.y()),
+                                        (float)CGAL::to_double(inline_point.z()));
+        return Point_cloud_GL{std::move(points)};
+    }
+
+private:
+    void add_bounding_box(const Polygons_3 &polygons_3);
 };
 
 class Event

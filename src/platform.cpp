@@ -19,6 +19,9 @@ float lastFrame = 0.0f;
 ImVec4 clear_color = ImVec4(0.2f, 0.3f, 0.3f, 1.00f);
 float depth = 1;
 bool rotate = false;
+bool show_plane = true;
+bool show_line = true;
+bool show_point_cloud = false;
 bool grow = false;
 float grow_speed = -1;
 
@@ -155,13 +158,18 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, F
 
 	double dt = glfwGetTime() - last_time;
 	last_time = last_time + dt;
-	
+
 	FT kinetic_dt = std::powf(10, grow_speed) * dt;
 	if (grow)
 		kinetic_time = k_queue.move_to_time(kinetic_time + kinetic_dt);
 
-	ImGui::Begin("Hello, world!");		// Create a window called "Hello, world!" and append into it.
-	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
+	ImGui::Begin("Hello, world!");				  // Create a window called "Hello, world!" and append into it.
+	ImGui::Checkbox("rotate", &rotate);			  // Edit bools storing our window open/close state
+	ImGui::Checkbox("plane", &show_plane);			 
+	ImGui::SameLine();
+	ImGui::Checkbox("point_cloud", &show_point_cloud); 
+	ImGui::SameLine();
+	ImGui::Checkbox("line", &show_line);				  
 	ImGui::SliderFloat("depth", &depth, -1, 1);
 
 	ImGui::Checkbox("growing", &grow);
@@ -172,6 +180,7 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set, F
 
 	ImGui::SameLine();
 	ImGui::Text("queue size = %d", k_queue.size());
+	ImGui::Text("detected size = %d", kpolys_set.size());
 
 	ImGui::Text("kinetic time = %.3f", CGAL::to_double(kinetic_time));
 	ImGui::Text("next time = %.3f", CGAL::to_double(k_queue.next_time()));
@@ -197,10 +206,20 @@ void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
-	auto mesh = kpolys_set.Get_mesh();
-	mesh.render(shader);
-	auto segs = kpolys_set.Get_Segments();
-	segs.render(shader);
+	if (show_plane)
+	{
+		auto mesh = kpolys_set.Get_mesh();
+		mesh.render(shader);
+	}
+	if (show_line)
+	{
+
+		auto segs = kpolys_set.Get_Segments();
+		segs.render(shader);
+	}
+	static auto point_cloud = kpolys_set.Get_Point_cloud();
+	if (show_point_cloud)
+		point_cloud.render(shader);
 }
 
 void Platform::clear()

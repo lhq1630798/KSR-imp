@@ -9,12 +9,12 @@ std::vector<Detected_shape> region_growing(std::string path) {
 	Pwn_vector points;
 	std::ifstream stream(path);
 	if (!stream ||
-		!CGAL::read_xyz_points(
+		!CGAL::read_off_points(
 			stream,
 			std::back_inserter(points),
 			CGAL::parameters::point_map(Point_map()).
 			normal_map(Normal_map()))) {
-		std::cerr << "Error: cannot read file cube.pwn!" << std::endl;
+		std::cerr << "Error: cannot read file " << path << std::endl;
 		return {};
 	}
 

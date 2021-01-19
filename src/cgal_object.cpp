@@ -1,13 +1,13 @@
 #include "cgal_object.h"
 
 Vec3 rand_color()
-    {
-        static auto color_rand = CGAL::Random{0};
-        return Vec3{(float)color_rand.get_double(0, 0.8),
-                    (float)color_rand.get_double(0.2, 1),
-                    (float)color_rand.get_double(0.2, 1)};
-    }
-    
+{
+    static auto color_rand = CGAL::Random{0};
+    return Vec3{(float)color_rand.get_double(0, 0.8),
+                (float)color_rand.get_double(0.2, 1),
+                (float)color_rand.get_double(0.2, 1)};
+}
+
 Polygons_3 generate_rand_polys_3(size_t num)
 {
     auto rand = CGAL::Random{0};
@@ -95,36 +95,7 @@ Polygons_3 generate_polys_3()
     return polys_3;
 }
 
-Polygons_3 get_convex(std::string path)
-{
-    std::vector<Detected_shape> detected_shape = region_growing(path);
-    Polygons_3 results;
-    for (auto shape : detected_shape)
-    {
-        Plane p = shape.first;
-        auto plane = Plane_3{
-            FT{p.a()},
-            FT{p.b()},
-            FT{p.c()},
-            FT{p.d()}};
 
-        std::vector<Point_2> points2;
-        for (auto v : shape.second)
-        {
-            auto point = Point_3{FT{v.x()}, FT{v.y()}, FT{v.z()}};
-            Point_3 project_point = plane.projection(point);
-            points2.push_back(plane.to_2d(project_point));
-        }
-
-        //get convex point
-        std::vector<Point_2> convex_points;
-        CGAL::convex_hull_2(points2.begin(), points2.end(), std::back_inserter(convex_points));
-        Polygon_2 polygon2 = Polygon_2(convex_points.begin(), convex_points.end());
-        assert(polygon2.is_simple());
-        results.push_back(Polygon_3{plane, polygon2});
-    }
-    return results;
-}
 
 // void inf_perturb(Polygons_3 &polygons_3){
 //     auto inf = std::numeric_limits<float>::min();
