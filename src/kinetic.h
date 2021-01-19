@@ -125,19 +125,30 @@ private:
 class KPolygon_2
 {
 private:
-    struct Ctor_Tag {};
-    friend class KPolygons_2;
-    friend class KPolygons_SET;
-
     // friend class std::list<KPolygon_2>::allocator_type;
-    // KPolygon_2 should only be constructed on heap... for example in std::list
+    // KPolygon_2 should only be constructed on heap... for example in std::list<KPolygon_2>
 public:
     size_t id = (size_t)-1;
 
-    // constructor can only called by friend
-    KPolygon_2(Ctor_Tag) : KPolygon_2(){};
-    KPolygon_2(Ctor_Tag, Polygon_2 poly_2) : KPolygon_2(std::move(poly_2)){};
-    KPolygon_2(const KPolygon_2&) = delete;
+    KPolygon_2() = default;
+
+    KPolygon_2(Polygon_2 poly_2)
+    {
+        dirty = false;
+        _polygon_2 = std::move(poly_2);
+
+        Vector_2 center_V = CGAL::NULL_VECTOR;
+        for (const auto &point_2 : _polygon_2.container())
+            center_V += point_2 - CGAL::ORIGIN;
+        center_V = center_V / _polygon_2.size();
+        Point_2 center_P = CGAL::ORIGIN + center_V;
+
+        assert(_polygon_2.has_on_bounded_side(center_P));
+        for (const auto &point_2 : _polygon_2.container())
+            insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+    }
+    KPolygon_2(const KPolygon_2 &) = delete;
+    KPolygon_2 &operator=(const KPolygon_2 &) = delete;
 
     void set_inline_points(std::vector<Point_3> points)
     {
@@ -238,30 +249,12 @@ public:
 
     std::vector<Point_3> inline_points;
 
-    FT area(){
+    FT area()
+    {
         return polygon_2().area();
     }
 
 private:
-
-    KPolygon_2() = default;
-
-    KPolygon_2(Polygon_2 &&poly_2) //should only constructed on heap ....
-    {
-        dirty = false;
-        _polygon_2 = std::move(poly_2);
-
-        Vector_2 center_V = CGAL::NULL_VECTOR;
-        for (const auto &point_2 : _polygon_2.container())
-            center_V += point_2 - CGAL::ORIGIN;
-        center_V = center_V / _polygon_2.size();
-        Point_2 center_P = CGAL::ORIGIN + center_V;
-
-        assert(_polygon_2.has_on_bounded_side(center_P));
-        for (const auto &point_2 : _polygon_2.container())
-            insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
-    }
-
     void check() const
     {
         if (dirty)
@@ -371,13 +364,13 @@ public:
 
     KPoly_Ref insert_kpoly_2(const Polygon_2 &poly_2)
     {
-        auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), KPolygon_2::Ctor_Tag{}, poly_2);
+        auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), poly_2);
         init_kpoly(ref);
         return ref;
     }
     KPoly_Ref insert_kpoly_2()
     {
-        auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), KPolygon_2::Ctor_Tag{});
+        auto ref = _kpolygons_2.emplace(_kpolygons_2.end());
         init_kpoly(ref);
         return ref;
     }
@@ -444,7 +437,7 @@ class KPolygons_SET
     // set of KPolygons_2 in different supporting planes
 public:
     std::list<KPolygons_2> _kpolygons_set;
-    KPolygons_SET(const Polygons_3 &polygons_3, bool exhausted = false);
+    KPolygons_SET(Polygons_3 polygons_3, bool exhausted = false);
 
     size_t size() const { return _kpolygons_set.size() - 6; }
 

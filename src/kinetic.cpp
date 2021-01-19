@@ -279,8 +279,11 @@ FT Kinetic_queue::move_to_time(FT t)
         return to_next_event();
 }
 
-KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3, bool exhausted) : _kpolygons_set(polygons_3.begin(), polygons_3.end())
+KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, bool exhausted)
 {
+    for (auto &poly_3 : polygons_3)
+        _kpolygons_set.emplace_back(std::move(poly_3));
+
     add_bounding_box(polygons_3);
     if (exhausted)
         bbox_clip();
@@ -431,13 +434,16 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     assert((new_poly1->size() + new_poly2->size()) == (kpoly_2->size() + 4));
 
     //split inline points
-    for (auto &point_3 : kpoly_2->inline_points){
+    for (auto &point_3 : kpoly_2->inline_points)
+    {
         auto point_2 = plane().to_2d(point_3);
-        if (new_poly1->polygon_2().has_on_bounded_side(point_2)){
+        if (new_poly1->polygon_2().has_on_bounded_side(point_2))
+        {
             assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
             new_poly1->inline_points.push_back(point_3);
         }
-        else {
+        else
+        {
             assert(new_poly2->polygon_2().has_on_bounded_side(point_2));
             new_poly2->inline_points.push_back(point_3);
         }

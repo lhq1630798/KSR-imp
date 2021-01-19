@@ -190,6 +190,12 @@ public:
 
         glBindVertexArray(0);
     }
+    ~Mesh()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+        glDeleteBuffers(1, &ebo);
+    }
     void render() const
     {
         glBindVertexArray(vao);
@@ -222,7 +228,11 @@ public:
         _color = polygon_3._color;
         init();
     }
-
+    ~Polygon_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
     void render() const
     {
         glBindVertexArray(vao);
@@ -296,6 +306,11 @@ class Lines_GL
 {
 public:
     Lines_GL(std::vector<Vec3> end_points) : end_points(std::move(end_points)) { init(); };
+    ~Lines_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
     std::vector<Vec3> end_points;
     void render(Shader &shader) const
     {
@@ -329,6 +344,11 @@ class Point_cloud_GL
 {
 public:
     Point_cloud_GL(std::vector<Vec3> points) : points(std::move(points)) { init(); };
+    ~Point_cloud_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
     std::vector<Vec3> points;
     void render(Shader &shader) const
     {

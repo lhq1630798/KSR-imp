@@ -7,28 +7,17 @@ int main()
     auto timer = Timer{};
     auto shader = Shader{"src/7.4.camera.vs", "src/7.4.camera.fs"};
 
-    // auto verts = std::vector<Vec3>{
-    //     {0.5f, 0.5f, 0.0f},
-    //     {0.5f, -0.5f, 0.0f},
-    //     {-0.5f, -0.5f, 0.0f},
-    //     {-0.5f, 0.5f, 0.0f},
-    //     {0.1f, 0.8f, 0.0f},
-    // };
-    // auto idxs = std::vector<Mesh::Index>{0, 1, 3,
-    //                                      1, 2, 3};
-    // auto mesh = Mesh{verts, idxs};
 
     // auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
     // auto polys_3 = timer("generate_polys_3", generate_polys_3);
-    auto polys_3 = timer("get_convex", detect_shape, "data/test_input.off");
+    auto polys_3 = timer("detect_shape", detect_shape, "data/test_input.off");
 
     bool exhausted = true;
-    auto kpolys_set = KPolygons_SET{polys_3, exhausted};
+    auto kpolys_set = KPolygons_SET{std::move(polys_3), exhausted};
 
     auto k_queue = Kinetic_queue{kpolys_set};
-    FT kinetic_time = 0;
 
-    plt.loop(shader, k_queue, kpolys_set, kinetic_time);
+    plt.loop(shader, k_queue, kpolys_set);
 
     return 0;
 }
