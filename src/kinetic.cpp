@@ -1,5 +1,19 @@
 #include "kinetic.h"
 #include <limits>
+#include <algorithm>
+
+std::pair<KP_Circ, KP_Circ> extend_sliding(KPoly_Ref extended_triangle, KP_Circ sliding_prev, KP_Circ sliding_next)
+{
+    assert(next(sliding_prev) == sliding_next);
+    auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
+    auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
+    sliding_prev->sliding_twin = sliding_next2;
+    sliding_next2->sliding_twin = sliding_prev;
+    sliding_next->sliding_twin = sliding_prev2;
+    sliding_prev2->sliding_twin = sliding_next;
+    return {sliding_prev2, sliding_next2};
+}
+
 
 std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
 {
@@ -20,16 +34,16 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             std::cout << "vert collision" << std::endl;
             auto sliding_kp = prev_kp;
             assert(sliding_kp->_status == Mode::Sliding);
-            auto sliding_twin = sliding_kp->sliding_twin;
-            bool has_twin = (sliding_twin != nullptr);
+            bool has_twin = sliding_kp->has_sliding_twin();
             auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
             auto new_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
             sliding_kp->sliding_speed(new_speed);
             erase_kp(kp);
             if (!has_twin)
                 return {sliding_kp};
+            auto sliding_twin = sliding_kp->sliding_twin;
             auto crossed_kp = sliding_twin->face->insert_KP(sliding_twin, kpoint);
-            sliding_twin->sliding_speed(new_speed);
+            sliding_twin->sliding_speed(new_speed, false);
             return {sliding_kp, sliding_twin, crossed_kp};
         }
         else if (kp->point() == next_kp->point())
@@ -37,22 +51,19 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             std::cout << "vert collision" << std::endl;
             auto sliding_kp = next_kp;
             assert(sliding_kp->_status == Mode::Sliding);
-            auto sliding_twin = sliding_kp->sliding_twin;
-            bool has_twin = (sliding_twin != nullptr);
+            bool has_twin = sliding_kp->has_sliding_twin();
             auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
             auto new_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
             sliding_kp->sliding_speed(new_speed);
             erase_kp(kp);
             if (!has_twin)
                 return {sliding_kp};
+            auto sliding_twin = sliding_kp->sliding_twin;
             auto crossed_kp = sliding_twin->face->insert_KP(next(sliding_twin), kpoint);
-            sliding_twin->sliding_speed(new_speed);
+            sliding_twin->sliding_speed(new_speed, false);
             return {sliding_kp, sliding_twin, crossed_kp};
         }
     }
-
-    // if (!kline->has_on(kp->point()))
-    //     return {};
 
     switch (kp->_status)
     {
@@ -85,22 +96,19 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             auto sliding_prev = poly->insert_KP(kp, KPoint_2{kp->point(), prev_speed, Mode::Sliding});
             auto sliding_next = poly->insert_KP(kp, KPoint_2{kp->point(), next_speed, Mode::Sliding});
 
+            // todo: should we call add_seg_twin() here?
             kline->add_seg_twin(sliding_prev, sliding_next);
 
-            if (kline->has_on(kp->point()))
+            if (kline->has_on(kp->point())) // stop extend
             {
                 erase_kp(kp);
                 return {sliding_prev, sliding_next};
             }
 
-            auto extended_triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
-            auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
-            auto normal_kp = extended_triangle->insert_KP(*kp);
-            auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
-            sliding_prev->sliding_twin = sliding_next2;
-            sliding_next2->sliding_twin = sliding_prev;
-            sliding_next->sliding_twin = sliding_prev2;
-            sliding_prev2->sliding_twin = sliding_next;
+
+            auto triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto normal_kp = triangle->insert_KP(*kp);
+            auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
             erase_kp(kp);
             return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
         }
@@ -117,10 +125,8 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
         else if (prev_kp->point() == kp->point())
         { //type c
             assert(prev_kp->_status == Mode::Sliding);
-            std::cout << "type c" << std::endl;
-            kp->frozen();
-            erase_kp(prev_kp);
-            return {kp};
+            // let prev_kp's event handle it
+            return {};
         }
         else
         { //type b
@@ -140,6 +146,7 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
             }
             auto sliding_prev = poly->insert_KP(kp, KPoint_2{kp->point(), prev_speed, prev_mode});
             auto sliding_next = poly->insert_KP(kp, KPoint_2{kp->point(), next_speed, next_mode});
+            // todo: should we call add_seg_twin() here?
             kline->add_seg_twin(sliding_prev, sliding_next);
 
             if (kline->has_on(kp->point()))
@@ -148,14 +155,9 @@ std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
                 return {sliding_prev, sliding_next};
             }
             // TODO : duplicated extended_triangle
-            auto extended_triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
-            auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
-            auto normal_kp = extended_triangle->insert_KP(*kp);
-            auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
-            sliding_prev->sliding_twin = sliding_next2;
-            sliding_next2->sliding_twin = sliding_prev;
-            sliding_next->sliding_twin = sliding_prev2;
-            sliding_prev2->sliding_twin = sliding_next;
+            auto triangle = poly->parent->insert_kpoly_2(KPolygon_2{});
+            auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
+            auto normal_kp = triangle->insert_KP(*kp); //add_seg_twin?
             erase_kp(kp);
             return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
         }
@@ -256,7 +258,14 @@ FT Kinetic_queue::to_next_event()
     return last_t;
 }
 
-size_t next_id;
+size_t max_id = 0;
+size_t next_id()
+{
+    auto next_id = max_id++;
+    if (next_id == 1187)
+        std::cout << "debug" << std::endl;
+    return next_id;
+}
 
 FT Kinetic_queue::move_to_time(FT t)
 {
@@ -291,11 +300,11 @@ KPolygons_SET::KPolygons_SET(const Polygons_3 &polygons_3) : _kpolygons_set(poly
         // split
         for (auto &kline_2 : kpolys_2.klines())
         {
-            auto max_id = next_id;
+            auto current_max_id = max_id;
             auto kpoly_2 = kpolys_2._kpolygons_2.begin();
             while (kpoly_2 != kpolys_2._kpolygons_2.end())
             {
-                if (kpoly_2->id >= max_id)
+                if (kpoly_2->id >= current_max_id)
                     break;
                 if (kpolys_2.try_split(kpoly_2, kline_2))
                     kpoly_2 = kpolys_2._kpolygons_2.erase(kpoly_2);
@@ -373,26 +382,15 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
         new_poly1->insert_KP(std::move(*kp));
     auto sliding_prev1 = new_poly1->insert_KP(new_kp2);
     kline_2.add_seg_twin(sliding_prev1, sliding_next1);
+
     // poly2
-    auto sliding_next2 = new_poly2->insert_KP(*sliding_prev1); //copy seg_twin_speed
+    extend_sliding(new_poly2, sliding_prev1, sliding_next1);
     for (auto kp = e2.kp2; kp != e1.kp2; kp++)
         new_poly2->insert_KP(std::move(*kp));
-    auto sliding_prev2 = new_poly2->insert_KP(*sliding_next1); //copy seg_twin_speed
-    //=================================================
-    // another add_seg_twin call shoule be unnecessary
-    // because pointer "seg_twin_speed" will be copied.
-    // kline_2.add_seg_twin(sliding_prev2, sliding_next2);
-    //====================================================
-    // pair the sliding kp
-    sliding_prev1->sliding_twin = sliding_next2;
-    sliding_next2->sliding_twin = sliding_prev1;
-    sliding_next1->sliding_twin = sliding_prev2;
-    sliding_prev2->sliding_twin = sliding_next1;
 
     assert((new_poly1->size() + new_poly2->size()) == (kpoly_2->size() + 4));
     return true;
 }
-
 
 Point_2 KLine_2::transform2twin(const Point_2 &point) const
 {

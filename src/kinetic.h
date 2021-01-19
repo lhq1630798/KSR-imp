@@ -6,7 +6,7 @@
 
 static const auto INF = FT{99999};
 
-extern size_t next_id;
+size_t next_id();
 
 // void inf_perturb(Polygons_3 &polygons_3);
 FT Vec_div(Vector_2 v1, Vector_2 v2);
@@ -35,6 +35,9 @@ enum class Mode
 
 class KPoint_2 : public Point_2
 {
+private:
+    size_t _id = (size_t)-1;
+
 public:
     KPoint_2(const Point_2 &point_2, const Vector_2 &speed, Mode status)
         : Point_2(point_2), _speed(speed), _status(status)
@@ -58,20 +61,25 @@ public:
         return *this;
     }
 
-    void sliding_speed(const Vector_2 &speed)
+    void sliding_speed(const Vector_2 &speed, bool update_seg_twin = true)
     {
         assert(seg_twin_speed);
         assert(_status == Mode::Sliding);
-        *seg_twin_speed *= Vec_div(speed, _speed);
+        if (update_seg_twin)
+            *seg_twin_speed *= Vec_div(speed, _speed);
         _speed = speed;
     }
-
+    bool has_sliding_twin(){
+        if (sliding_twin == nullptr) return false;
+        assert_sliding_twin();
+        return true;
+    }
     void frozen()
     {
         if (_status == Mode::Sliding)
             sliding_speed(CGAL::NULL_VECTOR);
         else
-            _speed = CGAL::NULL_VECTOR;
+        _speed = CGAL::NULL_VECTOR;
         _status = Mode::Frozen;
     }
 
@@ -86,9 +94,14 @@ public:
     Mode _status = Mode::Frozen;
 
 private:
-    size_t _id = (size_t)-1;
+    void assert_sliding_twin()
+    {
+        assert(sliding_twin != nullptr);
+        assert(&*sliding_twin->sliding_twin == this);
+    }
     friend class KPolygon_2;
     friend class KPolygons_SET;
+
 };
 
 /*
@@ -175,6 +188,8 @@ public:
     {
         dirty = true;
         kp->frozen();
+        // if (kp->sliding_twin != nullptr)
+        //     kp->sliding_twin->sliding_twin = KP_Circ{};
         _kpoints_2.erase(kp.current_iterator());
     }
 
@@ -246,7 +261,7 @@ private:
         dirty = true;
         auto ref = KP_Circ{&_kpoints_2, _kpoints_2.insert(pos, kpoint)};
         ref->face = this;
-        ref->_id = next_id++;
+        ref->_id = next_id();
         return ref;
     }
 
@@ -338,7 +353,7 @@ public:
     {
         auto ref = _kpolygons_2.insert(_kpolygons_2.end(), std::move(kpoly_2));
         ref->parent = this;
-        ref->id = next_id++;
+        ref->id = next_id();
         return ref;
     }
 
@@ -419,6 +434,25 @@ public:
         }
         return Polygon_Mesh{std::vector<Polygon_GL>(polys_3.begin(), polys_3.end())};
     }
+
+    Lines_GL Get_Segments()
+    {
+        std::vector<Vec3> end_points{};
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
+            for (auto &kline : kpolys->_klines)
+                for (auto &kseg : kline._ksegments)
+                {
+                    auto point1 = kpolys->plane().to_3d(kseg.point1);
+                    auto point2 = kpolys->plane().to_3d(kseg.point2);
+                    end_points.emplace_back((float)CGAL::to_double(point1.x()),
+                                            (float)CGAL::to_double(point1.y()),
+                                            (float)CGAL::to_double(point1.z()));
+                    end_points.emplace_back((float)CGAL::to_double(point2.x()),
+                                            (float)CGAL::to_double(point2.y()),
+                                            (float)CGAL::to_double(point2.z()));
+                }
+        return Lines_GL{end_points};
+    }
 };
 
 class Event
@@ -433,7 +467,7 @@ public:
         assert(t > 0);
         assert(kp->face);
         assert(kp->face->parent);
-        assert(kp->id() < next_id);
+        // assert(kp->id() < next_id);
     }
 };
 

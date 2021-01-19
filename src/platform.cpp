@@ -199,6 +199,8 @@ void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
 
 	auto mesh = kpolys_set.Get_mesh();
 	mesh.render(shader);
+	auto segs = kpolys_set.Get_Segments();
+	segs.render(shader);
 }
 
 void Platform::clear()
