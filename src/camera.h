@@ -122,7 +122,7 @@ public:
     void ProcessMouseScroll(float yoffset)
     {
 		yoffset = yoffset / 2;
-		Position += (Front * yoffset);
+		Position -= (Front * yoffset);
 		//updateCameraVectors();
     }
 

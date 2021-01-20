@@ -26,7 +26,7 @@ public:
 	Platform();
 	~Platform();
 
-	void loop(Shader& shader,Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time);
+	void loop(Shader& shader,Kinetic_queue& k_queue, KPolygons_SET& kpolys_set);
 	
 private:
 	
@@ -36,9 +36,9 @@ private:
 
 	void begin_frame();
 	void complete_frame();
-	void render_imgui(Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time);
-	void render_3d(Shader& shader, std::vector<K_Polygon_3>& k_polys);
+	void render_imgui(Kinetic_queue& k_queue, KPolygons_SET& kpolys_set);
+	void render_3d(Shader& shader, KPolygons_SET& kpolys_set);
 	void clear();
-	void render(Shader& shader, Kinetic_queue& k_queue, std::vector<K_Polygon_3>& k_polys, FT& kinetic_time);
+	void render(Shader& shader, Kinetic_queue& k_queue, KPolygons_SET& kpolys_set);
 	GLFWwindow *window = nullptr;
 };

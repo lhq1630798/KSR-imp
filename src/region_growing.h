@@ -10,7 +10,8 @@
 // CGAL includes.
 #include <CGAL/array.h>
 #include <CGAL/property_map.h>
-#include <CGAL/IO/read_xyz_points.h>
+// #include <CGAL/IO/read_xyz_points.h>
+#include <CGAL/IO/read_off_points.h>
 #include <CGAL/IO/write_ply_points.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing.h>

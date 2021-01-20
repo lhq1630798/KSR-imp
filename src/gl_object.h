@@ -190,6 +190,12 @@ public:
 
         glBindVertexArray(0);
     }
+    ~Mesh()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+        glDeleteBuffers(1, &ebo);
+    }
     void render() const
     {
         glBindVertexArray(vao);
@@ -207,7 +213,7 @@ private:
 class Polygon_GL
 {
 public:
-    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0,0,0}) : _verts(std::move(verts)),_color(color) { init(); }
+    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0, 0, 0}) : _verts(std::move(verts)), _color(color) { init(); }
 
     explicit Polygon_GL(const Polygon_3 &polygon_3)
     {
@@ -222,7 +228,11 @@ public:
         _color = polygon_3._color;
         init();
     }
-
+    ~Polygon_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
     void render() const
     {
         glBindVertexArray(vao);
@@ -254,7 +264,6 @@ private:
         glEnableVertexAttribArray(0);
 
         glBindVertexArray(0);
-
     }
     GLuint vao = 0, vbo = 0;
 };
@@ -270,16 +279,101 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+
+        for (const auto &poly : _polygons)
+        {
+            shader.setVec3("ourColor", poly._color);
+            poly.render();
+        }
+    }
+    void render_boundary(Shader &shader) const
+    {
+        shader.use();
         glLineWidth(5.0f);
         glPolygonOffset(1.0f, 1.0f);
         glEnable(GL_POLYGON_OFFSET_LINE);
         for (const auto &poly : _polygons)
         {
-            shader.setVec3("ourColor", poly._color);
-            poly.render();
+
             shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
             poly.render_boundary();
         }
     }
     auto &polygons_GL() const { return _polygons; }
+};
+
+class Lines_GL
+{
+public:
+    Lines_GL(std::vector<Vec3> end_points) : end_points(std::move(end_points)) { init(); };
+    ~Lines_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
+    std::vector<Vec3> end_points;
+    void render(Shader &shader) const
+    {
+        shader.use();
+        shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
+
+        glBindVertexArray(vao);
+        glDrawArrays(GL_LINES, 0, (GLuint)end_points.size());
+        glBindVertexArray(0);
+    }
+
+private:
+    void init()
+    {
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * end_points.size(), end_points.data(), GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBindVertexArray(0);
+    }
+    GLuint vao = 0, vbo = 0;
+};
+
+class Point_cloud_GL
+{
+public:
+    Point_cloud_GL(std::vector<Vec3> points) : points(std::move(points)) { init(); };
+    ~Point_cloud_GL()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
+    std::vector<Vec3> points;
+    void render(Shader &shader) const
+    {
+        shader.use();
+        shader.setVec3("ourColor", Vec3{1, 1, 1});
+
+        glBindVertexArray(vao);
+        glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
+        glBindVertexArray(0);
+    }
+
+private:
+    void init()
+    {
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * points.size(), points.data(), GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBindVertexArray(0);
+    }
+    GLuint vao = 0, vbo = 0;
 };

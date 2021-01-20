@@ -21,6 +21,7 @@ set(KSR_SOURCES
         "src/ransac.cpp"
         "src/region_growing.h"
         "src/region_growing.cpp"
+        "src/get_convex.cpp"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})
