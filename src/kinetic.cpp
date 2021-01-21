@@ -2,162 +2,310 @@
 #include <limits>
 #include <algorithm>
 
-std::pair<KP_Circ, KP_Circ> extend_sliding(KPoly_Ref extended_triangle, KP_Circ sliding_prev, KP_Circ sliding_next)
-{
-    assert(next(sliding_prev) == sliding_next);
-    auto sliding_prev2 = extended_triangle->insert_KP(*sliding_next);
-    auto sliding_next2 = extended_triangle->insert_KP(*sliding_prev);
-    sliding_prev->sliding_twin = sliding_next2;
-    sliding_next2->sliding_twin = sliding_prev;
-    sliding_next->sliding_twin = sliding_prev2;
-    sliding_prev2->sliding_twin = sliding_next;
-    return {sliding_prev2, sliding_next2};
+void Vertex::transfer_to(Vert_Circ to)
+{                               // update kp's reference
+    if (kp->vertex->_id == _id) // list::iterator of different list instances cannot be compared
+        kp->vertex = to;
+    else if (kp->twin_vert->_id == _id)
+        kp->twin_vert = to;
+    else
+        assert(false);
 }
 
-std::vector<KP_Circ> Kinetic_queue::update_certificate(const Event &event)
+//void Vertex::set_twin(Vert_Circ twin)
+//{
+//    assert(kp->vertex->_id == _id);
+//    kp->twin_vert = twin;
+//}
+
+bool Vertex::has_twin()
+{
+
+    if (kp->vertex == nullptr || kp->twin_vert == nullptr)
+        return false;
+    return true;
+}
+Vert_Circ &Vertex::twin()
+{
+    if (kp->vertex->_id == _id)
+        return kp->twin_vert;
+    else if (kp->twin_vert->_id == _id)
+        return kp->vertex;
+    else
+        assert(false);
+}
+
+void KPoint_2::assert_twin_vert()
+{
+    assert(twin_vert->kp->id() == id());
+    assert(twin_vert->face->id != vertex->face->id);
+}
+
+KPolygon_2::KPolygon_2(KPolygons_2 *_parent, Polygon_2 poly_2)
+    : parent(_parent), _polygon_2(std::move(poly_2))
+{
+    dirty = false;
+
+    Vector_2 center_V = CGAL::NULL_VECTOR;
+    for (const auto &point_2 : _polygon_2.container())
+        center_V += point_2 - CGAL::ORIGIN;
+    center_V = center_V / _polygon_2.size();
+    Point_2 center_P = CGAL::ORIGIN + center_V;
+    assert(_polygon_2.has_on_bounded_side(center_P));
+
+    for (const auto &point_2 : _polygon_2.container())
+        insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+}
+
+Vert_Circ KPolygon_2::insert_KP(std::list<Vertex>::iterator pos, KPoint_2 &&kpoint)
+{
+    dirty = true;
+    auto kp = parent->new_KP(std::move(kpoint));
+
+    auto vert = Vert_Circ{&vertices, vertices.insert(pos, Vertex{kp})};
+    vert->face = this;
+    vert->_id = next_id();
+
+    kp->vertex = vert;
+    return vert;
+}
+
+std::optional<Event> tmp_store;
+
+std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const Event& event) {
+    const auto& line_2 = kline->_line_2;
+    auto face = vert->face;
+    auto kp = vert->kp;
+    auto prev_vert = std::prev(vert);
+    auto next_vert = std::next(vert);
+
+    if (!vert->has_twin()) {
+            std::cout << "type c" << std::endl;
+        vert->kp->frozen();
+        return { vert->kp };
+    }
+    return type_b(vert->twin(), kline);
+
+
+    //if (next_vert->kp->point() == kp->point())
+    //{ //type c
+    //    assert(next_vert->kp->_status == Mode::Sliding);
+    //    std::cout << "type c" << std::endl;
+
+    //    if (!vert->has_twin()) {
+    //        erase_vert(vert);
+    //        if (next_vert->has_twin()) {
+    //            // one type c + one type b
+    //            if (tmp_store) {
+    //                auto next_event = tmp_store.value();
+    //                tmp_store.reset();
+    //                assert(next_event.kp->id() == next_vert->kp->id());
+    //                return type_b(next_vert->twin(), next_event.kline);
+    //            }
+    //            else {
+    //                auto next_event = top();
+    //                assert(next_event.kp->id() == next_vert->kp->id());
+    //                return type_b(next_vert->twin(), next_event.kline);
+    //            }
+    //        }
+    //        else { // only type c
+    //            next_vert->kp->frozen();
+    //            return { next_vert->kp };
+    //        }
+    //    }
+    //    else if (!next_vert->has_twin()) { // one type c + one type b
+    //        erase_vert(next_vert);
+    //        return type_b(vert->twin(), kline);
+    //    }
+    //    else {// one type c + two type b
+    //        assert(false);
+    //    }
+    //    kp->frozen();
+    //    next_vert->kp->frozen();
+    //    //erase_vert(next_vert);
+    //    return { kp, next_vert->kp };
+    //}
+    //else if (prev_vert->kp->point() == kp->point())
+    //{ //type c
+    //    assert(prev_vert->kp->_status == Mode::Sliding);
+    //    // let prev_kp's event handle it
+    //    tmp_store = event;
+    //    return {};
+    //}
+}
+
+std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline) {
+    const auto& line_2 = kline->_line_2;
+    auto face = vert->face;
+    auto kp = vert->kp;
+    {
+        auto prev_speed = KPolygon_2::Edge{ std::prev(vert), vert }.sliding_speed(line_2);
+        auto next_speed = KPolygon_2::Edge{ vert, std::next(vert) }.sliding_speed(line_2);
+        //auto prev_mode = Mode::Sliding, next_mode = Mode::Sliding;
+        auto extend_kpoint = KPoint_2{ kp->point(), kp->_speed, Mode::Sliding };
+        auto new_vert1 = vert, new_vert2 = vert;
+        if (next_speed == CGAL::NULL_VECTOR)
+        {
+            std::cout << "type b Sliding_Prev" << std::endl;
+            //next_mode = Mode::Frozen;
+            new_vert1 = face->insert_KP(vert, KPoint_2{ kp->point(), prev_speed, Mode::Sliding });
+            new_vert2->kp->frozen();
+        }
+        else
+        {
+            assert(prev_speed == CGAL::NULL_VECTOR);
+            std::cout << "type b Sliding_Next" << std::endl;
+            //prev_mode = Mode::Frozen;
+            new_vert1->kp->frozen();
+            new_vert2 = face->insert_KP(std::next(new_vert1), KPoint_2{ kp->point(), next_speed, Mode::Sliding });
+        }
+        //auto new_vert1 = face->insert_KP(vert, KPoint_2{ kp->point(), prev_speed, prev_mode });
+        //auto new_vert2 = face->insert_KP(vert, KPoint_2{ kp->point(), next_speed, next_mode });
+
+        if (kline->has_on(kp->point()))
+        { // stop extend
+            //erase_vert(vert);
+            return { new_vert1->kp, new_vert2->kp };
+        }
+        else
+        { //extend
+            //to do
+            // duplicated face
+            kline->add_seg_twin(new_vert1, new_vert2);
+            auto triangle = face->parent->insert_kpoly_2();
+            //triangle->steal_vert(vert);
+            //face->erase(vert);
+            auto extend_vert = triangle->insert_KP(extend_kpoint);
+            triangle->steal_as_twin(new_vert2);
+            triangle->steal_as_twin(new_vert1);
+            return { new_vert1->kp, new_vert2->kp, extend_vert->kp };
+        }
+
+    }
+}
+
+
+
+std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
 {
 
     auto kline = event.kline;
     const auto &line_2 = kline->_line_2;
     auto kp = event.kp;
-    auto poly = kp->face;
-    auto prev_kp = prev(kp);
-    auto next_kp = next(kp);
+    auto vert = kp->vertex;
+    auto prev_vert = std::prev(vert);
+    auto next_vert = std::next(vert);
+    auto face = vert->face;
 
     assert(line_2.has_on(kp->point()));
 
     if (kp->_status == Mode::Normal)
     {
-        if (prev_kp->point() == kp->point())
+        if (prev_vert->kp->point() == kp->point())
         {
             std::cout << "vert collision" << std::endl;
-            auto sliding_kp = prev_kp;
-            assert(sliding_kp->_status == Mode::Sliding);
-            bool has_twin = sliding_kp->has_sliding_twin();
-            auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
-            auto new_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
-            sliding_kp->sliding_speed(new_speed);
-            erase_kp(kp);
+            assert(!kp->has_twin_vert());
+            auto sliding_vert = prev_vert;
+            assert(sliding_vert->kp->_status == Mode::Sliding);
+            bool has_twin = sliding_vert->has_twin();
+            auto new_speed = KPolygon_2::Edge{vert, std::next(vert)}.sliding_speed(line_2);
+            sliding_vert->kp->sliding_speed(new_speed);
+
             if (!has_twin)
-                return {sliding_kp};
-            auto sliding_twin = sliding_kp->sliding_twin;
-            auto crossed_kp = sliding_twin->face->insert_KP(sliding_twin, kpoint);
-            sliding_twin->sliding_speed(new_speed, false);
-            return {sliding_kp, sliding_twin, crossed_kp};
+            {
+                erase_vert(vert);
+                return {sliding_vert->kp};
+            }
+            auto twin_vert = sliding_vert->twin();
+
+            twin_vert->face->steal_vert(twin_vert, vert);
+            face->erase(vert);
+            return {sliding_vert->kp};
         }
-        else if (kp->point() == next_kp->point())
+        else if (kp->point() == next_vert->kp->point())
         {
             std::cout << "vert collision" << std::endl;
-            auto sliding_kp = next_kp;
-            assert(sliding_kp->_status == Mode::Sliding);
-            bool has_twin = sliding_kp->has_sliding_twin();
-            auto kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Normal};
-            auto new_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-            sliding_kp->sliding_speed(new_speed);
-            erase_kp(kp);
+            assert(!kp->has_twin_vert());
+            auto sliding_vert = next_vert;
+            assert(sliding_vert->kp->_status == Mode::Sliding);
+            bool has_twin = sliding_vert->has_twin();
+            auto new_speed = KPolygon_2::Edge{std::prev(vert), vert}.sliding_speed(line_2);
+            sliding_vert->kp->sliding_speed(new_speed);
+
             if (!has_twin)
-                return {sliding_kp};
-            auto sliding_twin = sliding_kp->sliding_twin;
-            auto crossed_kp = sliding_twin->face->insert_KP(next(sliding_twin), kpoint);
-            sliding_twin->sliding_speed(new_speed, false);
-            return {sliding_kp, sliding_twin, crossed_kp};
+            {
+                erase_vert(vert);
+                return {sliding_vert->kp};
+            }
+            auto twin_vert = sliding_vert->twin();
+
+            twin_vert->face->steal_vert(std::next(twin_vert), vert);
+            face->erase(vert);
+            return {sliding_vert->kp};
         }
     }
 
     switch (kp->_status)
     {
     case Mode::Normal: //type a
-        if (line_2.has_on(prev_kp->point()) && line_2.has_on(kp->point()))
+        if (line_2.has_on(prev_vert->kp->point()) && line_2.has_on(kp->point()))
         {
             assert(false);
             std::cout << "type a edge" << std::endl;
-            auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
-            kp->sliding_speed(next_speed);
-            return {kp};
+            return {};
         }
-        else if (line_2.has_on(next_kp->point()) && line_2.has_on(kp->point()))
+        else if (line_2.has_on(next_vert->kp->point()) && line_2.has_on(kp->point()))
         {
             assert(false);
             std::cout << "type a edge" << std::endl;
-            auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-            kp->sliding_speed(prev_speed);
-            return {kp};
+            return {};
         }
         else
         {
             std::cout << "type a" << std::endl;
-            assert(prev_kp->_status != Mode::Frozen);
-            assert(next_kp->_status != Mode::Frozen);
-            auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-            auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
+            assert(prev_vert->kp->_status != Mode::Frozen);
+            assert(next_vert->kp->_status != Mode::Frozen);
+            auto prev_speed = KPolygon_2::Edge{std::prev(vert), vert}.sliding_speed(line_2);
+            auto next_speed = KPolygon_2::Edge{vert, std::next(vert)}.sliding_speed(line_2);
             assert(-prev_speed.direction() == next_speed.direction());
 
-            auto sliding_prev = poly->insert_KP(kp, KPoint_2{kp->point(), prev_speed, Mode::Sliding});
-            auto sliding_next = poly->insert_KP(kp, KPoint_2{kp->point(), next_speed, Mode::Sliding});
+            auto new_vert1 = face->insert_KP(vert, KPoint_2{kp->point(), prev_speed, Mode::Sliding});
+            auto new_vert2 = face->insert_KP(vert, KPoint_2{kp->point(), next_speed, Mode::Sliding});
 
-            // todo: should we call add_seg_twin() here?
-            kline->add_seg_twin(sliding_prev, sliding_next);
-
-            if (kline->has_on(kp->point())) // stop extend
-            {
-                erase_kp(kp);
-                return {sliding_prev, sliding_next};
+            if (kline->has_on(kp->point()))
+            { // stop extend
+                erase_vert(vert);
+            }
+            else
+            { //extend
+                kline->add_seg_twin(new_vert1, new_vert2);
+                auto triangle = face->parent->insert_kpoly_2();
+                triangle->steal_vert(vert);
+                face->erase(vert);
+                triangle->steal_as_twin(new_vert2);
+                triangle->steal_as_twin(new_vert1);
             }
 
-            auto triangle = poly->parent->insert_kpoly_2();
-            auto normal_kp = triangle->insert_KP(*kp);
-            auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
-            erase_kp(kp);
-            return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
+            return {new_vert1->kp, new_vert2->kp};
         }
         break;
     case Mode::Sliding:
-        if (next_kp->point() == kp->point())
+        if (prev_vert->kp->point() == kp->point() ||
+            next_vert->kp->point() == kp->point() )
         { //type c
-            assert(next_kp->_status == Mode::Sliding);
-            std::cout << "type c" << std::endl;
-            kp->frozen();
-            erase_kp(next_kp);
-            return {kp};
-        }
-        else if (prev_kp->point() == kp->point())
-        { //type c
-            assert(prev_kp->_status == Mode::Sliding);
-            // let prev_kp's event handle it
-            return {};
+            return type_c(vert, kline, event);
         }
         else
-        { //type b
-            auto next_speed = KPolygon_2::Edge{kp, next_kp}.sliding_speed(line_2);
-            auto prev_speed = KPolygon_2::Edge{prev_kp, kp}.sliding_speed(line_2);
-            auto prev_mode = Mode::Sliding, next_mode = Mode::Sliding;
-            if (next_speed == CGAL::NULL_VECTOR)
-            {
-                std::cout << "type b Sliding_Prev" << std::endl;
-                next_mode = Mode::Frozen;
-            }
-            else
-            {
-                assert(prev_speed == CGAL::NULL_VECTOR);
-                std::cout << "type b Sliding_Next" << std::endl;
-                prev_mode = Mode::Frozen;
-            }
-            auto sliding_prev = poly->insert_KP(kp, KPoint_2{kp->point(), prev_speed, prev_mode});
-            auto sliding_next = poly->insert_KP(kp, KPoint_2{kp->point(), next_speed, next_mode});
-            // todo: should we call add_seg_twin() here?
-            kline->add_seg_twin(sliding_prev, sliding_next);
-
-            if (kline->has_on(kp->point()))
-            {
-                erase_kp(kp);
-                return {sliding_prev, sliding_next};
-            }
-            // TODO : duplicated extended_triangle
-            auto triangle = poly->parent->insert_kpoly_2();
-            auto [sliding_prev2, sliding_next2] = extend_sliding(triangle, sliding_prev, sliding_next);
-            auto normal_kp = triangle->insert_KP(*kp); //add_seg_twin?
-            erase_kp(kp);
-            return {sliding_prev, sliding_next, sliding_next2, normal_kp, sliding_prev2};
+        {
+            //if (!vert->has_twin())
+            //{  //type b
+                return type_b(vert, kline);
+            //}
+            //else
+            //{
+            //    //let type c handle it
+            //    return type_c(vert->twin(), kline, event);
+            //}
         }
         break;
     default:
@@ -170,22 +318,18 @@ Kinetic_queue::Kinetic_queue(KPolygons_SET &kpolygons_set) : kpolygons_set(kpoly
 {
     std::cout << "num of polygons set " << kpolygons_set.size() << std::endl;
     for (auto &kpolys_2 : kpolygons_set._kpolygons_set)
-        for (auto &kpoly_2 : kpolys_2._kpolygons_2)
-        {
-            auto kp = kpoly_2.kp_circulator(), end = kp;
-            CGAL_For_all(kp, end)
-                kp_collide(kp);
-        }
+        for (auto kp = kpolys_2.all_KP.begin(); kp != kpolys_2.all_KP.end(); kp++)
+            kp_collide(kp);
 
     std::cout << "queue size " << queue.size() << std::endl;
 }
 
-void Kinetic_queue::kp_collide(KP_Circ kp)
+void Kinetic_queue::kp_collide(KP_Ref kp)
 {
     if (kp->_status == Mode::Frozen)
         return;
     assert(kp->_speed != CGAL::NULL_VECTOR);
-    auto kpolys_2 = kp->face->parent;
+    auto kpolys_2 = kp->vertex->face->parent;
     auto r = Ray_2{*kp, kp->_speed};
     for (auto kline_2 = kpolys_2->_klines.begin(); kline_2 != kpolys_2->_klines.end(); kline_2++)
         if (auto res = CGAL::intersection(r, kline_2->_line_2))
@@ -222,11 +366,14 @@ FT Vec_div(Vector_2 v1, Vector_2 v2)
     }
 }
 
-void Kinetic_queue::erase_kp(KP_Circ kp)
+void Kinetic_queue::erase_vert(Vert_Circ vert)
 {
+    auto kp = vert->kp;
+    auto face = vert->face;
     remove_events(kp);
     // erase AFTER we update queue
-    kp->face->erase(kp);
+    face->erase(vert);
+    face->parent->erase_kp(kp);
 }
 FT Kinetic_queue::next_time()
 {
@@ -260,7 +407,7 @@ size_t max_id = 0;
 size_t next_id()
 {
     auto next_id = max_id++;
-    if (next_id == 1187)
+    if (next_id == 2)
         std::cout << "debug" << std::endl;
     return next_id;
 }
@@ -292,8 +439,7 @@ KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, bool exhausted)
 
     if (exhausted)
         for (auto &polys : _kpolygons_set)
-            for (auto &poly : polys._kpolygons_2)
-                poly.frozen();
+            polys.frozen();
 }
 
 void KPolygons_SET::bbox_clip()
@@ -416,22 +562,24 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
 
     const auto &[new_kp1, e1] = p_e[0];
     const auto &[new_kp2, e2] = p_e[1];
-
+    
+    auto origin_size = kpoly_2->size();
     KPoly_Ref new_poly1 = insert_kpoly_2(), new_poly2 = insert_kpoly_2();
 
-    // poly1
-    auto sliding_next1 = new_poly1->insert_KP(new_kp1);
-    for (auto kp = e1.kp2; kp != e2.kp2; kp++)
-        new_poly1->insert_KP(std::move(*kp));
-    auto sliding_prev1 = new_poly1->insert_KP(new_kp2);
-    kline_2.add_seg_twin(sliding_prev1, sliding_next1);
+    auto poly1_vert1 = new_poly1->insert_KP(new_kp1);
+    for (auto vert = e1.vert2; vert != e2.vert2; vert++)
+        new_poly1->steal_vert(vert);
+    auto poly1_vert2 = new_poly1->insert_KP(new_kp2);
 
-    // poly2
-    extend_sliding(new_poly2, sliding_prev1, sliding_next1);
-    for (auto kp = e2.kp2; kp != e1.kp2; kp++)
-        new_poly2->insert_KP(std::move(*kp));
+    new_poly2->steal_as_twin(poly1_vert2);
+    for (auto vert = e2.vert2; vert != e1.vert2; vert++)
+        new_poly2->steal_vert(vert);
+    new_poly2->steal_as_twin(poly1_vert1);
 
-    assert((new_poly1->size() + new_poly2->size()) == (kpoly_2->size() + 4));
+    kline_2.add_seg_twin(poly1_vert1, poly1_vert2);
+
+    //assert(kpoly_2->size() == 0);
+    assert((new_poly1->size() + new_poly2->size()) == (origin_size + 4));
 
     //split inline points
     for (auto &point_3 : kpoly_2->inline_points)
@@ -494,33 +642,33 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     {
         auto plane = Plane_3{1, 0, 0, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
     {
         auto plane = Plane_3{0, 1, 0, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
     {
         auto plane = Plane_3{0, 0, 1, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
 
     {
         auto plane = Plane_3{1, 0, 0, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
     {
         auto plane = Plane_3{0, 1, 0, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
 
     {
         auto plane = Plane_3{0, 0, 1, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back()._kpolygons_2.back().frozen();
+        _kpolygons_set.back().frozen();
     }
 }

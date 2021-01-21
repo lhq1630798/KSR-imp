@@ -6,7 +6,6 @@
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
 #include <vector>
-#include <GLFW/glfw3.h>
 #include "math/vec3.h"
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
