@@ -354,6 +354,46 @@ public:
     {
         shader.use();
         shader.setVec3("ourColor", Vec3{1, 1, 1});
+        glPointSize(1);
+
+        glBindVertexArray(vao);
+        glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
+        glBindVertexArray(0);
+    }
+
+private:
+    void init()
+    {
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+        glBindVertexArray(vao);
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * points.size(), points.data(), GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBindVertexArray(0);
+    }
+    GLuint vao = 0, vbo = 0;
+};
+
+
+class Update_Point{
+public:
+    Update_Point(std::vector<Vec3> points) : points(std::move(points)) { init(); };
+    ~Update_Point()
+    {
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+    }
+    std::vector<Vec3> points;
+    void render(Shader &shader) const
+    {
+        shader.use();
+        shader.setVec3("ourColor", Vec3{1, 0.2, 0.8});
+        glPointSize(20);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, (GLuint)points.size());

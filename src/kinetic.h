@@ -156,17 +156,14 @@ public:
         return steal_vert(vertices.end(), std::move(from_vert));
     }
 
+    Vert_Circ steal_as_twin(Vert_Circ pos, Vert_Circ from_vert)
+    {
+        return steal_as_twin(pos.current_iterator(), from_vert);
+    }
+
     Vert_Circ steal_as_twin(Vert_Circ from_vert)
     {
-        dirty = true;
-
-        auto vert = Vert_Circ{&vertices, vertices.insert(vertices.end(), Vertex{from_vert->kp})};
-        vert->face = this;
-        vert->_id = next_id();
-
-        //from_vert->set_twin(vert);
-        from_vert->twin() = vert;
-        return vert;
+        return steal_as_twin(vertices.end(), from_vert);
     }
     void erase(Vert_Circ vert)
     {
@@ -253,7 +250,18 @@ private:
 
         return vert;
     }
+    Vert_Circ steal_as_twin(std::list<Vertex>::iterator pos, Vert_Circ from_vert)
+    {
+        dirty = true;
 
+        auto vert = Vert_Circ{&vertices, vertices.insert(pos, Vertex{from_vert->kp})};
+        vert->face = this;
+        vert->_id = next_id();
+
+        //from_vert->set_twin(vert);
+        from_vert->twin() = vert;
+        return vert;
+    }
     mutable bool dirty = true;
     mutable Polygon_2 _polygon_2;
     std::list<Vertex> vertices;
@@ -506,8 +514,9 @@ public:
     FT t;
     KP_Ref kp;
     KLine_Ref kline;
+    KPolygons_2 *plane;
     Event(FT t, KP_Ref kp, KLine_Ref kline)
-        : t(t), kp(kp), kline(kline)
+        : t(t), kp(kp), kline(kline), plane(kp->vertex->face->parent)
     {
         assert(t > 0);
         assert(kp->vertex != nullptr);
@@ -524,7 +533,7 @@ inline bool operator<(const Event &r1, const Event &r2)
     {
         return r1.t < r2.t;
     }
-    //assert(r1.kp->vertex->face->parent == r2.kp->vertex->face->parent);
+    assert(r1.plane == r2.plane);
     return &*r1.kp < &*r2.kp;
 }
 
@@ -536,6 +545,18 @@ public:
     FT next_time();
     FT move_to_time(FT t);
     size_t size() { return queue.size(); }
+    Update_Point get_update_point()
+    {
+        std::vector<Vec3> points;
+        for (auto kp : need_update){
+            auto point = kp->vertex->face->parent->plane().to_3d(*kp);
+            points.emplace_back((float)CGAL::to_double(point.x()),
+                                (float)CGAL::to_double(point.y()),
+                                (float)CGAL::to_double(point.z()));
+        }
+
+        return Update_Point{std::move(points)};
+    }
 
 private:
     void insert(const Event &event) { queue.insert(event); }
@@ -559,12 +580,13 @@ private:
 
     std::vector<KP_Ref> update_certificate(const Event &);
     std::vector<KP_Ref> type_b(Vert_Circ vert, KLine_Ref kline);
-    std::vector<KP_Ref> type_c(Vert_Circ vert, KLine_Ref kline, const Event& event);
+    std::vector<KP_Ref> type_c(Vert_Circ vert, KLine_Ref kline, const Event &event);
+    Event last_event();
 
     KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
-
+    std::vector<KP_Ref> need_update;
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
 };
