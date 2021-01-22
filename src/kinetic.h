@@ -34,20 +34,6 @@ enum class Mode
     Normal
 };
 
-class Vertex
-{
-public:
-    Vertex(KP_Ref _kp) : kp(_kp){};
-    void transfer_to(Vert_Circ to);
-    void set_twin(Vert_Circ twin);
-    Vert_Circ &twin();
-    bool has_twin();
-    bool stop_extend(KLine_Ref);
-    size_t _id;
-    KP_Ref kp;
-    KPolygon_2 *face;
-};
-
 class KPoint_2 : public Point_2
 {
 private:
@@ -83,13 +69,7 @@ public:
             *seg_twin_speed *= Vec_div(speed, _speed);
         _speed = speed;
     }
-    bool has_twin_vert()
-    {
-        if (twin_vert == nullptr)
-            return false;
-        assert_twin_vert();
-        return true;
-    }
+
     void frozen()
     {
         if (_status == Mode::Sliding)
@@ -106,14 +86,37 @@ public:
     Vector_2 *seg_twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
     Mode _status = Mode::Frozen;
-    Vert_Circ twin_vert; // for sliding twin point on the same plane
     Vert_Circ vertex;
 
 private:
-    void assert_twin_vert();
     friend class KPolygon_2;
     friend class KPolygons_2;
 };
+
+class Vertex
+{
+public:
+    Vertex(KP_Ref _kp) : kp(_kp){};
+
+    Vert_Circ &twin()
+    {
+        return _twin;
+    }
+    bool has_twin()
+    {
+        return !(twin() == nullptr);
+    }
+    bool stop_extend(KLine_Ref);
+    size_t _id;
+    KP_Ref kp;
+    Vert_Circ _twin{};
+    KPolygon_2 *face;
+};
+
+inline void set_twin(Vert_Circ a, Vert_Circ b){
+    a->twin() = b;
+    b->twin() = a;
+}
 
 class KPolygon_2
 {
@@ -139,33 +142,17 @@ public:
     // ===================================================================
     // ============ methods that should mark dirty========================
 
-    Vert_Circ insert_KP(Vert_Circ pos, KPoint_2 kpoint)
+
+    Vert_Circ steal_kp(Vert_Circ pos,  KP_Ref kp)
     {
-        return insert_KP(pos.current_iterator(), std::move(kpoint));
+        return steal_kp(pos.current_iterator(), kp);
     }
-    Vert_Circ append_KP(KPoint_2 kpoint)
+    Vert_Circ steal_kp_bk(KP_Ref kp)
     {
-        return insert_KP(vertices.end(), std::move(kpoint));
+        return steal_kp(vertices.end(), kp);
     }
 
-    Vert_Circ steal_vert(Vert_Circ pos, Vert_Circ from_vert)
-    {
-        return steal_vert(pos.current_iterator(), std::move(from_vert));
-    }
-    Vert_Circ steal_vert_bk(Vert_Circ from_vert)
-    {
-        return steal_vert(vertices.end(), std::move(from_vert));
-    }
 
-    Vert_Circ steal_as_twin(Vert_Circ pos, Vert_Circ from_vert)
-    {
-        return steal_as_twin(pos.current_iterator(), from_vert);
-    }
-
-    Vert_Circ steal_as_twin_bk(Vert_Circ from_vert)
-    {
-        return steal_as_twin(vertices.end(), from_vert);
-    }
     void erase(Vert_Circ vert)
     {
         dirty = true;
@@ -238,31 +225,17 @@ private:
         assert(_polygon_2.is_convex());
     }
 
-    Vert_Circ insert_KP(std::list<Vertex>::iterator pos, KPoint_2 &&kpoint);
-    Vert_Circ steal_vert(std::list<Vertex>::iterator pos, Vert_Circ &&from_vert)
+    Vert_Circ steal_kp(std::list<Vertex>::iterator pos, KP_Ref kp)
     {
         dirty = true;
-
-        auto vert = Vert_Circ{&vertices, vertices.insert(pos, Vertex{from_vert->kp})};
+        auto vert = Vert_Circ{&vertices, vertices.insert(pos, Vertex{kp})};
         vert->face = this;
         vert->_id = next_id();
 
-        from_vert->transfer_to(vert);
-
+        kp->vertex = vert;
         return vert;
     }
-    Vert_Circ steal_as_twin(std::list<Vertex>::iterator pos, Vert_Circ from_vert)
-    {
-        dirty = true;
 
-        auto vert = Vert_Circ{&vertices, vertices.insert(pos, Vertex{from_vert->kp})};
-        vert->face = this;
-        vert->_id = next_id();
-
-        //from_vert->set_twin(vert);
-        from_vert->twin() = vert;
-        return vert;
-    }
     mutable bool dirty = true;
     mutable Polygon_2 _polygon_2;
     std::list<Vertex> vertices;
@@ -356,6 +329,11 @@ public:
         auto ref = all_KP.insert(all_KP.end(), kpoint);
         ref->_id = next_id();
         return ref;
+    }
+
+    KP_Ref kp_end()
+    {
+        return all_KP.end();
     }
 
     void erase_kp(KP_Ref kp)
@@ -552,7 +530,8 @@ public:
     Update_Point get_update_point()
     {
         std::vector<Vec3> points;
-        for (auto kp : need_update){
+        for (auto kp : need_update)
+        {
             auto point = kp->vertex->face->parent->plane().to_3d(*kp);
             points.emplace_back((float)CGAL::to_double(point.x()),
                                 (float)CGAL::to_double(point.y()),
@@ -580,7 +559,7 @@ private:
     void pop(void) { queue.erase(queue.begin()); }
 
     void kp_collide(KP_Ref kp);
-    void erase_vert(Vert_Circ vert);
+    void erase_vert_kp(Vert_Circ vert);
 
     std::vector<KP_Ref> update_certificate(const Event &);
     std::vector<KP_Ref> type_b(Vert_Circ vert, KLine_Ref kline);
