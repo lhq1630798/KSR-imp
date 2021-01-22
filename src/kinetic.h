@@ -42,6 +42,7 @@ public:
     void set_twin(Vert_Circ twin);
     Vert_Circ &twin();
     bool has_twin();
+    bool stop_extend(KLine_Ref);
     size_t _id;
     KP_Ref kp;
     KPolygon_2 *face;
@@ -142,7 +143,7 @@ public:
     {
         return insert_KP(pos.current_iterator(), std::move(kpoint));
     }
-    Vert_Circ insert_KP(KPoint_2 kpoint)
+    Vert_Circ append_KP(KPoint_2 kpoint)
     {
         return insert_KP(vertices.end(), std::move(kpoint));
     }
@@ -151,7 +152,7 @@ public:
     {
         return steal_vert(pos.current_iterator(), std::move(from_vert));
     }
-    Vert_Circ steal_vert(Vert_Circ from_vert)
+    Vert_Circ steal_vert_bk(Vert_Circ from_vert)
     {
         return steal_vert(vertices.end(), std::move(from_vert));
     }
@@ -161,7 +162,7 @@ public:
         return steal_as_twin(pos.current_iterator(), from_vert);
     }
 
-    Vert_Circ steal_as_twin(Vert_Circ from_vert)
+    Vert_Circ steal_as_twin_bk(Vert_Circ from_vert)
     {
         return steal_as_twin(vertices.end(), from_vert);
     }
@@ -310,6 +311,7 @@ public:
                 return true;
         return false;
     }
+
     void move_dt(FT dt)
     {
         for (auto &seg : _ksegments)
@@ -321,6 +323,7 @@ public:
     Line_2 _line_2;
     KPolygons_2 *kpolygons = nullptr;
     KLine_Ref twin; // KLine_2 on the other supporting plane
+    bool is_bbox = false;
 };
 
 class KPolygons_2
@@ -339,6 +342,7 @@ public:
     std::list<KPolygon_2> _kpolygons_2;
     std::list<KPoint_2> all_KP;
     std::list<KLine_2> _klines;
+    bool is_bbox = false;
 
     KPolygons_2 &operator=(const KPolygons_2 &) = delete;
 

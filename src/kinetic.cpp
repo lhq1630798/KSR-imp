@@ -34,6 +34,12 @@ Vert_Circ &Vertex::twin()
     else
         assert(false);
 }
+bool Vertex::stop_extend(KLine_Ref kline) {
+    if( kline->is_bbox) return true;
+    auto ret = kline->has_on(kp->point());
+    // if(ret) kline->is_bbox = true;
+    return ret;
+}
 
 void KPoint_2::assert_twin_vert()
 {
@@ -54,7 +60,8 @@ KPolygon_2::KPolygon_2(KPolygons_2 *_parent, Polygon_2 poly_2)
     assert(_polygon_2.has_on_bounded_side(center_P));
 
     for (const auto &point_2 : _polygon_2.container())
-        insert_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+         append_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
+        //append_KP(KPoint_2{point_2, (point_2 - center_P)/_polygon_2.area(), Mode::Normal});
 }
 
 Vert_Circ KPolygon_2::insert_KP(std::list<Vertex>::iterator pos, KPoint_2 &&kpoint)
@@ -95,13 +102,6 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const
     auto prev_vert = std::prev(vert);
     auto next_vert = std::next(vert);
 
-    // if (!vert->has_twin())
-    // {
-    //     std::cout << last_t << ": type c" << std::endl;
-    //     vert->kp->frozen();
-    //     return {vert->kp};
-    // }
-    // return type_b(vert->twin(), kline);
 
     if (next_vert->kp->point() == kp->point())
     { //type c
@@ -119,6 +119,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const
         else if (!vert->has_twin() && !next_vert->has_twin())
         { // only type c
             std::cout << last_t << ": type c" << std::endl;
+            // vert->kp->frozen();
             erase_vert(vert);
             next_vert->kp->frozen();
             return {next_vert->kp};
@@ -127,6 +128,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const
         else if (vert->has_twin() && !next_vert->has_twin())
         { // one type c + one type b
             std::cout << last_t << ": one type c + one type b" << std::endl;
+            // next_vert->kp->frozen();
             erase_vert(next_vert);
             return type_b(vert->twin(), kline);
         }
@@ -147,9 +149,9 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const
             auto stolen_vert = next_twin_face->steal_vert(next_twin, vert);
 
             auto triangle = face->parent->insert_kpoly_2();
-            auto extend_vert = triangle->insert_KP(frozen_kpoint);
-            triangle->steal_as_twin(stolen_next_vert);
-            triangle->steal_as_twin(stolen_vert);
+            auto extend_vert = triangle->append_KP(frozen_kpoint);
+            triangle->steal_as_twin_bk(stolen_next_vert);
+            triangle->steal_as_twin_bk(stolen_vert);
             twin_face->erase(twin);
             next_twin_face->erase(next_twin);
             face->erase(vert);
@@ -177,6 +179,11 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline)
         auto prev_speed = KPolygon_2::Edge{std::prev(vert), vert}.sliding_speed(line_2);
         auto next_speed = KPolygon_2::Edge{vert, std::next(vert)}.sliding_speed(line_2);
         auto extend_kpoint = KPoint_2{kp->point(), kp->_speed, Mode::Sliding};
+
+        //steal seg_twin_speed pointer
+        // extend_kpoint.seg_twin_speed = vert->kp->seg_twin_speed;
+        // vert->kp->seg_twin_speed = nullptr;
+
         auto new_vert1 = vert, new_vert2 = vert;
         if (next_speed == CGAL::NULL_VECTOR)
         {
@@ -192,20 +199,18 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline)
             new_vert2 = face->insert_KP(std::next(new_vert1), KPoint_2{kp->point(), next_speed, Mode::Sliding});
         }
 
-        if (kline->has_on(kp->point()))
+        if (vert->stop_extend(kline))
         { // stop extend
             return {new_vert1->kp, new_vert2->kp};
         }
 
         //extend
-        //to do
-        // duplicated face
         kline->add_seg_twin(new_vert1, new_vert2);
         auto triangle = face->parent->insert_kpoly_2();
 
-        auto extend_vert = triangle->insert_KP(extend_kpoint);
-        triangle->steal_as_twin(new_vert2);
-        triangle->steal_as_twin(new_vert1);
+        auto extend_vert = triangle->append_KP(extend_kpoint);
+        triangle->steal_as_twin_bk(new_vert2);
+        triangle->steal_as_twin_bk(new_vert1);
         return {new_vert1->kp, new_vert2->kp, extend_vert->kp};
     }
 }
@@ -296,7 +301,7 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
             auto new_vert1 = face->insert_KP(vert, KPoint_2{kp->point(), prev_speed, Mode::Sliding});
             auto new_vert2 = face->insert_KP(vert, KPoint_2{kp->point(), next_speed, Mode::Sliding});
 
-            if (kline->has_on(kp->point()))
+            if (vert->stop_extend(kline))
             { // stop extend
                 erase_vert(vert);
             }
@@ -304,10 +309,10 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
             { //extend
                 kline->add_seg_twin(new_vert1, new_vert2);
                 auto triangle = face->parent->insert_kpoly_2();
-                triangle->steal_vert(vert);
+                triangle->steal_vert_bk(vert);
                 face->erase(vert);
-                triangle->steal_as_twin(new_vert2);
-                triangle->steal_as_twin(new_vert1);
+                triangle->steal_as_twin_bk(new_vert2);
+                triangle->steal_as_twin_bk(new_vert1);
             }
 
             return {new_vert1->kp, new_vert2->kp};
@@ -503,6 +508,10 @@ void KPolygons_SET::decompose()
                     auto line_j = polys_j->insert_kline(polys_j->project_2(*line_3));
                     line_i->twin = line_j;
                     line_j->twin = line_i;
+                    if (polys_i->is_bbox || polys_j->is_bbox) {
+                        line_i->is_bbox = true;
+                        line_j->is_bbox = true;
+                    }
                 }
 
     for (auto &kpolys_2 : _kpolygons_set)
@@ -587,15 +596,15 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     auto origin_size = kpoly_2->size();
     KPoly_Ref new_poly1 = insert_kpoly_2(), new_poly2 = insert_kpoly_2();
 
-    auto poly1_vert1 = new_poly1->insert_KP(new_kp1);
+    auto poly1_vert1 = new_poly1->append_KP(new_kp1);
     for (auto vert = e1.vert2; vert != e2.vert2; vert++)
-        new_poly1->steal_vert(vert);
-    auto poly1_vert2 = new_poly1->insert_KP(new_kp2);
+        new_poly1->steal_vert_bk(vert);
+    auto poly1_vert2 = new_poly1->append_KP(new_kp2);
 
-    new_poly2->steal_as_twin(poly1_vert2);
+    new_poly2->steal_as_twin_bk(poly1_vert2);
     for (auto vert = e2.vert2; vert != e1.vert2; vert++)
-        new_poly2->steal_vert(vert);
-    new_poly2->steal_as_twin(poly1_vert1);
+        new_poly2->steal_vert_bk(vert);
+    new_poly2->steal_as_twin_bk(poly1_vert1);
 
     kline_2.add_seg_twin(poly1_vert1, poly1_vert2);
 
@@ -664,32 +673,38 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
         auto plane = Plane_3{1, 0, 0, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
     {
         auto plane = Plane_3{0, 1, 0, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
     {
         auto plane = Plane_3{0, 0, 1, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
 
     {
         auto plane = Plane_3{1, 0, 0, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
     {
         auto plane = Plane_3{0, 1, 0, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
 
     {
         auto plane = Plane_3{0, 0, 1, -scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
     }
 }
