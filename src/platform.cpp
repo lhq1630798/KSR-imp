@@ -261,7 +261,7 @@ void Platform::loop(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET &kpoly
 		begin_frame();
 
 		render(shader, k_queue, kpolys_set);
-
+		
 		complete_frame();
 
 		glfwSwapBuffers(window);

@@ -15,6 +15,8 @@
 #include "kinetic.h"
 #include "camera.h"
 
+#include "extract_surface.h"
+
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
