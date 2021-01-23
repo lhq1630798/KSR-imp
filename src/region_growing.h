@@ -37,5 +37,5 @@ using Regions = std::vector<Region>;
 using Color = std::array<unsigned char, 3>;
 using Point_with_color = std::pair<Point, Color>;
 
-using Detected_shape = std::pair<Plane, std::vector<Point>>;
+using Detected_shape = std::pair<Plane, Pwn_vector>;
 std::vector<Detected_shape> region_growing(std::string path);

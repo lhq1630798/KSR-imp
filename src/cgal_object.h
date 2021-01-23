@@ -6,7 +6,6 @@
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
 #include <vector>
-#include <GLFW/glfw3.h>
 #include "math/vec3.h"
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
@@ -28,7 +27,9 @@ using Vector_3 = CGAL::Vector_3<K>;
 using Polygon_2 = CGAL::Polygon_2<K>;
 class Polygon_3;
 using Polygons_3 = std::vector<Polygon_3>;
+using PWN_E = std::vector<std::pair< Point_3, Vector_3>>;
 using FT = K::FT;
+using Direction = CGAL::Direction_3<K>;
 
 class Timer
 {
@@ -66,7 +67,7 @@ public:
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
-    void set_inline_points(std::vector<Point_3> points)
+    void set_inline_points(PWN_E points)
     {
         inline_points = std::move(points);
     }
@@ -77,7 +78,7 @@ public:
     const Points_3 &points_3() const { return _points_3; }
 
     Vec3 _color;
-    std::vector<Point_3> inline_points;
+	PWN_E inline_points;
 
 private:
     void update_points_3()

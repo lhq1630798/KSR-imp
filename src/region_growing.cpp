@@ -52,19 +52,20 @@ std::vector<Detected_shape> region_growing(std::string path) {
 	// Iterate through all regions.
 	std::vector<Detected_shape> detected_shape;
 	for (const auto& region : regions) {
-		std::vector<Point> region_points;
+		Pwn_vector region_points;
+		std::vector<Point> points_coord;
 
 		// Iterate through all region items.
 		for (const auto index : region) {
-			const auto& key = *(points.begin() + index);
-			const Point& point = get(Point_map(), key);
+			const Point_with_normal& point = *(points.begin() + index);
 			region_points.push_back(point);
+			points_coord.push_back(point.first);
 		}
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
 		Plane plane;
-		linear_least_squares_fitting_3(region_points.begin(), region_points.end(), plane, CGAL::Dimension_tag<0>());
+		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
 
 		//std::cout << plane << std::endl;
 		//std::cout << region_points.size() << std::endl;

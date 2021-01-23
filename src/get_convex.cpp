@@ -7,7 +7,7 @@ Polygons_3 detect_shape(std::string path)
 {
     std::vector<Detected_shape> detected_shape = region_growing(path);
     Polygons_3 results;
-    for (auto &[plane, points] : detected_shape)
+    for (auto &[plane, pwn] : detected_shape)
     {
 
         auto plane_3 = Plane_3{
@@ -16,12 +16,13 @@ Polygons_3 detect_shape(std::string path)
             FT{plane.c()},
             FT{plane.d()}};
 
-        std::vector<Point_3> points_3;
+        PWN_E inline_points;
         std::vector<Point_2> projected_points;
-        for (auto v : points)
+        for (auto [v, n] : pwn)
         {
             auto point_3 = Point_3{FT{v.x()}, FT{v.y()}, FT{v.z()}};
-            points_3.push_back(point_3);
+			auto normal = Vector_3{FT{n.x()}, FT{n.y()}, FT{n.z()} };
+			inline_points.push_back(std::make_pair(point_3, normal));
             Point_3 projected = plane_3.projection(point_3);
             projected_points.push_back(plane_3.to_2d(projected));
         }
@@ -29,7 +30,7 @@ Polygons_3 detect_shape(std::string path)
         auto polygon2 = get_convex(projected_points.begin(), projected_points.end());
 
         auto poly3 = Polygon_3{plane_3, std::move(polygon2)};
-        poly3.set_inline_points(std::move(points_3));
+        poly3.set_inline_points(std::move(inline_points));
         results.push_back(std::move(poly3));
     }
     return results;

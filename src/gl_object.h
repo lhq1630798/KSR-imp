@@ -1,5 +1,7 @@
 #pragma once
 
+//#include "platform.h"
+
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <vector>

@@ -150,7 +150,7 @@ public:
     KPolygon_2(const KPolygon_2 &) = delete;
     KPolygon_2 &operator=(const KPolygon_2 &) = delete;
 
-    void set_inline_points(std::vector<Point_3> points)
+    void set_inline_points(PWN_E points)
     {
         inline_points = std::move(points);
     }
@@ -247,7 +247,7 @@ public:
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
-    std::vector<Point_3> inline_points;
+	PWN_E inline_points;
 
     FT area()
     {
@@ -482,7 +482,7 @@ public:
         std::vector<Vec3> points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
             for (auto &kpoly2 : kpolys->_kpolygons_2)
-                for (auto &inline_point : kpoly2.inline_points)
+                for (auto &[inline_point, normal] : kpoly2.inline_points)
                     points.emplace_back((float)CGAL::to_double(inline_point.x()),
                                         (float)CGAL::to_double(inline_point.y()),
                                         (float)CGAL::to_double(inline_point.z()));
@@ -548,8 +548,8 @@ private:
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
 
-    void Kinetic_queue::kp_collide(KP_Circ kp);
-    void Kinetic_queue::erase_kp(KP_Circ kp);
+    void kp_collide(KP_Circ kp);
+    void erase_kp(KP_Circ kp);
 
     std::vector<KP_Circ> update_certificate(const Event &);
 
