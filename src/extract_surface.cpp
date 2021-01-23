@@ -4,13 +4,13 @@
 //n vertices and area of this face
 Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 {
-	//¶à±ßĞÎµÄ¶¥µã
+	//å¤šè¾¹å½¢çš„é¡¶ç‚¹
 	Points_2 points2 = polygon.polygon_2().container();
 	Points_3 points;
 	for (int i = 0; i < points2.size(); i++) {
 		points.push_back(plane.to_3d(points2[i]));
 	}
-	PWN_E inline_points = polygon.inline_points;//ÊôÓÚ¶à±ßĞÎÄÚ²¿µÄÊäÈëµã
+	PWN_E inline_points = polygon.inline_points;//å±äºå¤šè¾¹å½¢å†…éƒ¨çš„è¾“å…¥ç‚¹
 	FT area = polygon.area();
 	face_attributes face_att = { area,plane,inline_points };
 
@@ -62,13 +62,13 @@ Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 
 Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 {
-	//¶à±ßĞÎµÄ¶¥µã
+	//å¤šè¾¹å½¢çš„é¡¶ç‚¹
 	Points_2 points2 = polygon.polygon_2().container();
 	Points_3 points;
 	for (int i = 0; i < points2.size(); i++) {
 		points.push_back(plane.to_3d(points2[i]));
 	}
-	PWN_E inline_points = polygon.inline_points;//ÊôÓÚ¶à±ßĞÎÄÚ²¿µÄÊäÈëµã
+	PWN_E inline_points = polygon.inline_points;//å±äºå¤šè¾¹å½¢å†…éƒ¨çš„è¾“å…¥ç‚¹
 	FT area = polygon.area();
 	face_attributes face_att = { area,plane,inline_points };
 
@@ -97,14 +97,14 @@ Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 Dart_handle make_boundary_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 {
 	std::cout << plane << std::endl;
-	//¶à±ßĞÎµÄ¶¥µã
+	//å¤šè¾¹å½¢çš„é¡¶ç‚¹
 	Points_2 points2 = polygon.polygon_2().container();
 	Points_3 points;
 	for (int i = 0; i < points2.size(); i++) {
 		points.push_back(plane.to_3d(points2[i]));
 		//std::cout << plane.to_3d(points2[i])<< std::endl;
 	}
-	PWN_E inline_points = polygon.inline_points;//ÊôÓÚ¶à±ßĞÎÄÚ²¿µÄÊäÈëµã
+	PWN_E inline_points = polygon.inline_points;//å±äºå¤šè¾¹å½¢å†…éƒ¨çš„è¾“å…¥ç‚¹
 	FT area = polygon.area();
 	face_attributes face_att = { area,plane,inline_points };
 
@@ -191,7 +191,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 			if (cm.is_marked(it, amark))
 				continue;
 
-			//ÕÒµ½it2Âú×ãit2µÄÏÂÏÂ¸ödartµÄµã---ax+by+cz+d>0ÇÒit2µÄµã==itµÄÏÂÒ»¸ödartµÄµã
+			//æ‰¾åˆ°it2æ»¡è¶³it2çš„ä¸‹ä¸‹ä¸ªdartçš„ç‚¹---ax+by+cz+d>0ä¸”it2çš„ç‚¹==itçš„ä¸‹ä¸€ä¸ªdartçš„ç‚¹
 			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
 			Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
 			Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
@@ -211,7 +211,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 			if (cm.is_marked(it, amark))
 				continue;
 
-			//ÕÒµ½it2Âú×ãit2µÄÏÂÏÂ¸ödartµÄµã---ax+by+cz+d>0ÇÒit2µÄµã==itµÄÏÂÒ»¸ödartµÄµã
+			//æ‰¾åˆ°it2æ»¡è¶³it2çš„ä¸‹ä¸‹ä¸ªdartçš„ç‚¹---ax+by+cz+d>0ä¸”it2çš„ç‚¹==itçš„ä¸‹ä¸€ä¸ªdartçš„ç‚¹
 			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
 			Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
 			Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
@@ -239,7 +239,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		Point_3 center;
 		Vector_3 center_V = CGAL::NULL_VECTOR;
 		int size = 0;
-		//ÕÒµ½itËùÔÚµÄpolyhedraµÄËùÓĞµã
+		//æ‰¾åˆ°itæ‰€åœ¨çš„polyhedraçš„æ‰€æœ‰ç‚¹
 		for (CMap_3::One_dart_per_incident_cell_range<0, 3>::iterator it2(cm.one_dart_per_incident_cell<0, 3>(it).begin()), itend2(cm.one_dart_per_incident_cell<0, 3>(it).end()); it2 != itend2; it2++) {
 			center_V += cm.info_of_attribute<0>(cm.attribute<0>(it2)) - CGAL::ORIGIN;
 			size++;
@@ -248,7 +248,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		center_V = center_V / size;
 		center = CGAL::ORIGIN + center_V;
 		polyhedra_attributes poly_att = { num, center };
-		//½«ÊôÓÚÍ¬Ò»3-cellµÄdartµÄpolyhedra¡ª¡ªattributeÉèÎªÒ»ÖÂµÄattribute
+		//å°†å±äºåŒä¸€3-cellçš„dartçš„polyhedraâ€”â€”attributeè®¾ä¸ºä¸€è‡´çš„attribute
 		cm.info<3>(it) = poly_att;
 		num++;
 	}
@@ -265,7 +265,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		Point_3 p6 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 0)));
 
 		for (CMap_3::Dart_range::iterator it2(cm.darts().begin()), itend2(cm.darts().end()); it2 != itend2; it2++) {
-			//ÕÒµ½it2Âú×ãit2µÄÏÂÏÂ¸ödartµÄµã---ax+by+cz+d>0ÇÒit2µÄµã==itµÄÏÂÒ»¸ödartµÄµã
+			//æ‰¾åˆ°it2æ»¡è¶³it2çš„ä¸‹ä¸‹ä¸ªdartçš„ç‚¹---ax+by+cz+d>0ä¸”it2çš„ç‚¹==itçš„ä¸‹ä¸€ä¸ªdartçš„ç‚¹
 			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
 			Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
 			Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
@@ -318,7 +318,7 @@ void extract_surface(KPolygons_SET& polygons_set)
 	CMap_3 cm;
 	build_map(cm, polygons_set);
 
-	//C:±£´æÃ¿¸öpolyhedraµÄÒ»¸ödart
+	//C:ä¿å­˜æ¯ä¸ªpolyhedraçš„ä¸€ä¸ªdart
 	std::vector<Dart_handle> C;
 	for (CMap_3::One_dart_per_cell_range<3>::iterator it(cm.one_dart_per_cell<3>().begin()), itend(cm.one_dart_per_cell<3>().end()); it != itend; it++) {
 		C.push_back(it);
@@ -326,14 +326,14 @@ void extract_surface(KPolygons_SET& polygons_set)
 	int C_num = C.size();
 	std::cout << "polyhedra number"<<C_num<<std::endl;
 
-	//F:±£´æÃ¿¸öfaceµÄÒ»¸ödart
+	//F:ä¿å­˜æ¯ä¸ªfaceçš„ä¸€ä¸ªdart
 	std::vector<Dart_handle> F;
 	for (CMap_3::One_dart_per_cell_range<2>::iterator it(cm.one_dart_per_cell<2>().begin()), itend(cm.one_dart_per_cell<2>().end()); it != itend; it++) {
 		F.push_back(it);
 	}
 	std::cout << "F number" << F.size() << std::endl;
 
-	//N:±£´æÏàÁÚµÄÁ½¸öpolyhedraµÄdart
+	//N:ä¿å­˜ç›¸é‚»çš„ä¸¤ä¸ªpolyhedraçš„dart
 	std::vector<std::pair<Dart_handle, Dart_handle> > N;
 	for (int i = 0; i < F.size();i++) {
 		if (cm.is_free<3>(F[i])) {
@@ -378,7 +378,7 @@ void extract_surface(KPolygons_SET& polygons_set)
 		Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
 		std::vector<Dart_handle> face_darts;
 		PWN_E polyhedra_points;
-		//ÕÒµ½dËùÔÚµÄpolyhedraµÄËùÓĞfaceÉÏµÄdart
+		//æ‰¾åˆ°dæ‰€åœ¨çš„polyhedraçš„æ‰€æœ‰faceä¸Šçš„dart
 		for (CMap_3::One_dart_per_incident_cell_range<2, 3>::iterator it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
 			face_darts.push_back(it);
 		}
@@ -420,7 +420,7 @@ void extract_surface(KPolygons_SET& polygons_set)
 	//-----get surface mesh---------
 	Surface_Mesh m;
 
-	//ÕÒµ½sourceºÍsinkÖ®¼äµÄÃæµÄdart d
+	//æ‰¾åˆ°sourceå’Œsinkä¹‹é—´çš„é¢çš„dart d
 	std::vector<Dart_handle> surface_darts;
 	for (int i = 0; i < N_num; i++) {
 		int d1 = cm.info_of_attribute<3>(cm.attribute<3>(N[i].first)).number;
@@ -447,8 +447,8 @@ void extract_surface(KPolygons_SET& polygons_set)
 		m.add_face(v);
 	}
 	
-	//Êä³öconvex mesh
-	std::ofstream f("output/outmesh.off");
+	//è¾“å‡ºconvex mesh
+	std::ofstream f("src/output/outmesh.off");
 	if (!CGAL::write_off(f, m)) {
 		std::cout << "write wrong" << std::endl;
 	}

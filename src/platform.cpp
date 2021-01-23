@@ -192,7 +192,7 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)
 	ImGui::End();
 }
 
-void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
+void Platform::render_3d(Shader &shader,  Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)
 {
 
 	shader.use();
@@ -223,6 +223,9 @@ void Platform::render_3d(Shader &shader, KPolygons_SET &kpolys_set)
 	static auto point_cloud = kpolys_set.Get_Point_cloud();
 	if (show_point_cloud)
 		point_cloud.render(shader);
+
+	auto update_p = k_queue.get_update_point();
+	update_p.render(shader);
 }
 
 void Platform::clear()
@@ -239,7 +242,7 @@ void Platform::render(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET &kpo
 
 	render_imgui(k_queue, kpolys_set);
 	clear();
-	render_3d(shader, kpolys_set);
+	render_3d(shader, k_queue, kpolys_set);
 }
 
 void Platform::loop(Shader &shader, Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)

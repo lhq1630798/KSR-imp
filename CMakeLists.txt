@@ -22,6 +22,13 @@ set(KSR_SOURCES
         "src/region_growing.h"
         "src/region_growing.cpp"
         "src/get_convex.cpp"
+        "src/extract_surface.cpp"
+        "src/extract_surface.h"
+        "src/min-cut/block.h"
+        "src/min-cut/graph.cpp"
+        "src/min-cut/graph.h"
+        "src/min-cut/maxflow.cpp"
+        "src/min-cut/instances.inc"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})

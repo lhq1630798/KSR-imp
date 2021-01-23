@@ -39,7 +39,7 @@ private:
 	void begin_frame();
 	void complete_frame();
 	void render_imgui(Kinetic_queue& k_queue, KPolygons_SET& kpolys_set);
-	void render_3d(Shader& shader, KPolygons_SET& kpolys_set);
+	void render_3d(Shader& shader,  Kinetic_queue &k_queue, KPolygons_SET& kpolys_set);
 	void clear();
 	void render(Shader& shader, Kinetic_queue& k_queue, KPolygons_SET& kpolys_set);
 	GLFWwindow *window = nullptr;
