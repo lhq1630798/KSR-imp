@@ -175,6 +175,10 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)
 	ImGui::Checkbox("boundary", &show_boundary);
 	ImGui::SliderFloat("depth", &depth, -1, 1);
 
+	if (ImGui::Button("finish partition"))
+	{
+		k_queue.done();
+	}
 	ImGui::Checkbox("growing", &grow);
 	ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
 

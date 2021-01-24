@@ -7,6 +7,7 @@ add_subdirectory("deps/imgui/")
 
 set(KSR_SOURCES 
         "src/math/vec3.h"
+        "src/log.h"
         "src/camera.h"
         "src/main.cpp"
         "src/gl_object.h"

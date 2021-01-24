@@ -24,6 +24,7 @@ using KSeg_Ref = std::list<KSegment>::iterator;
 using KPoly_Ref = std::list<KPolygon_2>::iterator;
 using KPolys_Ref = std::list<KPolygons_2>::iterator;
 
+const struct Back {} BACK; //tag
 class Vertex;
 using Vert_Circ = CGAL::Circulator_from_container<std::list<Vertex>>;
 
@@ -107,10 +108,10 @@ public:
         return !(twin() == nullptr);
     }
     bool stop_extend(KLine_Ref);
-    size_t _id;
+    size_t _id = -1;
     KP_Ref kp;
     Vert_Circ _twin{};
-    KPolygon_2 *face;
+    KPolygon_2 *face = nullptr;
 };
 
 inline void set_twin(Vert_Circ a, Vert_Circ b){
@@ -147,7 +148,7 @@ public:
     {
         return steal_kp(pos.current_iterator(), kp);
     }
-    Vert_Circ steal_kp_bk(KP_Ref kp)
+    Vert_Circ steal_kp(const Back, KP_Ref kp)
     {
         return steal_kp(vertices.end(), kp);
     }
@@ -526,6 +527,7 @@ public:
     FT to_next_event();
     FT next_time();
     FT move_to_time(FT t);
+    void done();
     size_t size() { return queue.size(); }
     Update_Point get_update_point()
     {
@@ -554,6 +556,7 @@ private:
     {
         for (const auto &rm_event : id_events[kp->id()])
             remove(rm_event);
+        id_events.erase(kp->id());
     }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { queue.erase(queue.begin()); }
