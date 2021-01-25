@@ -17,6 +17,7 @@ class KSegment;
 class KPolygon_2;
 class KPolygons_2;
 class KPolygons_SET;
+class Collide_Ray;
 
 using KP_Ref = std::list<KPoint_2>::iterator;
 using KLine_Ref = std::list<KLine_2>::iterator;
@@ -84,11 +85,14 @@ public:
 
     size_t id() const { return _id; }
 
+    void set_collide_ray(std::shared_ptr<Collide_Ray> _collide_ray);
+
     Vector_2 *seg_twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
     Mode _status = Mode::Frozen;
     Vert_Circ vertex;
-
+    std::shared_ptr<Collide_Ray> collide_ray;
+    bool ray_reverse;
 private:
     friend class KPolygon_2;
     friend class KPolygons_2;
@@ -107,14 +111,15 @@ public:
     {
         return !(twin() == nullptr);
     }
-    bool stop_extend(KLine_Ref);
+    void frozen();
     size_t _id = -1;
     KP_Ref kp;
     Vert_Circ _twin{};
     KPolygon_2 *face = nullptr;
 };
 
-inline void set_twin(Vert_Circ a, Vert_Circ b){
+inline void set_twin(Vert_Circ a, Vert_Circ b)
+{
     a->twin() = b;
     b->twin() = a;
 }
@@ -143,8 +148,7 @@ public:
     // ===================================================================
     // ============ methods that should mark dirty========================
 
-
-    Vert_Circ steal_kp(Vert_Circ pos,  KP_Ref kp)
+    Vert_Circ steal_kp(Vert_Circ pos, KP_Ref kp)
     {
         return steal_kp(pos.current_iterator(), kp);
     }
@@ -152,7 +156,6 @@ public:
     {
         return steal_kp(vertices.end(), kp);
     }
-
 
     void erase(Vert_Circ vert)
     {
@@ -201,7 +204,7 @@ public:
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
-	PWN_E inline_points;
+    PWN_E inline_points;
 
     FT area()
     {
@@ -298,6 +301,7 @@ public:
     KPolygons_2 *kpolygons = nullptr;
     KLine_Ref twin; // KLine_2 on the other supporting plane
     bool is_bbox = false;
+    std::shared_ptr< Collide_Ray> collide_ray;
 };
 
 class KPolygons_2
@@ -314,7 +318,8 @@ public:
 
     Plane_3 _plane;
     std::list<KPolygon_2> _kpolygons_2;
-    std::list<KPoint_2> all_KP;
+    std::list<KPoint_2> active_KP;
+    std::list<KPoint_2> frozen_KP;
     std::list<KLine_2> _klines;
     bool is_bbox = false;
 
@@ -327,19 +332,24 @@ public:
 
     KP_Ref new_KP(const KPoint_2 &kpoint)
     {
-        auto ref = all_KP.insert(all_KP.end(), kpoint);
+        auto ref = active_KP.insert(active_KP.end(), kpoint);
         ref->_id = next_id();
+        if (ref->_status == Mode::Frozen)
+            splice_to_frozen(ref);
         return ref;
     }
 
-    KP_Ref kp_end()
+    // KP_Ref kp_end()
+    // {
+    //     return active_KP.end();
+    // }
+    void splice_to_frozen(KP_Ref kp)
     {
-        return all_KP.end();
+         frozen_KP.splice(frozen_KP.end(), active_KP, kp);
     }
-
     void erase_kp(KP_Ref kp)
     {
-        all_KP.erase(kp);
+        active_KP.erase(kp);
     }
 
     KPoly_Ref insert_kpoly_2(const Polygon_2 &poly_2)
@@ -361,13 +371,16 @@ public:
 
     void frozen()
     {
-        for (auto &kp : all_KP)
-            kp.frozen();
+        for (auto kp = active_KP.begin(); kp != active_KP.end(); )
+        {
+            kp->frozen();
+            splice_to_frozen(kp++);
+        }
     }
     void move_dt(FT dt)
     {
         assert(dt >= 0);
-        for (auto &kp : all_KP)
+        for (auto &kp : active_KP)
             kp = kp.move_dt(dt);
         for (auto &kpoly : _kpolygons_2)
             kpoly.dirty = true;
@@ -498,8 +511,9 @@ public:
     KP_Ref kp;
     KLine_Ref kline;
     KPolygons_2 *plane;
+    size_t kp_id;
     Event(FT t, KP_Ref kp, KLine_Ref kline)
-        : t(t), kp(kp), kline(kline), plane(kp->vertex->face->parent)
+        : t(t), kp(kp), kline(kline), plane(kp->vertex->face->parent), kp_id(kp->id())
     {
         assert(t > 0);
         assert(kp->vertex != nullptr);
@@ -523,7 +537,7 @@ inline bool operator<(const Event &r1, const Event &r2)
 class Kinetic_queue
 {
 public:
-    Kinetic_queue(KPolygons_SET &kpolygons_set);
+    Kinetic_queue(KPolygons_SET &kpolygons_set, bool exhausted = false);
     FT to_next_event();
     FT next_time();
     FT move_to_time(FT t);
@@ -563,6 +577,15 @@ private:
 
     void kp_collide(KP_Ref kp);
     void erase_vert_kp(Vert_Circ vert);
+    bool stop_extend(KLine_Ref kline, KP_Ref kp )
+    {
+        if (kline->is_bbox)
+            return true;
+        if (exhausted) return false;
+        auto ret = kline->has_on(kp->point());
+        // if(ret) kline->is_bbox = true;
+        return ret;
+    }
 
     std::vector<KP_Ref> update_certificate(const Event &);
     std::vector<KP_Ref> type_b(Vert_Circ vert, KLine_Ref kline);
@@ -573,6 +596,33 @@ private:
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
     std::vector<KP_Ref> need_update;
+    bool exhausted;
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
+};
+
+
+class Collide_Ray {
+public:
+    struct Record {
+        FT dot;
+        KLine_Ref kline_2;
+        Point_2 pos;
+    };
+
+    Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end);
+    std::vector<Record> next_hit(KP_Ref kp);
+    bool is_reverse(const KPoint_2 &kpoint) {
+        if (kpoint._speed * vec > 0) {
+            assert(kpoint._speed.direction() == vec.direction());
+            return false;
+        }
+        assert(kpoint._speed.direction() == -vec.direction());
+        return true;
+    }
+private:
+    Point_2 start;
+    Ray_2 ray;
+    Vector_2 vec;
+    std::vector<Record> records;
 };

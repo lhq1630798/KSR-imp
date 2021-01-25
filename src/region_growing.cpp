@@ -9,8 +9,8 @@ std::vector<Detected_shape> region_growing(std::string path) {
 	Pwn_vector points;
 	std::ifstream stream(path);
 	if (!stream ||
-		// !CGAL::read_ply_points(
-		!CGAL::read_off_points(
+		 !CGAL::read_ply_points(
+		//!CGAL::read_off_points(
 			stream,
 			std::back_inserter(points),
 			CGAL::parameters::point_map(Point_map()).

@@ -29,7 +29,8 @@ class Polygon_3;
 using Polygons_3 = std::vector<Polygon_3>;
 using PWN_E = std::vector<std::pair< Point_3, Vector_3>>;
 using FT = K::FT;
-using Direction = CGAL::Direction_3<K>;
+using Direction_3 = CGAL::Direction_3<K>;
+using Direction_2 = CGAL::Direction_2<K>;
 
 class Timer
 {
@@ -39,7 +40,7 @@ public:
     decltype(auto) operator()(const std::string &func_name, Callable &&func, Args &&... args)
     {
         if (!enable)
-            return func(std::forward<Args>(args)...);
+            return std::invoke(func, std::forward<Args>(args)...);
         struct time
         {
             double start_time;
@@ -47,7 +48,7 @@ public:
             time(const std::string &func_name) : _name(func_name), start_time(glfwGetTime()) {}
             ~time() { std::cout << "time for " + _name + " : " << glfwGetTime() - start_time << "s" << std::endl; }
         } t(func_name);
-        return func(std::forward<Args>(args)...);
+        return std::invoke(func, std::forward<Args>(args)...);
     }
 };
 
