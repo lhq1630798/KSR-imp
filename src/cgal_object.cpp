@@ -34,7 +34,7 @@ Polygons_3 generate_rand_polys_3(size_t num)
 
 Polygons_3 generate_polys_3()
 {
-    auto float_min = std::numeric_limits<float>::min();
+    constexpr auto float_min = std::numeric_limits<float>::min();
     auto rand = CGAL::Random{0};
     auto polys_3 = Polygons_3{};
     const double RADIUS = 0.5;

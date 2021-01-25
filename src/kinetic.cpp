@@ -3,6 +3,7 @@
 #include <algorithm>
 #undef max
 #undef min
+//#include "log.h"
 
 bool Vertex::stop_extend(KLine_Ref kline)
 {
@@ -28,8 +29,7 @@ KPolygon_2::KPolygon_2(KPolygons_2 *_parent, Polygon_2 poly_2)
     for (const auto &point_2 : _polygon_2.container())
     {
         auto kp = parent->new_KP(KPoint_2{point_2, point_2 - center_P, Mode::Normal});
-        steal_kp_bk(kp);
-        //append_KP(KPoint_2{point_2, (point_2 - center_P)/_polygon_2.area(), Mode::Normal});
+        steal_kp(BACK, kp);
     }
 }
 
@@ -110,9 +110,9 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Vert_Circ vert, KLine_Ref kline, const
             next_twin_face->erase(next_twin);
 
             auto new_face = face->parent->insert_kpoly_2();
-            new_face->steal_kp_bk(frozen_kp);
-            set_twin(new_face->steal_kp_bk(next_kp), extend_next_vert);
-            set_twin(new_face->steal_kp_bk(kp), extend_vert);
+            new_face->steal_kp(BACK, frozen_kp);
+            set_twin(new_face->steal_kp(BACK, next_kp), extend_next_vert);
+            set_twin(new_face->steal_kp(BACK, kp), extend_vert);
 
             return {kp, next_kp}; // remove the other simultaneous event
         }
@@ -161,9 +161,9 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline)
         //extend
         kline->add_seg_twin(new_vert1, new_vert2);
         auto new_face = face->parent->insert_kpoly_2();
-        auto extend_vert = new_face->steal_kp_bk(face->parent->new_KP(extend_kpoint));
-        set_twin(new_vert2, new_face->steal_kp_bk(new_vert2->kp));
-        set_twin(new_vert1, new_face->steal_kp_bk(new_vert1->kp));
+        auto extend_vert = new_face->steal_kp(BACK, face->parent->new_KP(extend_kpoint));
+        set_twin(new_vert2, new_face->steal_kp(BACK, new_vert2->kp));
+        set_twin(new_vert1, new_face->steal_kp(BACK, new_vert1->kp));
 
         return {new_vert1->kp, new_vert2->kp, extend_vert->kp};
     }
@@ -202,16 +202,16 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
                 face->erase(vert);
                 return {sliding_vert->kp};
             }
-            else if (!vert->stop_extend(kline))
-            { //extend
-                auto new_face = face->parent->insert_kpoly_2();
-                new_face->steal_kp_bk(kp);
-                set_twin(new_face->steal_kp_bk(sliding_vert->kp), sliding_vert);
-                set_twin(new_face->steal_kp_bk(std::prev(sliding_vert)->kp), std::prev(sliding_vert));
-                kline->add_seg_twin(std::prev(sliding_vert), sliding_vert);
-                face->erase(vert);
-                return {sliding_vert->kp};
-            }
+            //else if (!vert->stop_extend(kline))
+            //{ //extend
+            //    auto new_face = face->parent->insert_kpoly_2();
+            //    new_face->steal_kp(BACK, kp);
+            //    set_twin(new_face->steal_kp(BACK, sliding_vert->kp), sliding_vert);
+            //    set_twin(new_face->steal_kp(BACK, std::prev(sliding_vert)->kp), std::prev(sliding_vert));
+            //    kline->add_seg_twin(std::prev(sliding_vert), sliding_vert);
+            //    face->erase(vert);
+            //    return {sliding_vert->kp};
+            //}
             erase_vert_kp(vert);
             return {sliding_vert->kp};
         }
@@ -233,16 +233,16 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
                 face->erase(vert);
                 return {sliding_vert->kp};
             }
-            else if (!vert->stop_extend(kline))
-            { //extend
-                auto new_face = face->parent->insert_kpoly_2();
-                new_face->steal_kp_bk(kp);
-                set_twin(new_face->steal_kp_bk(std::next(sliding_vert)->kp), std::next(sliding_vert));
-                set_twin(new_face->steal_kp_bk(sliding_vert->kp), sliding_vert);
-                kline->add_seg_twin(sliding_vert, std::next(sliding_vert));
-                face->erase(vert);
-                return {sliding_vert->kp};
-            }
+            //else if (!vert->stop_extend(kline))
+            //{ //extend
+            //    auto new_face = face->parent->insert_kpoly_2();
+            //    new_face->steal_kp(BACK, kp);
+            //    set_twin(new_face->steal_kp(BACK, std::next(sliding_vert)->kp), std::next(sliding_vert));
+            //    set_twin(new_face->steal_kp(BACK, sliding_vert->kp), sliding_vert);
+            //    kline->add_seg_twin(sliding_vert, std::next(sliding_vert));
+            //    face->erase(vert);
+            //    return {sliding_vert->kp};
+            //}
             erase_vert_kp(vert);
             return {sliding_vert->kp};
         }
@@ -283,10 +283,10 @@ std::vector<KP_Ref> Kinetic_queue::update_certificate(const Event &event)
             { //extend
                 kline->add_seg_twin(new_vert1, new_vert2);
                 auto triangle = face->parent->insert_kpoly_2();
-                triangle->steal_kp_bk(kp);
+                triangle->steal_kp(BACK, kp);
                 face->erase(vert);
-                set_twin(new_vert2, triangle->steal_kp_bk(new_vert2->kp));
-                set_twin(new_vert1, triangle->steal_kp_bk(new_vert1->kp));
+                set_twin(new_vert2, triangle->steal_kp(BACK, new_vert2->kp));
+                set_twin(new_vert1, triangle->steal_kp(BACK, new_vert1->kp));
             }
 
             return {new_vert1->kp, new_vert2->kp};
@@ -425,6 +425,10 @@ FT Kinetic_queue::move_to_time(FT t)
     }
     else
         return to_next_event();
+}
+
+void Kinetic_queue::done(){
+    while (!queue.empty()) to_next_event();
 }
 
 KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, bool exhausted)
@@ -573,23 +577,23 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
     auto origin_size = kpoly_2->size();
     KPoly_Ref new_poly1 = insert_kpoly_2(), new_poly2 = insert_kpoly_2();
 
-    auto poly1_vert1 = new_poly1->steal_kp_bk(new_kp1);
+    auto poly1_vert1 = new_poly1->steal_kp(BACK, new_kp1);
     for (auto vert = e1.vert2; vert != e2.vert2; vert++)
     {
-        auto new_vert = new_poly1->steal_kp_bk(vert->kp);
+        auto new_vert = new_poly1->steal_kp(BACK, vert->kp);
         if (vert->has_twin())
             set_twin(new_vert, vert->twin());
     }
-    auto poly1_vert2 = new_poly1->steal_kp_bk(new_kp2);
+    auto poly1_vert2 = new_poly1->steal_kp(BACK, new_kp2);
 
-    set_twin(new_poly2->steal_kp_bk(new_kp2), poly1_vert2);
+    set_twin(new_poly2->steal_kp(BACK, new_kp2), poly1_vert2);
     for (auto vert = e2.vert2; vert != e1.vert2; vert++)
     {
-        auto new_vert = new_poly2->steal_kp_bk(vert->kp);
+        auto new_vert = new_poly2->steal_kp(BACK, vert->kp);
         if (vert->has_twin())
             set_twin(new_vert, vert->twin());
     }
-    set_twin(new_poly2->steal_kp_bk(new_kp1), poly1_vert1);
+    set_twin(new_poly2->steal_kp(BACK, new_kp1), poly1_vert1);
 
     kline_2.add_seg_twin(poly1_vert1, poly1_vert2);
 
@@ -605,9 +609,8 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_2 &kline_2)
             assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
             new_poly1->inline_points.push_back(std::make_pair(point_3, normal));
         }
-        else
+        else if (new_poly2->polygon_2().has_on_bounded_side(point_2))
         {
-            assert(new_poly2->polygon_2().has_on_bounded_side(point_2));
             new_poly2->inline_points.push_back(std::make_pair(point_3, normal));
         }
     }
@@ -657,25 +660,6 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     square.push_back(Point_2{scale, -scale});
 
     {
-        auto plane = Plane_3{-1, 0, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back().frozen();
-        _kpolygons_set.back().is_bbox = true;
-    }
-    {
-        auto plane = Plane_3{0, -1, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back().frozen();
-        _kpolygons_set.back().is_bbox = true;
-    }
-    {
-        auto plane = Plane_3{0, 0, -1, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
-        _kpolygons_set.back().frozen();
-        _kpolygons_set.back().is_bbox = true;
-    }
-
-    {
         auto plane = Plane_3{1, 0, 0, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
         _kpolygons_set.back().frozen();
@@ -691,6 +675,25 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     {
         auto plane = Plane_3{0, 0, 1, scale};
         _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
+    }
+
+    {
+        auto plane = Plane_3{ -1, 0, 0, scale };
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
+        _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
+    }
+    {
+        auto plane = Plane_3{ 0, -1, 0, scale };
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
+        _kpolygons_set.back().frozen();
+        _kpolygons_set.back().is_bbox = true;
+    }
+    {
+        auto plane = Plane_3{ 0, 0, -1, scale };
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
         _kpolygons_set.back().frozen();
         _kpolygons_set.back().is_bbox = true;
     }
