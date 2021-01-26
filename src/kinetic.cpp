@@ -266,6 +266,7 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
         bool has_twin = sliding_vert->has_twin();
 
         auto new_speed = vert->edge->sliding_speed(line_2);
+        kline->twin->move_to_t(event.t);
         sliding_vert->kp->sliding_speed(new_speed);
         *sliding_vert->kp = kp->point();
         sliding_vert->set_edge(vert->edge);
@@ -289,6 +290,7 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
         bool has_twin = sliding_vert->has_twin();
 
         auto new_speed = std::prev(vert)->edge->sliding_speed(line_2);
+        kline->twin->move_to_t(event.t);
         sliding_vert->kp->sliding_speed(new_speed);
         *sliding_vert->kp = kp->point();
 

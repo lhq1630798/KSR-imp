@@ -104,13 +104,14 @@ public:
 		if (degree < 10) {
 			auto e = Sim_Event{ degree, p };
 			queue.insert(e);
-			id_event[p->id] = e;
+			id_events[p->id].push_back(e);
 			
 		}
 	}
 	void remove(size_t id) { 
-		remove(id_event[id]); 
-		id_event.erase(id);
+		for (auto &e : id_events[id])
+			remove(e); 
+		id_events.erase(id);
 	}
 
 	const Sim_Event& top(void) const { return *(queue.begin()); }
@@ -126,7 +127,7 @@ private:
 		}
 	}
 	std::set<Sim_Event> queue;
-	std::unordered_map<size_t, Sim_Event> id_event;
+	std::unordered_map<size_t, std::vector<Sim_Event>> id_events;
 
 };
 

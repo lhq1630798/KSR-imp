@@ -263,19 +263,31 @@ private:
 class KSegment
 {
 public:
-    KSegment(Point_2 p1, Point_2 p2, Vector_2 sp1, Vector_2 sp2)
-        : point1(p1), point2(p2), speed1(sp1), speed2(sp2) {}
+    KSegment(Point_2 p1, Point_2 p2, Vector_2 sp1, Vector_2 sp2, FT t)
+        : start1(p1), end1(p1), start2(p2), end2(p2), speed1(sp1), speed2(sp2), start_time(t){}
     void move_dt(FT dt)
     {
-        point1 = point1 + dt * speed1;
-        point2 = point2 + dt * speed2;
+        end1 = end1 + dt * speed1;
+        end2 = end2 + dt * speed2;
+    }
+    void move_to_t(FT t)
+    {
+        auto dt = (t - start_time);
+        start_time = t;
+        start1 = start1 + dt * speed1;
+        start2 = start2 + dt * speed2;
+        end1 = start1;
+        end2 = start2;
+
     }
     bool has_on(Point_2 p) const
     {
-        return Segment_2{point1, point2}.has_on(p);
+        return Segment_2{ end1, end2 }.has_on(p);
     }
-    Point_2 point1, point2;
+    Point_2 end1, end2;
+    Point_2 start1, start2;
     Vector_2 speed1, speed2;
+    FT start_time;
 };
 
 class KLine_2
@@ -285,15 +297,14 @@ public:
         : _line_2(line_2), kpolygons(kpolygons){};
     KSeg_Ref insert_seg(const KSegment &kseg)
     {
-        assert(_line_2.has_on(kseg.point1) && _line_2.has_on(kseg.point2));
+        assert(_line_2.has_on(kseg.start1) && _line_2.has_on(kseg.start2));
         return _ksegments.insert(_ksegments.end(), kseg);
     }
     void add_seg_twin(Vert_Circ sliding_prev, Vert_Circ sliding_next)
     {
         auto [p1t, sp1t] = transform2twin(*sliding_prev->kp);
         auto [p2t, sp2t] = transform2twin(*sliding_next->kp);
-        twin->move_to_t(time);
-        auto seg_twin = twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t});
+        auto seg_twin = twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t, time });
         sliding_prev->kp->seg_twin_speed = &seg_twin->speed1;
         sliding_next->kp->seg_twin_speed = &seg_twin->speed2;
     }
@@ -312,11 +323,9 @@ public:
     }
     void move_to_t(FT t)
     {
-        if (t <= time) return;
-        auto dt = t - time;
-        for (auto& seg : _ksegments)
-            seg.move_dt(dt);
         time = t;
+        for (auto& seg : _ksegments)
+            seg.move_to_t(t);
     }
     Point_2 transform2twin(const Point_2 &point) const;
     std::pair<Point_2, Vector_2> transform2twin(const KPoint_2 &kpoint) const;
@@ -507,8 +516,8 @@ public:
             for (auto &kline : kpolys->_klines)
                 for (auto &kseg : kline._ksegments)
                 {
-                    auto point1 = kpolys->plane().to_3d(kseg.point1);
-                    auto point2 = kpolys->plane().to_3d(kseg.point2);
+                    auto point1 = kpolys->plane().to_3d(kseg.end1);
+                    auto point2 = kpolys->plane().to_3d(kseg.end2);
                     end_points.emplace_back((float)CGAL::to_double(point1.x()),
                                             (float)CGAL::to_double(point1.y()),
                                             (float)CGAL::to_double(point1.z()));
@@ -645,11 +654,12 @@ private:
     void erase_kp(KPolygons_2* parent, KP_Ref kp);
     bool stop_extend(KLine_Ref kline, KP_Ref kp )
     {
+        assert(kline->_line_2.has_on(kp->point()));
         if (kline->is_bbox)
             return true;
         if (exhausted) return false;
         auto ret = kline->has_on(kp->point());
-        if(ret) kline->is_bbox = true;
+        //if(ret) kline->is_bbox = true;
         return ret;
     }
 
