@@ -112,7 +112,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
 
     if (!vert1->has_twin() && !vert2->has_twin())
     {
-        std::cout << last_t << ": type c" << std::endl;
+        //std::cout << last_t << ": type c\n";
         assert(std::next(vert1) == vert2 || std::next(vert2) == vert1);
         erase_kp(parent, vert1->kp);
         vert1->face->erase(vert1);
@@ -122,7 +122,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
 
     if (vert1->has_twin() != vert2->has_twin())
     {
-        std::cout << last_t << ": one type c + one type b" << std::endl;
+        //std::cout << last_t << ": one type c + one type b\n";
 
         if (vert1->has_twin())
             std::swap(event1, event2);
@@ -146,7 +146,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
     }
 
     { // one type c + two type b
-        std::cout << last_t << ": one type c + two type b" << std::endl;
+        //std::cout << last_t << ": one type c + two type b\n";
         auto [vert1, vert2] = get_vert(event1, event2);
         if (std::prev(vert1) == vert2)
         {
@@ -205,7 +205,7 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline)
     Vert_Circ new_vert1, new_vert2;
     if (std::prev(vert)->edge)
     {
-        std::cout << last_t << ": type b Sliding_Prev" << std::endl;
+        //std::cout << last_t << ": type b Sliding_Prev\n";
         auto new_kp = parent->new_sliding_KP(*std::prev(vert)->edge, kline, kp->point());
         new_vert1 = face->steal_kp(vert, new_kp);
         new_vert2 = face->steal_kp(vert, frozen_kp);
@@ -213,7 +213,7 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline)
     else
     {
         assert(vert->edge);
-        std::cout << last_t << ": type b Sliding_Next" << std::endl;
+        //std::cout << last_t << ": type b Sliding_Next\n";
         new_vert1 = face->steal_kp(vert, frozen_kp);
         auto new_kp = parent->new_sliding_KP(*vert->edge, kline, kp->point());
         new_vert2 = face->steal_kp(vert, new_kp);
@@ -260,7 +260,7 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
 
     if (prev_vert->kp->_status == Mode::Sliding && prev_vert->kp->sliding_line == kline)
     {
-        std::cout << last_t << ": vert collision" << std::endl;
+        //std::cout << last_t << ": vert collision\n";
         assert(!vert->has_twin());
         auto sliding_vert = prev_vert;
         bool has_twin = sliding_vert->has_twin();
@@ -284,7 +284,7 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
     }
     else if (next_vert->kp->_status == Mode::Sliding && next_vert->kp->sliding_line == kline)
     {
-        std::cout << last_t << ": vert collision" << std::endl;
+        //std::cout << last_t << ": vert collision\n";
         assert(!vert->has_twin());
         auto sliding_vert = next_vert;
         bool has_twin = sliding_vert->has_twin();
@@ -309,7 +309,7 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
     }
 
     {
-        std::cout << last_t << ": type a" << std::endl;
+        //std::cout << last_t << ": type a\n";
         assert(prev_vert->kp->_status != Mode::Frozen);
         assert(next_vert->kp->_status != Mode::Frozen);
         auto sliding_prev_KP = face->parent->new_sliding_KP(*std::prev(vert)->edge, kline, kp->point());
@@ -350,6 +350,12 @@ void Kinetic_queue::update_certificate()
     auto dt = event.t - last_t;
     last_t = event.t;
     assert(dt > 0);
+    static float accumulated = 0;
+    accumulated += CGAL::to_double(dt);
+    if (accumulated > 0.1) {
+        accumulated = 0;
+        std::cout << "kinetic time : " << CGAL::to_double(last_t) << std::endl;
+    }
     auto next_event = top();
 
     if (event.kp->_status == Mode::Normal)
@@ -361,6 +367,7 @@ void Kinetic_queue::update_certificate()
     else if (next_event.t == event.t)
     {
         pop();
+        if (top().t == next_event.t) std::exit(__LINE__);//Simultaneous collision
         need_update = type_c(event, next_event);
     }
     else {
@@ -397,30 +404,9 @@ void Kinetic_queue::kp_collide(KP_Ref kp)
 {
     if (kp->_status == Mode::Frozen)
         return;
-    //assert(kp->_speed != CGAL::NULL_VECTOR);
-    //auto kpolys_2 = kp->vertex->face->parent;
-    //auto r = Ray_2{*kp, kp->_speed};
 
-
-    //for (auto kline_2 = kpolys_2->_klines.begin(); kline_2 != kpolys_2->_klines.end(); kline_2++)
-    //    if (auto res = CGAL::intersection(r, kline_2->_line_2))
-    //    {
-    //        if (boost::get<Ray_2>(&*res)) //sliding
-    //            continue;
-    //        if (auto point_2_p = boost::get<Point_2>(&*res))
-    //        {
-    //            if (*point_2_p == *kp) // that means the point is about to leave the line
-    //                continue;
-    //            auto diff = *point_2_p - *kp;
-    //            auto t = last_t;
-    //            t += Vec_div(diff, kp->_speed);
-    //            auto event = Event{t, kp, kline_2};
-    //            id_events[kp->id()].push_back(event);
-    //            insert(event);
-    //        }
-    //    }
     auto next_records = kp->collide_ray->next_hit(kp);
-    int max_event = 999999;
+    size_t max_event = (size_t)-1;
     for (const auto& rec : next_records) {
         if (max_event-- == 0)
             break;

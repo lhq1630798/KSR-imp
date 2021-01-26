@@ -10,7 +10,7 @@ int main()
 
     //auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
     //auto polys_3 = timer("generate_polys_3", generate_polys_3);
-    auto polys_3 = timer("detect_shape", detect_shape, "data/toy.ply");
+    auto polys_3 = timer("detect_shape", detect_shape, "data/sphere-100K.ply");
 
     //bool exhausted = true;
     bool exhausted = false;
