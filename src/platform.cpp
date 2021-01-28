@@ -24,6 +24,7 @@ bool show_seg_line = false;
 bool show_boundary = true;
 bool show_point_cloud = false;
 bool grow = false;
+bool dirty = false;
 float grow_speed = -1;
 
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
@@ -177,13 +178,16 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)
 
 	if (ImGui::Button("finish partition"))
 	{
-		k_queue.done();
+		dirty = true;
+		k_queue.Kpartition();
 	}
 	ImGui::Checkbox("growing", &grow);
 	ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
 
-	if (ImGui::Button("next event"))
+	if (ImGui::Button("next event")) {
+		dirty = true;
 		kinetic_time = (float)CGAL::to_double(k_queue.to_next_event());
+	}
 
 	ImGui::SameLine();
 	ImGui::Text("queue size = %d", k_queue.size());
@@ -213,7 +217,11 @@ void Platform::render_3d(Shader &shader,  Kinetic_queue &k_queue, KPolygons_SET 
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
-	auto mesh = kpolys_set.Get_mesh();
+	static auto mesh = kpolys_set.Get_mesh();
+	if (grow || dirty) {
+		dirty = false;
+		mesh = kpolys_set.Get_mesh();
+	}
 	if (show_plane)
 		mesh.render(shader);
 	if (show_boundary)

@@ -63,7 +63,7 @@ public:
     {
         update_points_3();
         // assert(_polygon_2.is_simple());
-        assert(_polygon_2.is_convex());
+        //assert(_polygon_2.is_convex());
     }
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
