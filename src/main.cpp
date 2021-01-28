@@ -16,12 +16,12 @@ int main()
     bool exhausted = false;
     auto kpolys_set = KPolygons_SET{std::move(polys_3), exhausted};
 
-    auto k_queue = Kinetic_queue{kpolys_set, false };
+    auto k_queue = Kinetic_queue{ kpolys_set, false };
 
     plt.loop(shader, k_queue, kpolys_set);
     timer("kinetic partition", &Kinetic_queue::Kpartition, k_queue);
 
-    //timer("extract surface", extract_surface, kpolys_set);
+    timer("extract surface", extract_surface, kpolys_set);
 
 
     return 0;
