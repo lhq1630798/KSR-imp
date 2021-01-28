@@ -538,6 +538,56 @@ bool operator<(const ID_Edge& e1, const ID_Edge& e2) {
     return e1.p2 < e2.p2;
 }
 
+class Erase_Single_Face {
+public:
+    Erase_Single_Face(KPolygons_SET& kpolygons_set) {
+        for (auto& kpolys_2 : kpolygons_set._kpolygons_set) {
+            for (auto kpoly = kpolys_2._kpolygons_2.begin(); kpoly != kpolys_2._kpolygons_2.end(); kpoly++) {
+                auto vert = kpoly->vert_circulator(), end = vert;
+                CGAL_For_all(vert, end)
+                    Edge_Polygons_Map[ID_Edge{ vert->T_ID(), std::next(vert)->T_ID() }].insert(kpoly);
+            }
+        }
+
+        for (auto it = Edge_Polygons_Map.begin(); it != Edge_Polygons_Map.end(); it++) {
+            auto& [edge, polys_set] = *it;
+            if (polys_set.size() == 1) {
+                auto face = *polys_set.begin();
+                //printf("edge_ID %zu %zu %zu %zu %zu %zu PolygonID %zu \n", edge.p1[0], edge.p1[1], edge.p1[2], edge.p2[0], edge.p2[1], edge.p2[2], face->id);
+                erase(polys_set);
+            }
+        }
+        for (auto face : erased) {
+            std::cout << "erase face id " << face->id << std::endl;
+            face->parent->_kpolygons_2.erase(face);
+        }
+
+    }
+private:
+    void erase(std::set<KPoly_Ref> &polys_set) {
+
+        if (polys_set.size() == 1) {
+            auto face = *polys_set.begin();
+            if (visited.find(face) != visited.end()) return;
+            erased.insert(face);
+            visited.insert(face);
+            polys_set.erase(face);
+            auto vert = face->vert_circulator(), end = vert;
+            CGAL_For_all(vert, end) {
+                auto &neibor_set = Edge_Polygons_Map[ID_Edge{ vert->T_ID(), std::next(vert)->T_ID() }];
+                neibor_set.erase(face);
+                if (neibor_set.size() == 1)
+                    erase(neibor_set);
+            }
+        }
+    }
+    std::map<ID_Edge, std::set<KPoly_Ref>> Edge_Polygons_Map;
+    std::set< KPoly_Ref> erased; 
+    std::set< KPoly_Ref> visited;
+};
+
+
+
 void Kinetic_queue::finalize() {
     //check
     for (auto& kpolys_2 : kpolygons_set._kpolygons_set) {
@@ -549,28 +599,8 @@ void Kinetic_queue::finalize() {
         }
     }
 
-    //
-    //std::set<size_t>
-    // std::map<ID_Edge, std::vector<KPoly_Ref>> Edge_Polygon_Map;
-    // for (auto& kpolys_2 : kpolygons_set._kpolygons_set) {
-    //     for (auto kpoly = kpolys_2._kpolygons_2.begin(); kpoly != kpolys_2._kpolygons_2.end(); kpoly++) {
-    //         auto vert = kpoly->vert_circulator(), end = vert;
-    //         CGAL_For_all(vert, end)
-    //             Edge_Polygon_Map[ID_Edge{ vert->T_ID(), std::next(vert)->T_ID()}].push_back(kpoly);
-    //     }
-    // }
-    // for (auto [key, value] : Edge_Polygon_Map) {
-    //     printf("edge_ID %zu %zu %zu %zu %zu %zu PolygonID ", key.p1[0], key.p1[1], key.p1[2], key.p2[0], key.p2[1], key.p2[2]);
-    //     for (auto face : value)
-    //         std::cout << face->id << " ";
-    //     std::cout << std::endl;
-    // }
-    //for (auto [key, value] : Edge_Polygon_Map) {
-    //    if (key.is_bbox()) continue;
-    //    if (value.size() == 1) {
+    Erase_Single_Face{ kpolygons_set };
 
-    //    }
-    //}
 }
 
 void freeze_plane(KPolygons_2 & kpolys) {

@@ -698,3 +698,7 @@ private:
     Vector_2 vec;
     std::vector<Record> records;
 };
+
+inline bool operator<(KPoly_Ref f1, KPoly_Ref f2) {
+    return f1->id < f2->id;
+}
