@@ -51,6 +51,8 @@ inline std::string last_file(std::string path) {
     (void)(log("\033[1;31m%s:%u [ASSERT] " msg "\033[0m\n", file, line), DEBUG_BREAK,              \
            std::exit(__LINE__), 0)
 
-//#undef assert
 #define R_assert(expr)                                                                               \
     (void)((!!(expr)) || (fail_assert(#expr, last_file(__FILE__).c_str(), __LINE__), 0))
+
+//#undef assert
+//#define assert(expr) R_assert(expr)

@@ -127,6 +127,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
         //std::cout << last_t << ": type c\n";
         assert(std::next(vert1) == vert2 || std::next(vert2) == vert1);
         vert1->kp->frozen(last_t);
+        vert1->edge.reset();
         vert1->kp->sliding_line_2 = event1.kline;
         erase_kp(parent, vert2->kp);
         vert2->face->erase(vert2);
@@ -149,6 +150,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
         auto v2twin = vert2->twin();
 
         vert1->kp->frozen(last_t);
+        vert1->edge.reset();
         vert1->kp->sliding_line_2 = event1.kline;
         // vert2->kp belong to type_b 
         vert2->face->erase(vert2);
@@ -376,7 +378,7 @@ void Kinetic_queue::update_certificate()
     accumulated += CGAL::to_double(dt);
     if (accumulated > 0.1) {
         accumulated = 0;
-        std::cout << "kinetic time : " << CGAL::to_double(last_t) << std::endl;
+        std::cout << "kinetic time : " << CGAL::to_double(last_t) << "  queue size : " << queue.size() << std::endl;
     }
     auto next_event = top();
 
@@ -486,7 +488,7 @@ size_t max_id = 0;
 size_t next_id()
 {
     auto next_id = max_id++;
-    if (next_id == 1314)
+    if (next_id == 17)
         std::cout << "debug" << std::endl;
     return next_id;
 }
@@ -557,8 +559,8 @@ public:
                 erase(polys_set);
             }
         }
+        std::cout << "erase single face: " << erased.size() << std::endl;
         for (auto face : erased) {
-            std::cout << "erase face id " << face->id << std::endl;
             face->parent->_kpolygons_2.erase(face);
         }
 
@@ -976,5 +978,5 @@ bool operator<(const Event& r1, const Event& r2)
         return r1.t < r2.t;
     }
     assert(r1.plane == r2.plane);
-    return &*r1.kp < &*r2.kp;
+    return r1.event_id < r2.event_id;
 }
