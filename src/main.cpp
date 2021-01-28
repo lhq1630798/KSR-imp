@@ -10,17 +10,19 @@ int main()
 
     //auto polys_3 = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
     //auto polys_3 = timer("generate_polys_3", generate_polys_3);
-     auto polys_3 = timer("detect_shape", detect_shape, "data/test_input.off");
+    auto polys_3 = timer("detect_shape", detect_shape, "data/toy.ply");
 
+    //bool exhausted = true;
     bool exhausted = false;
     auto kpolys_set = KPolygons_SET{std::move(polys_3), exhausted};
 
-    auto k_queue = Kinetic_queue{kpolys_set};
+    auto k_queue = Kinetic_queue{kpolys_set, false };
 
     plt.loop(shader, k_queue, kpolys_set);
-    k_queue.done();
+    timer("kinetic partition", &Kinetic_queue::Kpartition, k_queue);
 
-	extract_surface(kpolys_set);
+    //timer("extract surface", extract_surface, kpolys_set);
+
 
     return 0;
 }

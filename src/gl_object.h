@@ -318,6 +318,7 @@ public:
     {
         shader.use();
         shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
+        glLineWidth(5.0f);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_LINES, 0, (GLuint)end_points.size());

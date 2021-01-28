@@ -1,6 +1,6 @@
 #include "cgal_object.h"
 #include "region_growing.h"
-//#include "log.h"
+#include "log.h"
 
 // region_growing.h does not need to be included in cgal_object.h
 
@@ -50,6 +50,7 @@ Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator en
 	Polygon_2 polygon2 = Polygon_2(convex_points.begin(), convex_points.end());
 	assert(polygon2.is_simple());
 	assert(polygon2.is_convex());
+	assert(polygon2.is_counterclockwise_oriented());
 	return polygon2;
 }
 
@@ -77,13 +78,13 @@ public:
 };
 
 using P_Circ = CGAL::Circulator_from_container<std::list<Point_2_id>>;
-class Event
+class Sim_Event
 {
 public:
 	FT cost;
 	P_Circ p = P_Circ{};
-	Event() = default;
-	Event(FT _cost, P_Circ _p)
+	Sim_Event() = default;
+	Sim_Event(FT _cost, P_Circ _p)
 		: cost(_cost), p(_p)
 	{
 		assert(cost > 0);
@@ -99,38 +100,39 @@ public:
 		auto prev_p3 = Point_3{ prev->x(),prev->y(), 0 };
 		auto next_p3 = Point_3{ next->x(),next->y(), 0 };
 		FT degree = CGAL::approximate_angle(p3-prev_p3, next_p3 - p3);
-		std::cout << degree << std::endl;
+		//std::cout << degree << std::endl;
 		if (degree < 10) {
-			auto e = Event{ degree, p };
+			auto e = Sim_Event{ degree, p };
 			queue.insert(e);
-			id_event[p->id] = e;
+			id_events[p->id].push_back(e);
 			
 		}
 	}
 	void remove(size_t id) { 
-		remove(id_event[id]); 
-		id_event.erase(id);
+		for (auto &e : id_events[id])
+			remove(e); 
+		id_events.erase(id);
 	}
 
-	const Event& top(void) const { return *(queue.begin()); }
+	const Sim_Event& top(void) const { return *(queue.begin()); }
 	void pop(void) { queue.erase(queue.begin()); }
 	size_t size() { return queue.size(); }
 private:
-	void insert(const Event& event) { queue.insert(event); }
-	void remove(const Event& event)
+	void insert(const Sim_Event& event) { queue.insert(event); }
+	void remove(const Sim_Event& event)
 	{
 		if (queue.find(event) != queue.end())
 		{
 			queue.erase(event);
 		}
 	}
-	std::set<Event> queue;
-	std::unordered_map<size_t, Event> id_event;
+	std::set<Sim_Event> queue;
+	std::unordered_map<size_t, std::vector<Sim_Event>> id_events;
 
 };
 
 /* Comparison operator for Event so std::set will properly order them */
-inline bool operator<(const Event& r1, const Event& r2)
+inline bool operator<(const Sim_Event& r1, const Sim_Event& r2)
 {
 	if (r1.cost != r2.cost)
 	{
@@ -142,6 +144,7 @@ inline bool operator<(const Event& r1, const Event& r2)
 Polygon_2 simplify_convex(const Polygon_2& polygon) {
 
 	std::list<Point_2_id> simplified{ polygon.begin(), polygon.end() };
+	std::cout << "simplify before : " << simplified.size();
 
 	Vector_2 center_V = CGAL::NULL_VECTOR;
 	for (const auto& point_2 : polygon.container())
@@ -179,5 +182,6 @@ Polygon_2 simplify_convex(const Polygon_2& polygon) {
 		queue.try_insert(prev_p);
 		queue.try_insert(next_p);
 	}
+	std::cout << " after : " << simplified.size() << std::endl;
 	return Polygon_2{ simplified.begin(), simplified.end()};
 }

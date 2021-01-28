@@ -2,7 +2,7 @@
 #include "gl_object.h"
 #include "cgal_object.h"
 #include <list>
-#include <queue>
+#include <array>
 
 static const auto INF = FT{99999};
 
@@ -14,9 +14,11 @@ FT Vec_div(Vector_2 v1, Vector_2 v2);
 class KPoint_2;
 class KLine_2;
 class KSegment;
+class Edge;
 class KPolygon_2;
 class KPolygons_2;
 class KPolygons_SET;
+class Collide_Ray;
 
 using KP_Ref = std::list<KPoint_2>::iterator;
 using KLine_Ref = std::list<KLine_2>::iterator;
@@ -25,6 +27,7 @@ using KPoly_Ref = std::list<KPolygon_2>::iterator;
 using KPolys_Ref = std::list<KPolygons_2>::iterator;
 
 const struct Back {} BACK; //tag
+const struct No_Check {}; //tag
 class Vertex;
 using Vert_Circ = CGAL::Circulator_from_container<std::list<Vertex>>;
 
@@ -63,18 +66,12 @@ public:
         return *this;
     }
 
-    void sliding_speed(const Vector_2 &speed)
-    {
-        assert(_status == Mode::Sliding);
-        if (seg_twin_speed)
-            *seg_twin_speed *= Vec_div(speed, _speed);
-        _speed = speed;
-    }
+    void set_sliding_speed(const Vector_2& speed, ::FT t);
 
-    void frozen()
+    void frozen(::FT t)
     {
         if (_status == Mode::Sliding)
-            sliding_speed(CGAL::NULL_VECTOR);
+            set_sliding_speed(CGAL::NULL_VECTOR, t);
         else
             _speed = CGAL::NULL_VECTOR;
         _status = Mode::Frozen;
@@ -84,11 +81,17 @@ public:
 
     size_t id() const { return _id; }
 
+    void set_collide_ray(std::shared_ptr<Collide_Ray> _collide_ray);
+    void set_sliding_line(KLine_Ref kline);
+
     Vector_2 *seg_twin_speed = nullptr; // for speed on the twin plane
     Vector_2 _speed = CGAL::NULL_VECTOR;
     Mode _status = Mode::Frozen;
     Vert_Circ vertex;
-
+    std::shared_ptr<Collide_Ray> collide_ray;
+    bool ray_reverse;
+    KLine_Ref sliding_line{}; // sliding point
+    KLine_Ref sliding_line_2{}; // frozen point
 private:
     friend class KPolygon_2;
     friend class KPolygons_2;
@@ -107,17 +110,44 @@ public:
     {
         return !(twin() == nullptr);
     }
-    bool stop_extend(KLine_Ref);
+    void set_edge(const std::shared_ptr<Edge>& _edge);
+    void set_edge(const std::shared_ptr<Edge>& _edge, No_Check);
     size_t _id = -1;
     KP_Ref kp;
     Vert_Circ _twin{};
     KPolygon_2 *face = nullptr;
+    std::shared_ptr<Edge> edge;
 };
 
-inline void set_twin(Vert_Circ a, Vert_Circ b){
+inline void set_twin(Vert_Circ a, Vert_Circ b)
+{
     a->twin() = b;
     b->twin() = a;
 }
+
+class Edge
+{
+public:
+    Edge(Vert_Circ _vert1, Vert_Circ _vert2) : vert1(_vert1), vert2(_vert2)
+    {
+        _seg = Segment_2{ *vert1->kp, *vert2->kp };
+        _line = _seg.supporting_line();
+        _moved_line = Line_2{ vert1->kp->move_dt(1), vert2->kp->move_dt(1) };
+    }
+    Vert_Circ vert1, vert2;
+    Segment_2 seg() const { return _seg; }
+    Line_2 line() const { return _seg.supporting_line(); }
+    Vector_2 sliding_speed(const Line_2& line_2) const;
+    friend bool operator==(const Edge& a, const Edge& b) { return a.id == b.id; }
+
+private:
+    Line_2 moved_line() const { return _moved_line; }
+    Segment_2 _seg;
+    Line_2 _line;
+    Line_2 _moved_line;
+    size_t id = next_edge_id++;
+    inline static size_t next_edge_id = 0;
+};
 
 class KPolygon_2
 {
@@ -143,8 +173,7 @@ public:
     // ===================================================================
     // ============ methods that should mark dirty========================
 
-
-    Vert_Circ steal_kp(Vert_Circ pos,  KP_Ref kp)
+    Vert_Circ steal_kp(Vert_Circ pos, KP_Ref kp)
     {
         return steal_kp(pos.current_iterator(), kp);
     }
@@ -152,8 +181,6 @@ public:
     {
         return steal_kp(vertices.end(), kp);
     }
-
-
     void erase(Vert_Circ vert)
     {
         dirty = true;
@@ -164,21 +191,7 @@ public:
     // ============ methods that should mark dirty========================
     // ===================================================================
 
-    class Edge
-    {
-    public:
-        Edge(Vert_Circ _vert1, Vert_Circ _vert2) : vert1(_vert1), vert2(_vert2) {}
-        Vert_Circ vert1, vert2;
-        Segment_2 seg() const { return Segment_2{*vert1->kp, *vert2->kp}; }
-        Line_2 line() const { return Line_2{*vert1->kp, *vert2->kp}; }
-        Vector_2 sliding_speed(const Line_2 &line_2) const;
-        friend bool operator==(const Edge &a, const Edge &b) { return a.id == b.id; }
 
-    private:
-        Line_2 moved_line() const { return Line_2{vert1->kp->move_dt(1), vert2->kp->move_dt(1)}; }
-        size_t id = next_edge_id++;
-        inline static size_t next_edge_id = 0;
-    };
 
     std::vector<Edge> get_edges()
     {
@@ -194,6 +207,12 @@ public:
         check();
         return _polygon_2;
     }
+
+    struct ID_Point {
+        Point_2 pos_2;
+        std::array<size_t, 3> ID;
+    };
+    std::vector<ID_Point> id_polygon_2() const;
     size_t size() const { return vertices.size(); };
 
     Vert_Circ vert_circulator() { return Vert_Circ{&vertices}; }
@@ -201,7 +220,8 @@ public:
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
-	PWN_E inline_points;
+    PWN_E inline_points;
+    std::list<Vertex> vertices;
 
     FT area()
     {
@@ -223,7 +243,7 @@ private:
         _polygon_2 = Polygon_2{};
         for (auto &vert : vertices)
             _polygon_2.push_back(vert.kp->point());
-        assert(_polygon_2.is_convex());
+        //assert(_polygon_2.is_convex());
     }
 
     Vert_Circ steal_kp(std::list<Vertex>::iterator pos, KP_Ref kp)
@@ -239,25 +259,37 @@ private:
 
     mutable bool dirty = true;
     mutable Polygon_2 _polygon_2;
-    std::list<Vertex> vertices;
 };
 
 class KSegment
 {
 public:
-    KSegment(Point_2 p1, Point_2 p2, Vector_2 sp1, Vector_2 sp2)
-        : point1(p1), point2(p2), speed1(sp1), speed2(sp2) {}
+    KSegment(Point_2 p1, Point_2 p2, Vector_2 sp1, Vector_2 sp2, FT t)
+        : start1(p1), end1(p1), start2(p2), end2(p2), speed1(sp1), speed2(sp2), start_time(t){}
     void move_dt(FT dt)
     {
-        point1 = point1 + dt * speed1;
-        point2 = point2 + dt * speed2;
+        end1 = end1 + dt * speed1;
+        end2 = end2 + dt * speed2;
+    }
+    void move_to_t(FT t)
+    {
+        auto dt = (t - start_time);
+        if (dt == 0) return;
+        start_time = t;
+        start1 = start1 + dt * speed1;
+        start2 = start2 + dt * speed2;
+        end1 = start1;
+        end2 = start2;
+
     }
     bool has_on(Point_2 p) const
     {
-        return Segment_2{point1, point2}.has_on(p);
+        return Segment_2{ end1, end2 }.has_on(p);
     }
-    Point_2 point1, point2;
+    Point_2 end1, end2;
+    Point_2 start1, start2;
     Vector_2 speed1, speed2;
+    FT start_time;
 };
 
 class KLine_2
@@ -267,14 +299,14 @@ public:
         : _line_2(line_2), kpolygons(kpolygons){};
     KSeg_Ref insert_seg(const KSegment &kseg)
     {
-        assert(_line_2.has_on(kseg.point1) && _line_2.has_on(kseg.point2));
+        assert(_line_2.has_on(kseg.start1) && _line_2.has_on(kseg.start2));
         return _ksegments.insert(_ksegments.end(), kseg);
     }
     void add_seg_twin(Vert_Circ sliding_prev, Vert_Circ sliding_next)
     {
         auto [p1t, sp1t] = transform2twin(*sliding_prev->kp);
         auto [p2t, sp2t] = transform2twin(*sliding_next->kp);
-        auto seg_twin = twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t});
+        auto seg_twin = twin->insert_seg(KSegment{p1t, p2t, sp1t, sp2t, time });
         sliding_prev->kp->seg_twin_speed = &seg_twin->speed1;
         sliding_next->kp->seg_twin_speed = &seg_twin->speed2;
     }
@@ -291,6 +323,12 @@ public:
         for (auto &seg : _ksegments)
             seg.move_dt(dt);
     }
+    void move_to_t(FT t)
+    {
+        time = t;
+        for (auto& seg : _ksegments)
+            seg.move_to_t(t);
+    }
     Point_2 transform2twin(const Point_2 &point) const;
     std::pair<Point_2, Vector_2> transform2twin(const KPoint_2 &kpoint) const;
     std::list<KSegment> _ksegments;
@@ -298,6 +336,9 @@ public:
     KPolygons_2 *kpolygons = nullptr;
     KLine_Ref twin; // KLine_2 on the other supporting plane
     bool is_bbox = false;
+    std::shared_ptr< Collide_Ray> collide_ray;
+    size_t line_id = next_id();
+    FT time = 0;
 };
 
 class KPolygons_2
@@ -317,6 +358,8 @@ public:
     std::list<KPoint_2> all_KP;
     std::list<KLine_2> _klines;
     bool is_bbox = false;
+    size_t plane_id = next_plane_id++;
+    inline static size_t next_plane_id = 0;
 
     KPolygons_2 &operator=(const KPolygons_2 &) = delete;
 
@@ -331,11 +374,18 @@ public:
         ref->_id = next_id();
         return ref;
     }
-
-    KP_Ref kp_end()
+    KP_Ref new_sliding_KP(const Edge &edge, KLine_Ref kline, const Point_2 &start)
     {
-        return all_KP.end();
+        auto sliding_speed = edge.sliding_speed(kline->_line_2);
+        auto kp = new_KP(KPoint_2{ start, sliding_speed, Mode::Sliding });
+        kp->set_sliding_line(kline);
+        return kp;
     }
+
+    // KP_Ref kp_end()
+    // {
+    //     return all_KP.end();
+    // }
 
     void erase_kp(KP_Ref kp)
     {
@@ -359,10 +409,12 @@ public:
 
     const Plane_3 &plane() const { return _plane; }
 
-    void frozen()
+    void frozen(FT t)
     {
-        for (auto &kp : all_KP)
-            kp.frozen();
+        for (auto kp = all_KP.begin(); kp != all_KP.end(); kp++)
+        {
+            kp->frozen(t);
+        }
     }
     void move_dt(FT dt)
     {
@@ -376,7 +428,7 @@ public:
             kline.move_dt(dt);
     }
 
-    bool try_split(KPoly_Ref, KLine_2 &);
+    bool try_split(KPoly_Ref, KLine_Ref);
 
     Point_2 project_2(const Point_3 &point_3) const
     {
@@ -461,8 +513,8 @@ public:
             for (auto &kline : kpolys->_klines)
                 for (auto &kseg : kline._ksegments)
                 {
-                    auto point1 = kpolys->plane().to_3d(kseg.point1);
-                    auto point2 = kpolys->plane().to_3d(kseg.point2);
+                    auto point1 = kpolys->plane().to_3d(kseg.end1);
+                    auto point2 = kpolys->plane().to_3d(kseg.end2);
                     end_points.emplace_back((float)CGAL::to_double(point1.x()),
                                             (float)CGAL::to_double(point1.y()),
                                             (float)CGAL::to_double(point1.z()));
@@ -471,6 +523,27 @@ public:
                                             (float)CGAL::to_double(point2.z()));
                 }
         return Lines_GL{end_points};
+    }
+
+    Lines_GL Get_Edges()
+    {
+        std::vector<Vec3> end_points{};
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
+            for (auto& kpoly2 : kpolys->_kpolygons_2)
+                for (auto vert : kpoly2.vertices)
+                {
+                    if (vert.edge) {
+                        auto point1 = kpolys->plane().to_3d(vert.kp->point());
+                        auto point2 = kpolys->plane().to_3d(vert.kp->point() + vert.edge->seg().to_vector());
+                        end_points.emplace_back((float)CGAL::to_double(point1.x()),
+                            (float)CGAL::to_double(point1.y()),
+                            (float)CGAL::to_double(point1.z()));
+                        end_points.emplace_back((float)CGAL::to_double(point2.x()),
+                            (float)CGAL::to_double(point2.y()),
+                            (float)CGAL::to_double(point2.z()));
+                    }
+                }
+        return Lines_GL{ end_points };
     }
 
     Point_cloud_GL Get_Point_cloud()
@@ -498,8 +571,12 @@ public:
     KP_Ref kp;
     KLine_Ref kline;
     KPolygons_2 *plane;
-    Event(FT t, KP_Ref kp, KLine_Ref kline)
-        : t(t), kp(kp), kline(kline), plane(kp->vertex->face->parent)
+    size_t kp_id;
+    Point_2 pos;
+    size_t event_id = next_event_id++;
+    KLine_Ref sliding;
+    Event(FT t, KP_Ref kp, KLine_Ref kline, Point_2 pos, KLine_Ref sliding)
+        : t(t), kp(kp), kline(kline), plane(kp->vertex->face->parent), kp_id(kp->id()), pos(pos), sliding(sliding)
     {
         assert(t > 0);
         assert(kp->vertex != nullptr);
@@ -507,27 +584,25 @@ public:
         assert(kp->vertex->face->parent);
         // assert(kp->id() < next_id);
     }
+private:
+    inline static size_t next_event_id = 0;
 };
 
-/* Comparison operator for Event so std::set will properly order them */
-inline bool operator<(const Event &r1, const Event &r2)
-{
-    if (r1.t != r2.t)
-    {
-        return r1.t < r2.t;
-    }
-    assert(r1.plane == r2.plane);
-    return &*r1.kp < &*r2.kp;
+inline bool same_point(const Event& r1, const Event& r2) {
+    return r1.sliding._Ptr && r2.sliding._Ptr && r1.sliding->line_id == r2.kline->line_id && r2.sliding->line_id == r1.kline->line_id;
 }
+/* Comparison operator for Event so std::set will properly order them */
+bool operator<(const Event& r1, const Event& r2);
 
 class Kinetic_queue
 {
 public:
-    Kinetic_queue(KPolygons_SET &kpolygons_set);
+    Kinetic_queue(KPolygons_SET &kpolygons_set, bool exhausted = false);
     FT to_next_event();
     FT next_time();
     FT move_to_time(FT t);
-    void done();
+    void Kpartition();
+    void finalize();
     size_t size() { return queue.size(); }
     Update_Point get_update_point()
     {
@@ -544,7 +619,11 @@ public:
     }
 
 private:
-    void insert(const Event &event) { queue.insert(event); }
+    void insert(const Event &event) { 
+        id_events[event.kp_id].push_back(event);
+        event_num[event.kp_id]++;
+        queue.insert(event); 
+    }
     void remove(const Event &event)
     {
         if (queue.find(event) != queue.end())
@@ -559,20 +638,62 @@ private:
         id_events.erase(kp->id());
     }
     const Event &top(void) const { return *(queue.begin()); }
-    void pop(void) { queue.erase(queue.begin()); }
+    void pop(void) { 
+        event_num[top().kp_id]--;
+        queue.erase(queue.begin()); 
+    }
 
     void kp_collide(KP_Ref kp);
-    void erase_vert_kp(Vert_Circ vert);
+    void erase_kp(KPolygons_2* parent, KP_Ref kp);
+    bool stop_extend(KLine_Ref kline, KP_Ref kp )
+    {
+        assert(kline->_line_2.has_on(kp->point()));
+        if (kline->is_bbox)
+            return true;
+        if (exhausted) return false;
+        auto ret = kline->has_on(kp->point());
+        //if(ret) kline->is_bbox = true;
+        return ret;
+    }
 
-    std::vector<KP_Ref> update_certificate(const Event &);
-    std::vector<KP_Ref> type_b(Vert_Circ vert, KLine_Ref kline);
-    std::vector<KP_Ref> type_c(Vert_Circ vert, KLine_Ref kline, const Event &event);
-    Event last_event();
+    void update_certificate();
+    std::vector<KP_Ref> type_a(const Event &);
+    std::vector<KP_Ref> type_b(Vert_Circ vert, KLine_Ref kline, bool no_extend = false);
+    std::vector<KP_Ref> type_c(Event, Event);
 
     KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
+    std::unordered_map<size_t, int> event_num;
     std::vector<KP_Ref> need_update;
+    bool exhausted;
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
+};
+
+
+class Collide_Ray {
+public:
+    struct Record {
+        FT dot;
+        KLine_Ref kline_2;
+        Point_2 pos;
+    };
+
+    Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end);
+    std::vector<Record> next_hit(KP_Ref kp);
+    bool is_reverse(const KPoint_2 &kpoint) {
+        if (kpoint._speed * vec > 0) {
+            assert(kpoint._speed.direction() == vec.direction());
+            return false;
+        }
+        assert(kpoint._speed.direction() == -vec.direction());
+        return true;
+    }
+    //std::vector<Point_2>
+private:
+    Point_2 start;
+    Ray_2 ray;
+    Vector_2 vec;
+    std::vector<Record> records;
 };

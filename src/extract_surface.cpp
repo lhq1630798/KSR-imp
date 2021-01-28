@@ -171,7 +171,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 			continue;
 
 		Plane_3 plane = cm.info_of_attribute<2>(cm.attribute<2>(it)).plane;
-		Direction plane_normal = plane.orthogonal_direction();
+		Direction_3 plane_normal = plane.orthogonal_direction();
 		//std::cout << plane_normal << std::endl;
 
 		Point_3 p1 = cm.info_of_attribute<0>(cm.attribute<0>(it));
@@ -179,7 +179,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		Point_3 p6 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 0)));
 		//std::cout << p1 << p2 << p6 << std::endl;
 		
-		Direction normal = cross_product((p1 - p6),(p2 - p1)).direction();
+		Direction_3 normal = cross_product((p1 - p6),(p2 - p1)).direction();
 		//std::cout << (p1 - p6)<<(p2 - p1) << std::endl;
 		//std::cout << normal << std::endl;
 		if (plane_normal != normal){
