@@ -110,6 +110,7 @@ public:
     {
         return !(twin() == nullptr);
     }
+    std::array<size_t, 3> T_ID();
     void set_edge(const std::shared_ptr<Edge>& _edge);
     void set_edge(const std::shared_ptr<Edge>& _edge, No_Check);
     size_t _id = -1;
