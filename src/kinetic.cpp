@@ -36,7 +36,7 @@ KPolygon_2::KPolygon_2(KPolygons_2 *_parent, Polygon_2 poly_2)
     for (const auto &point_2 : _polygon_2.container())
         center_V += point_2 - CGAL::ORIGIN;
     center_V = center_V / _polygon_2.size();
-    Point_2 center_P = CGAL::ORIGIN + center_V;
+    center_P = CGAL::ORIGIN + center_V;
     assert(_polygon_2.has_on_bounded_side(center_P));
     // insert vertices
     for (const auto &point_2 : _polygon_2.container())
@@ -57,6 +57,13 @@ std::vector<KPolygon_2::ID_Point> KPolygon_2::id_polygon_2() const {
     return points;
 }
 
+void KPolygons_2::init_kpoly(KPoly_Ref ref, size_t K)
+{
+    R_assert(K != 0);
+    ref->parent = this;
+    ref->id = next_id();
+    ref->K = K;
+}
 
 Collide_Ray::Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end) :
     ray(_ray), start(_ray.start()), vec(_ray.to_vector())
@@ -181,6 +188,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
         frozen_kp->sliding_line = event1.kline;
         frozen_kp->sliding_line_2 = event2.kline;
         auto edge = vert2_twin->edge;
+        size_t K = std::min({ face->K, vert1_twin_face->K, vert2_twin_face->K});
         // from now we can erase Vert_Circ
 
         // type c
@@ -197,7 +205,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
         extend_vert1->set_edge(edge);
         vert2_twin_face->erase(vert2_twin);
         // extend
-        auto new_face = parent->insert_kpoly_2();
+        auto new_face = parent->insert_kpoly_2(K);
         new_face->steal_kp(BACK, frozen_kp);
         auto tmp = new_face->steal_kp(BACK, kp2);
         set_twin(tmp, extend_vert2);
@@ -238,18 +246,19 @@ std::vector<KP_Ref> Kinetic_queue::type_b(Vert_Circ vert, KLine_Ref kline, bool 
         new_vert2 = face->steal_kp(vert, new_kp);
         new_vert2->set_edge(vert->edge);
     }
+    size_t K = extend(kline, vert);
     face->erase(vert);
 
     kline->add_seg_twin(new_vert1, new_vert2);
 
-    if (no_extend || stop_extend(kline, kp))
+    if (no_extend || K == 0)
     { // stop extend
         erase_kp(parent, kp);
         return { new_vert1->kp, new_vert2->kp };
     }
 
     //extend
-    auto new_face = parent->insert_kpoly_2();
+    auto new_face = parent->insert_kpoly_2(K);
     auto extend_vert = new_face->steal_kp(BACK, kp);
     auto extend_vert2 = new_face->steal_kp(BACK, new_vert2->kp);
     auto extend_vert1 = new_face->steal_kp(BACK, new_vert1->kp);
@@ -338,19 +347,21 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
 
         kline->add_seg_twin(new_vert1, new_vert2);
 
-        if (stop_extend(kline, vert->kp))
-        { // stop extend
-            erase_kp(parent, kp);
-        }
-        else
-        { //extend
-            auto triangle = face->parent->insert_kpoly_2();
+        if (size_t K = extend(kline, vert))
+        { //  extend
+            assert(K != 0);
+            auto triangle = face->parent->insert_kpoly_2(K);
             triangle->steal_kp(BACK, kp)->set_edge(next_edge);
             auto tri_vert2 = triangle->steal_kp(BACK, sliding_next_KP);
             auto tri_vert1 = triangle->steal_kp(BACK, sliding_prev_KP);
             tri_vert1->set_edge(prev_edge);
             set_twin(new_vert2, tri_vert2);
             set_twin(new_vert1, tri_vert1);
+        }
+        else
+        { //stop extend
+            erase_kp(parent, kp);
+
         }
         
         face->erase(vert);
@@ -414,8 +425,8 @@ void Kinetic_queue::update_certificate()
     //    kp_collide(next_event.kp);
 }
 
-Kinetic_queue::Kinetic_queue(KPolygons_SET &kpolygons_set, bool exhausted)
-    : kpolygons_set(kpolygons_set), exhausted(exhausted)
+Kinetic_queue::Kinetic_queue(KPolygons_SET &kpolygons_set)
+    : kpolygons_set(kpolygons_set)
 {
     std::cout << last_t << ": num of polygons set " << kpolygons_set.size() << std::endl;
     for (auto &kpolys_2 : kpolygons_set._kpolygons_set)
@@ -514,31 +525,6 @@ void Kinetic_queue::Kpartition(){
     finalize();
 }
 
-struct ID_Edge {
-    ID_Edge(std::array<size_t, 3> _p1, std::array<size_t, 3> _p2)
-        : p1(_p1), p2(_p2)
-    {
-        if (p1 > p2) std::swap(p1, p2);
-        assert(p1 != p2);
-        for (auto i : { p1[0],p1[1],p1[2],p2[0],p2[1],p2[2] }) {
-            if (bbox_id.find(i) != bbox_id.end()) {
-                _is_bbox = true;
-                break;
-            }
-        }
-    }
-    bool is_bbox() const {
-        return _is_bbox;
-    }
-    std::array<size_t, 3> p1;
-    std::array<size_t, 3> p2;
-    inline static std::set<size_t> bbox_id;
-    bool _is_bbox = false;
-};
-bool operator<(const ID_Edge& e1, const ID_Edge& e2) {
-    if (e1.p1 != e2.p1) return e1.p1 < e2.p1;
-    return e1.p2 < e2.p2;
-}
 
 class Erase_Single_Face {
 public:
@@ -566,6 +552,23 @@ public:
 
     }
 private:
+    struct ID_Edge {
+        ID_Edge(std::array<size_t, 3> _p1, std::array<size_t, 3> _p2)
+            : p1(_p1), p2(_p2)
+        {
+            if (p1 > p2) std::swap(p1, p2);
+            assert(p1 != p2);
+        }
+
+        std::array<size_t, 3> p1;
+        std::array<size_t, 3> p2;
+        inline static std::set<size_t> bbox_id;
+        friend inline bool operator<(const ID_Edge& e1, const ID_Edge& e2) {
+            if (e1.p1 != e2.p1) return e1.p1 < e2.p1;
+            return e1.p2 < e2.p2;
+        }
+    };
+
     void erase(std::set<KPoly_Ref> &polys_set) {
 
         if (polys_set.size() == 1) {
@@ -633,10 +636,13 @@ void freeze_plane(KPolygons_2 & kpolys) {
     kpolys.frozen(0);
 }
 
-KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, bool exhausted)
+KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, size_t K)
 {
+    bool exhausted = K == 0;
+    if (exhausted) K = -1; // K is useless
+
     for (auto &poly_3 : polygons_3)
-        _kpolygons_set.emplace_back(std::move(poly_3));
+        _kpolygons_set.emplace_back(std::move(poly_3), K);
 
     add_bounding_box(polygons_3);
 
@@ -694,9 +700,10 @@ void KPolygons_SET::bbox_clip()
         // replace the input polygon by the bbox clipped one
         assert(polys_i->_kpolygons_2.size() == 1);
         auto inline_points = polys_i->_kpolygons_2.front().inline_points;
+        auto K = polys_i->_kpolygons_2.front().K;
         polys_i->all_KP.clear();
         polys_i->_kpolygons_2.clear();
-        polys_i->insert_kpoly_2(polygon_2)->set_inline_points(inline_points);
+        polys_i->insert_kpoly_2(polygon_2, K)->set_inline_points(inline_points);
     }
 }
 
@@ -813,7 +820,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
     const auto &[new_kp2, e2] = kp_edges[1];
 
     auto origin_size = kpoly_2->size();
-    KPoly_Ref new_poly1 = insert_kpoly_2(), new_poly2 = insert_kpoly_2();
+    KPoly_Ref new_poly1 = insert_kpoly_2(kpoly_2->K), new_poly2 = insert_kpoly_2(kpoly_2->K);
 
     auto poly1_vert1 = new_poly1->steal_kp(BACK, new_kp1);
     poly1_vert1->set_edge(e1.vert1->edge, No_Check{});
@@ -895,10 +902,6 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
 
     //FT scale = 1;
     auto square = Points_2{};
-    // square.push_back(Point_2{scale + 0.1, scale + 0.1});
-    // square.push_back(Point_2{-scale - 0.1, scale + 0.1});
-    // square.push_back(Point_2{-scale - 0.1, -scale - 0.1});
-    // square.push_back(Point_2{scale + 0.1, -scale - 0.1});
 
     square.push_back(Point_2{scale, scale});
     square.push_back(Point_2{-scale, scale});
@@ -908,41 +911,35 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     // don't frozen because we need to set kp's sliding_line and sliding_line_2
     {
         auto plane = Plane_3{1, 0, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
     {
         auto plane = Plane_3{0, 1, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
 
     {
         auto plane = Plane_3{0, 0, 1, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square});
+        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
 
     {
         auto plane = Plane_3{ -1, 0, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
     {
         auto plane = Plane_3{ 0, -1, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
     {
         auto plane = Plane_3{ 0, 0, -1, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square });
+        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
         _kpolygons_set.back().is_bbox = true;
-        ID_Edge::bbox_id.insert(_kpolygons_set.back().plane_id);
     }
 }
 
