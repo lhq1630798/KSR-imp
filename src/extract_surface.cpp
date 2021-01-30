@@ -20,7 +20,7 @@ bool operator<(const NeighborKey& n1, const NeighborKey& n2) {
 }
 
 //n vertices and area of this face
-Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane,bool is_ghost)
+Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 {
 	//多边形的顶点
 	auto id_points2 = polygon.id_polygon_2();
@@ -47,7 +47,7 @@ Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane,bool i
 		if (amap.attribute<2>(d) == NULL)amap.set_attribute<2>(d, amap.create_attribute<2>());
 		if (amap.attribute<3>(d) == NULL)amap.set_attribute<3>(d, amap.create_attribute<3>());
 		amap.info<0>(d) = id_points[i];
-		amap.info(d) = std::make_pair(normal,is_ghost);
+		amap.info(d) = normal;
 	}
 	for (int i = 0; i < id_points.size() - 1; i++) {
 		amap.link_beta<1>(darts1[i], darts1[i + 1]);
@@ -58,7 +58,7 @@ Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane,bool i
 	return darts1[0];
 }
 
-Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane, bool is_ghost)
+Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 {
 	//多边形的顶点
 	auto id_points2 = polygon.id_polygon_2();
@@ -85,7 +85,7 @@ Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane,
 		if (amap.attribute<2>(d) == NULL)amap.set_attribute<2>(d, amap.create_attribute<2>());
 		if (amap.attribute<3>(d) == NULL)amap.set_attribute<3>(d, amap.create_attribute<3>());
 		amap.info<0>(d) = id_points[id_points.size() - 1 - i];
-		amap.info(d) = std::make_pair(normal, is_ghost);
+		amap.info(d) = normal;
 	}
 	for (int i = 0; i < id_points.size()-1; i++) {
 		amap.link_beta<1>(darts2[i], darts2[i + 1]);
@@ -141,7 +141,7 @@ void build_edge_map(CMap_3& cm, Dart_handle it, Edge2darts& darts_per_edge, vert
 	if (ite != darts_per_edge.end()) {
 		Plane_3 plane = Plane_3(p1.pos_3, (p2.pos_3 - p1.pos_3).direction());
 		//Point_3 normal = CGAL::ORIGIN + cm.info_of_attribute<2>(cm.attribute<2>(it)).normal.vector();
-		Point_3 normal = p1.pos_3 + cm.info(it).first.vector();
+		Point_3 normal = p1.pos_3 + cm.info(it).vector();
 		Direction_2 direction2 = (plane.to_2d(normal) - plane.to_2d(p1.pos_3)).direction();
 		//std::cout << plane << " normal"<<normal <<" direction"<< direction2 << std::endl;
 
@@ -169,7 +169,7 @@ void build_edge_map(CMap_3& cm, Dart_handle it, Edge2darts& darts_per_edge, vert
 	else {
 		Plane_3 plane = Plane_3(p1.pos_3, (p2.pos_3 - p1.pos_3).direction());
 		//Point_3 normal = CGAL::ORIGIN + cm.info_of_attribute<2>(cm.attribute<2>(it)).normal.vector();
-		Point_3 normal = p1.pos_3 + cm.info(it).first.vector();
+		Point_3 normal = p1.pos_3 + cm.info(it).vector();
 		Direction_2 direction2 = (plane.to_2d(normal) - plane.to_2d(p1.pos_3)).direction();
 		//std::cout << plane << " normal" << normal << " direction" << direction2 << std::endl;
 
@@ -193,26 +193,31 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 	}
 
 	//int polynum = 0;
-	for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != std::prev(polygons_set._kpolygons_set.end(), 6); polygons++) {
+	for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != polygons_set._kpolygons_set.end(); polygons++) {
 		Plane_3 plane = polygons->plane();
 		//std::cout << plane << std::endl;
 		for (auto &kpoly : polygons->_kpolygons_2) {
-			Dart_handle d1 = make_polygon(cm, kpoly, plane,false);
-			Dart_handle d2 = make_twins_polygon(cm, kpoly, plane,false);
+			Dart_handle d1 = make_polygon(cm, kpoly, plane);
+			Dart_handle d2 = make_twins_polygon(cm, kpoly, plane);
+			//polynum++;
 			cm.sew<3>(d1, d2);
+			//cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
 		}
 	}
+	//std::cout << polynum << std::endl;
 	cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
 	
-	for (auto polygons = std::prev(polygons_set._kpolygons_set.end(), 6); polygons != polygons_set._kpolygons_set.end(); polygons++){
-		Plane_3 plane = polygons->plane();
-		for (auto &kpoly : polygons->_kpolygons_2) {
-			Dart_handle d1 = make_polygon(cm, kpoly, plane,false);
-			Dart_handle d2 = make_twins_polygon(cm, kpoly, plane,true);
-			cm.sew<3>(d1, d2);
-		}
-	}
-	cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
+	//for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != std::prev(polygons_set._kpolygons_set.end(), 6); polygons++){
+	//	Plane_3 plane = polygons->plane();
+	//	for (auto &kpoly : polygons->_kpolygons_2) {
+	//		Dart_handle d1 = make_polygon(cm, kpoly, plane);
+	//		Dart_handle d2 = make_twins_polygon(cm, kpoly, plane);
+	//		cm.sew<3>(d1, d2);
+	//		
+	//		//cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
+	//	}
+	//}
+	//cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
 
 	/*for (auto polygons = std::prev(polygons_set._kpolygons_set.end(), 6); polygons != polygons_set._kpolygons_set.end(); polygons++) {
 		Plane_3 plane = polygons->plane();
@@ -240,6 +245,77 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 			build_edge_map(cm, cm.beta(it,3), darts_per_edge, p2, p1);
 		}
 
+		//EdgeKey edge1(std::make_pair(p1.ID, p2.ID));
+		//EdgeKey edge2(std::make_pair(p2.ID, p1.ID));
+		//Edge2darts::iterator ite = darts_per_edge.find(edge1);
+		//if (ite != darts_per_edge.end()) {
+		//	Plane_3 plane = Plane_3(p1.pos_3, (p2.pos_3 - p1.pos_3).direction());
+		//	//Point_3 normal = CGAL::ORIGIN + cm.info_of_attribute<2>(cm.attribute<2>(it)).normal.vector();
+		//	Point_3 normal = p1.pos_3 + cm.info(it).vector();
+		//	Direction_2 direction2 = (plane.to_2d(normal) - plane.to_2d(p1.pos_3)).direction();
+		//	//std::cout << plane << " normal"<<normal <<" direction"<< direction2 << std::endl;
+		//	
+		//	Darts darts = ite->second;
+		//	int n = darts.size();
+		//	int i;
+		//	if (n < 2) {
+		//		darts.push_back(std::make_pair(direction2, it));
+		//		darts_per_edge[ite->first] = darts;
+		//	}
+		//	else {
+		//		for (i = 0; i < n-1; i++) {
+		//			if (direction2.counterclockwise_in_between(darts[i].first, darts[i + 1].first)) {
+		//				darts.insert(darts.begin()+i+1, std::make_pair(direction2, it));
+		//				darts_per_edge[ite->first] = darts;
+		//				break;
+		//			}
+		//		}
+		//		if(i==n-1) {
+		//			darts.push_back(std::make_pair(direction2, it));
+		//			darts_per_edge[ite->first] = darts;
+		//		}
+		//	}
+		//}
+		//else {			
+		//	Edge2darts::iterator ite2 = darts_per_edge.find(edge2);
+		//	if (ite2 != darts_per_edge.end()) {
+		//		Plane_3 plane = Plane_3(p2.pos_3, (p1.pos_3 - p2.pos_3).direction());
+		//		//Point_3 normal = CGAL::ORIGIN + cm.info_of_attribute<2>(cm.attribute<2>(cm.beta(it,3))).normal.vector();
+		//		Point_3 normal = p2.pos_3 + cm.info(cm.beta(it,3)).vector();
+		//		Direction_2 direction2 = (plane.to_2d(normal) - plane.to_2d(p2.pos_3)).direction();
+		//		//std::cout << plane << " normal " << normal << " direction" << direction2 << std::endl;
+		//		Darts darts = ite2->second;
+		//		int n = darts.size();
+		//		int i;
+		//		if (n < 2) {
+		//			darts.push_back(std::make_pair(direction2, cm.beta(it,3)));
+		//			darts_per_edge[ite2->first] = darts;
+		//		}
+		//		else {
+		//			for (i = 0; i < n - 1; i++) {
+		//				if (direction2.counterclockwise_in_between(darts[i].first, darts[i+1].first)) {
+		//					darts.insert(darts.begin() + i + 1, std::make_pair(direction2, cm.beta(it, 3)));
+		//					darts_per_edge[ite2->first] = darts;
+		//					break;
+		//				}
+		//			}
+		//			if (i == n-1) {
+		//				darts.push_back(std::make_pair(direction2, cm.beta(it, 3)));
+		//				darts_per_edge[ite2->first] = darts;
+		//			}
+		//		}
+		//	}
+		//	else {
+		//		Plane_3 plane = Plane_3(p1.pos_3, (p2.pos_3 - p1.pos_3).direction());
+		//		//Point_3 normal = CGAL::ORIGIN + cm.info_of_attribute<2>(cm.attribute<2>(it)).normal.vector();
+		//		Point_3 normal = p1.pos_3 + cm.info(it).vector();
+		//		Direction_2 direction2 = (plane.to_2d(normal) - plane.to_2d(p1.pos_3)).direction();
+		//		//std::cout << plane << " normal" << normal << " direction" << direction2 << std::endl;
+		//		Darts darts;
+		//		darts.push_back(std::make_pair(direction2, it));
+		//		darts_per_edge[edge1] = darts;
+		//	}
+		//}
 		cm.mark(it,amark);
 		cm.mark(cm.beta(it, 3), amark);
 	}
@@ -259,6 +335,24 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		std::cout<<std::endl;
 		it++;
 	}*/
+	
+	// it = darts_per_edge.begin();
+	// itEnd = darts_per_edge.end();
+	//Edge2darts::iterator iterErase;
+	//while (it != itEnd) {
+	//	Darts darts = it->second;
+	//	if (darts.size() == 1/* && cm.is_free<3>(darts[0].second)*/) {
+	//		face_attributes face_att = cm.info_of_attribute<2>(cm.attribute<2>(darts[0].second));
+	//		face_att.removed = true;
+	//		cm.info<2>(darts[0].second) = face_att;
+	//		iterErase = it;
+	//		it++;
+	//		darts_per_edge.erase(it);
+	//	}
+	//	else {
+	//		it++;
+	//	}
+	//}
 
 	//beta2
 	Edge2darts::iterator it = darts_per_edge.begin();
@@ -273,6 +367,69 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 		cm.sew<2>(darts[darts.size()-1].second, cm.beta(darts[0].second, 3));
 		it++;
 	}
+
+
+	////beta2
+	////for each dart
+	//for (CMap_3::Dart_range::iterator it(cm.darts().begin()), itend(cm.darts().end()); it != itend; it++) {
+	//	if (cm.is_marked(it, amark))
+	//		continue;
+	//	Plane_3 plane = cm.info_of_attribute<2>(cm.attribute<2>(it)).plane;
+	//	Direction plane_normal = plane.orthogonal_direction();
+	//	//std::cout << plane_normal << std::endl;
+	//	Point_3 p1 = cm.info_of_attribute<0>(cm.attribute<0>(it));
+	//	Point_3 p2 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 1)));
+	//	Point_3 p6 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 0)));
+	//	//std::cout << p1 << p2 << p6 << std::endl;
+	//	
+	//	Direction normal = cross_product((p1 - p6),(p2 - p1)).direction();
+	//	//std::cout << (p1 - p6)<<(p2 - p1) << std::endl;
+	//	//std::cout << normal << std::endl;
+	//	if (plane_normal != normal){
+	//		plane = plane.opposite();
+	//	}
+	//	CMap_3::Dart_range::iterator it2, itend2;
+	//	for (it2=cm.darts().begin(), itend2=cm.darts().end(); it2 != itend2; it2++) {
+	//		if (cm.is_marked(it, amark))
+	//			continue;
+	//		//找到it2满足it2的下下个dart的点---ax+by+cz+d>0且it2的点==it的下一个dart的点
+	//		Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
+	//		Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
+	//		Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
+	//		
+	//		if ((p1 == p4) && (p2==p3) && (p5!=p6)) {
+	//			if (plane.has_on_positive_side(p5)) {
+	//				cm.sew<2>(it, it2);
+	//				//std::cout << p3 << p4 << p5 << std::endl;
+	//				cm.mark(it, amark);
+	//				cm.mark(it2, amark);
+	//				break;
+	//			}
+	//		}
+	//	}
+	//	if (it2 == itend2) { it2 = cm.darts().begin(); }
+	//	for (it2 = cm.darts().begin(), itend2 = cm.darts().end(); it2 != itend2; it2++) {
+	//		if (cm.is_marked(it, amark))
+	//			continue;
+	//		//找到it2满足it2的下下个dart的点---ax+by+cz+d>0且it2的点==it的下一个dart的点
+	//		Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
+	//		Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
+	//		Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
+	//		if ((p1 == p4) && (p2 == p3) && (p5 != p6)) {
+	//			if (plane.has_on(p5)) {
+	//				cm.sew<2>(it, it2);
+	//				//std::cout << p3 << p4 << p5 << std::endl;
+	//				cm.mark(it, amark);
+	//				cm.mark(it2, amark);
+	//				break;
+	//			}
+	//		}
+	//	}
+	//	
+	//}
+	//cm.unmark_all(amark);
+	////cm.free_mark(amark);
+	//cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
 
 	//polyhedra_attribute
 	int num = 0;
@@ -296,7 +453,35 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 	}
 	cm.display_characteristics(std::cout) << ",valid="<<cm.is_valid()<<std::endl;
 
-	
+	////beta3
+	////for each dart
+	//for (CMap_3::Dart_range::iterator it(cm.darts().begin()), itend(cm.darts().end()); it != itend; it++) {
+	//	if (cm.is_marked(it, amark))
+	//		continue;
+	//	Point_3 p1 = cm.info_of_attribute<0>(cm.attribute<0>(it));
+	//	Point_3 p2 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 1)));
+	//	Point_3 p6 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it, 0)));
+	//	for (CMap_3::Dart_range::iterator it2(cm.darts().begin()), itend2(cm.darts().end()); it2 != itend2; it2++) {
+	//		//找到it2满足it2的下下个dart的点---ax+by+cz+d>0且it2的点==it的下一个dart的点
+	//		Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it2));
+	//		Point_3 p4 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1)));
+	//		Point_3 p5 = cm.info_of_attribute<0>(cm.attribute<0>(cm.beta(it2, 1, 1)));
+	//		if ((p1 == p4) && (p2 == p3) && (p5==p6)) {
+	//			cm.sew<3>(it, it2);
+	//			for (CMap_3::Dart_of_cell_range<2>::iterator it3(cm.darts_of_cell<2>(it).begin()), itend3(cm.darts_of_cell<2>(it).end()); it3 != itend3; it3++) {
+	//				cm.mark(it3, amark);
+	//			}
+	//			for (CMap_3::Dart_of_cell_range<2>::iterator it3(cm.darts_of_cell<2>(it2).begin()), itend3(cm.darts_of_cell<2>(it2).end()); it3 != itend3; it3++) {
+	//				cm.mark(it3, amark);
+	//			}
+	//			break;
+	//		}
+	//	}
+	//}
+	////cm.unmark_all(amark);
+	//cm.free_mark(amark);
+	//cm.display_characteristics(std::cout) << ",valid=" << cm.is_valid() << std::endl;
+
 }
 
 //0:out  1:in
@@ -325,211 +510,94 @@ int D(CMap_3& cm, PWN_E polyhedra_points, Point_3 center,int status) {
 	}
 }
 
-std::vector<Dart_handle> get_C(CMap_3& cm) {
+//struct ID_Edge {
+//	ID_Edge(std::array<size_t, 3> _p1, std::array<size_t, 3> _p2)
+//		: p1(_p1), p2(_p2)
+//	{
+//		if (p1 > p2) std::swap(p1, p2);
+//		assert(p1 != p2);
+//	}
+//	bool is_bbox() {
+//
+//	}
+//	std::array<size_t, 3> p1;
+//	std::array<size_t, 3> p2;
+//	static std::set<size_t> bbox_id;
+//};
+//bool operator<(const ID_Edge& e1, const ID_Edge& e2) {
+//	if (e1.p1 != e2.p1) return e1.p1 < e2.p1;
+//	return e1.p2 < e2.p2;
+//}
+
+void extract_surface(KPolygons_SET& polygons_set)
+{
+	/*std::map<ID_Edge, std::vector<KPoly_Ref>> Edge_Polygon_Map;
+	for (auto& kpolys_2 : polygons_set._kpolygons_set) {
+		for (auto kpoly = kpolys_2._kpolygons_2.begin(); kpoly != kpolys_2._kpolygons_2.end(); kpoly++) {
+			auto vert = kpoly->vert_circulator(), end = vert;
+			CGAL_For_all(vert, end)
+				Edge_Polygon_Map[ID_Edge{ vert->T_ID(), std::next(vert)->T_ID() }].push_back(kpoly);
+		}
+	}
+	for (auto[key, value] : Edge_Polygon_Map) {
+		if (value.size() == 1) {
+			std::cout << "size=1" << std::endl;
+		}
+	}*/
+
+	CMap_3 cm;
+	build_map(cm, polygons_set);
+
 	//C:保存每个polyhedra的一个dart
 	std::vector<Dart_handle> C;
 	for (CMap_3::One_dart_per_cell_range<3>::iterator it(cm.one_dart_per_cell<3>().begin()), itend(cm.one_dart_per_cell<3>().end()); it != itend; it++) {
-		//if (cm.info(it).second == true) { continue; }
 		C.push_back(it);
 	}
 	int C_num = C.size();
-	std::cout << "polyhedra number" << C_num << std::endl;
-	return C;
-}
+	std::cout << "polyhedra number"<<C_num<<std::endl;
 
-std::vector<Dart_handle> get_F(CMap_3& cm) {
 	//F:保存每个face的一个dart
 	std::vector<Dart_handle> F;
 	for (CMap_3::One_dart_per_cell_range<2>::iterator it(cm.one_dart_per_cell<2>().begin()), itend(cm.one_dart_per_cell<2>().end()); it != itend; it++) {
-		if (cm.info(it).second == true) {
-			F.push_back(cm.beta(it, 3));
-		}
-		else {
-			F.push_back(it);
-		}
+		F.push_back(it);
 	}
 	std::cout << "F number" << F.size() << std::endl;
-	return F;
-}
 
-Neighbor get_N(CMap_3& cm, std::vector<Dart_handle> F) {
-	//N:保存相邻的两个polyhedra的darts
+	//N:保存相邻的两个polyhedra的dart,和两个polyhedra之间的共面总面积
 	Neighbor N;
 	//std::vector<std::pair<Dart_handle, Dart_handle> > N;
-	for (int i = 0; i < F.size(); i++) {
-		/*if (cm.info(cm.beta(F[i], 3)).second == true) {
-			continue;
-		}*/
+	for (int i = 0; i < F.size();i++) {
 		int poly_number1 = cm.info_of_attribute<3>(cm.attribute<3>(F[i])).number;
-		int poly_number2 = cm.info_of_attribute<3>(cm.attribute<3>(cm.beta(F[i], 3))).number;
+		int poly_number2 = cm.info_of_attribute<3>(cm.attribute<3>(cm.beta(F[i],3))).number;
 		if (poly_number1 < poly_number2) {
 			NeighborKey key(std::make_pair(poly_number1, poly_number2));
 			Neighbor::iterator ite = N.find(key);
 			if (ite != N.end()) {
 				NeighborDarts darts = ite->second;
-				darts.push_back(std::make_pair(F[i], cm.beta(F[i], 3)));
+				darts.push_back(std::make_pair(F[i], cm.beta(F[i],3)));
 				N[key] = darts;
 			}
 			else {
 				NeighborDarts darts;
-				darts.push_back(std::make_pair(F[i], cm.beta(F[i], 3)));
+				darts.push_back(std::make_pair(F[i], cm.beta(F[i],3)));
 				N[key] = darts;
 			}
 		}
-		else {
+		else{
 			NeighborKey key(std::make_pair(poly_number2, poly_number1));
 			Neighbor::iterator ite = N.find(key);
 			if (ite != N.end()) {
 				NeighborDarts darts = ite->second;
-				darts.push_back(std::make_pair(F[i], cm.beta(F[i], 3)));
+				darts.push_back(std::make_pair(F[i], cm.beta(F[i],3)));
 				N[key] = darts;
 			}
 			else {
 				NeighborDarts darts;
-				darts.push_back(std::make_pair(F[i], cm.beta(F[i], 3)));
+				darts.push_back(std::make_pair(F[i], cm.beta(F[i],3)));
 				N[key] = darts;
 			}
 		}
 	}
-	return N;
-}
-
-Polygon_Mesh get_mesh(CMap_3& cm, std::vector<Dart_handle> face_darts) {
-	//-----get surface mesh---------
-
-	Polygons_3 polys_3;
-
-	for (int i = 0; i < face_darts.size(); i++) {
-		Dart_handle d = face_darts[i];
-
-		Plane_3 plane = cm.info_of_attribute<2>(cm.attribute<2>(d)).plane;
-		Points_2 points2;
-		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
-		{
-			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
-			Point_2 p2 = plane.to_2d(p3);
-			points2.push_back(p2);
-		}
-		Polygon_3 poly(plane, points2);
-		polys_3.push_back(poly);
-	}
-
-	return Polygon_Mesh{ std::vector<Polygon_GL>(polys_3.begin(), polys_3.end()) };
-}
-
-struct cmpDirection  //自定义比较规则
-{
-	bool operator() (const Direction_3& d1, const Direction_3& d2) const
-	{
-		if (d1.dx() != d2.dx()) {
-			return d1.dx() < d2.dx();
-		}
-		else {
-			if (d1.dy() != d2.dy()) {
-				return d1.dy() < d2.dy();
-			}
-			else {
-				return d1.dz() < d2.dz();
-			}
-		}
-	}
-};
-
-CMap_3 merge_face( KPolygons_SET& polygons_set) {
-	CMap_3 cm;
-	build_map(cm, polygons_set);
-
-	//C:保存每个polyhedra的一个dart
-	std::vector<Dart_handle> C = get_C(cm);
-	int C_num = C.size();
-	std::cout << "polyhedra number" << C_num << std::endl;
-
-	//F:保存每个face的一个dart
-	std::vector<Dart_handle> F = get_F(cm);
-	std::cout << "F number" << F.size() << std::endl;
-
-	Neighbor N = get_N(cm, F);
-	int N_num = N.size();
-	std::cout << "N number" << N_num << std::endl;
-
-	Neighbor::iterator ite = N.begin();
-	Neighbor::iterator iteEnd = N.end();
-	while (ite != iteEnd) {
-		NeighborDarts darts = ite->second;
-		std::map<Direction_3,std::set<Dart_handle>, cmpDirection> comface_darts;
-		for (auto pair_dart : darts) {
-			Direction_3 normal = cm.info<2>(pair_dart.first).plane.orthogonal_direction();
-			std::map<Direction_3, std::set<Dart_handle>, cmpDirection>::iterator itd = comface_darts.find(normal);
-			if (itd != comface_darts.end()) {
-				std::set<Dart_handle> darts=itd->second;
-				darts.insert(pair_dart.first);
-				Dart_handle d = cm.beta(pair_dart.first, 1);
-				while (d != pair_dart.first) {
-					darts.insert(d);
-					d = cm.beta(d, 1);
-				}
-				comface_darts[normal] = darts;
-			}
-			else {
-				std::set<Dart_handle> darts;
-				darts.insert(pair_dart.first);
-				Dart_handle d = cm.beta(pair_dart.first, 1);
-				while (d != pair_dart.first) {
-					darts.insert(d);
-					d = cm.beta(d, 1);
-				}
-				comface_darts[normal] = darts;
-			}	
-		}
-		
-		std::map<Direction_3, std::set<Dart_handle>, cmpDirection>::iterator itmap=comface_darts.begin();
-		while (itmap != comface_darts.end()) {
-			std::vector<Dart_handle> remove_darts;
-			std::set<Dart_handle> darts=itmap->second;
-			std::set<Dart_handle>::iterator it = darts.begin();
-			std::set<Dart_handle>::iterator it2;
-			while (it != darts.end()) {
-				if ((it2 = darts.find(cm.beta(*it, 2))) != darts.end())
-				{
-					remove_darts.push_back(*it);
-					darts.erase(it2);
-				}
-				it++;
-			}
-
-			for (int i = 0; i < remove_darts.size(); i++) {
-				cm.remove_cell<1>(remove_darts[i]);
-			}
-			itmap++;
-		}
-		ite++;
-	}
-	return cm;
-}
-
-Polygon_Mesh get_merged_mesh(CMap_3& cm) {
-	std::vector<Dart_handle> face_darts = get_F(cm);
-	Polygon_Mesh merged_mesh = get_mesh(cm,face_darts);
-	return merged_mesh;
-}
-
-Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
-{
-
-	//CMap_3 cm = merge_face(polygons_set);
-	//build_map(cm, polygons_set);
-	
-
-	//C:保存每个polyhedra的一个dart
-	std::vector<Dart_handle> C = get_C(cm);
-	int C_num = C.size();
-	std::cout << "polyhedra number" << C_num << std::endl;
-
-	//F:保存每个face的一个dart
-	std::vector<Dart_handle> F = get_F(cm);
-	std::cout << "F number" << F.size() << std::endl;
-
-	Neighbor N = get_N(cm, F);
 	int N_num = N.size();
 	std::cout << "N number" << N_num << std::endl;
 
@@ -586,6 +654,13 @@ Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
 
 	//{i,j}
 	double lamda = 0.5;
+	//for (int i = 0; i < N_num; i++) {
+	//	double area = CGAL::to_double(cm.info_of_attribute<2>(cm.attribute<2>(N[i].first)).area);
+	//	//std::cout << area << std::endl;
+	//	//g->add_edge(cm.info_of_attribute<3>(cm.attribute<3>(N[i].first)).number, cm.info_of_attribute<3>(cm.attribute<3>(N[i].second)).number, lamda * area / sum_area, lamda * area / sum_area);
+	//	g->add_edge(cm.info_of_attribute<3>(cm.attribute<3>(N[i].first)).number, cm.info_of_attribute<3>(cm.attribute<3>(N[i].second)).number, lamda * area * points_count, lamda * area * points_count);
+	//	//std::cout << "node :" << cm.info_of_attribute<3>(cm.attribute<3>(N[i].first)).number << " node :" << cm.info_of_attribute<3>(cm.attribute<3>(N[i].second)).number << " weight:" << lamda * area * points_count << std::endl;
+	//}
 	Neighbor::iterator ite = N.begin();
 	Neighbor::iterator iteEnd = N.end();
 	while (ite != iteEnd) {
@@ -604,10 +679,14 @@ Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
 	printf("Minimum cut:\n");
 	for (int i = 0; i < C_num; i++) {
 		if (g->what_segment(i) == GraphType::SOURCE)
-			printf("node%d is in the INSIDE set\n", i);
+			printf("node%d is in the SOURCE set\n", i);
 		else
-			printf("node%d is in the OUTSIDE set\n", i);
+			printf("node%d is in the SINK set\n", i);
 	}
+
+
+	//-----get surface mesh---------
+	Surface_Mesh m;
 
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
@@ -615,7 +694,7 @@ Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
 	iteEnd = N.end();
 	while (ite != iteEnd) {
 		int d1 = ite->first.neighbors.first;
-		int d2 = ite->first.neighbors.second;
+		int d2 = ite->first.neighbors.second; 
 		if (g->what_segment(d1) != g->what_segment(d2)) {
 			NeighborDarts darts = ite->second;
 			for (int i = 0; i < darts.size(); i++) {
@@ -625,10 +704,37 @@ Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
 		ite++;
 	}
 
-	Polygon_Mesh surface_mesh = get_mesh(cm, surface_darts);
+	/*for (int i = 0; i < N_num; i++) {
+		int d1 = cm.info_of_attribute<3>(cm.attribute<3>(N[i].first)).number;
+		int d2 = cm.info_of_attribute<3>(cm.attribute<3>(N[i].second)).number;
+		if (g->what_segment(d1) != g->what_segment(d2)) {
+			surface_darts.push_back(N[i].first);
+		}
+	}*/
+	for (int i = 0; i < surface_darts.size();i++) {
+		Dart_handle d = surface_darts[i];
+
+		std::vector<Vertex_index> v;
+
+		for (CMap_3::One_dart_per_incident_cell_range<0,2>::iterator it(cm.one_dart_per_incident_cell<0,2>(d).begin()), itend(cm.one_dart_per_incident_cell<0,2>(d).end()); it != itend; ++it)
+		{
+			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+			in_Point p = in_Point(
+				CGAL::to_double(p3.x()), 
+				CGAL::to_double(p3.y()), 
+				CGAL::to_double(p3.z()));
+			vertex_descriptor u = m.add_vertex(p);
+			v.push_back(u);
+		}
+		m.add_face(v);
+	}
+	
+	//输出convex mesh
+	std::ofstream f("src/output/outmesh.off");
+	if (!CGAL::write_off(f, m)) {
+		std::cout << "write wrong" << std::endl;
+	}
 
 	delete g;
 
-	return surface_mesh;
 }
-
