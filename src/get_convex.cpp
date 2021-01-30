@@ -31,8 +31,9 @@ Polygons_3 detect_shape(std::string path)
 			projected_points.push_back(plane_3.to_2d(projected));
 		}
 
-		 //auto polygon2 = get_convex(projected_points.begin(), projected_points.end());
-		 auto polygon2 = simplify_convex(get_convex(projected_points.begin(), projected_points.end()));
+		auto polygon2 = get_convex(projected_points.begin(), projected_points.end());
+		polygon2 = simplify_convex(polygon2);
+		
 		//for (const auto& p : projected_points)
 		//	assert(!polygon2.has_on_unbounded_side(p));
 

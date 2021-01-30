@@ -260,9 +260,8 @@ void Platform::render_3d(Shader &shader,  Kinetic_queue &k_queue, KPolygons_SET 
 	if (show_point_cloud)
 		point_cloud.render(shader);
 
-	auto update_p = k_queue.get_update_point();
-	update_p.render(shader);
-	
+	//auto update_p = k_queue.get_update_point();
+	//update_p.render(shader);
 }
 
 void Platform::clear()

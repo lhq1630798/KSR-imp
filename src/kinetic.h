@@ -218,6 +218,8 @@ public:
 
     Vert_Circ vert_circulator() { return Vert_Circ{&vertices}; }
 
+    size_t K = 1;
+    Point_2 center_P = CGAL::ORIGIN;
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
@@ -349,12 +351,17 @@ class KPolygons_2
 
 public:
     // private:
-    KPolygons_2(const Polygon_3 &poly_3) : _plane(poly_3.plane())
+    KPolygons_2(const Polygon_3 &poly_3, size_t K) : _plane(poly_3.plane())
     {
-        insert_kpoly_2(poly_3.polygon_2())->set_inline_points(poly_3.inline_points);
+        insert_kpoly_2(poly_3.polygon_2(), K)->set_inline_points(poly_3.inline_points);
+        center_P = _kpolygons_2.back().center_P;
+        for (const auto& kpoint : all_KP)
+            max_distance = std::max(max_distance, std::sqrt(CGAL::to_double((kpoint - center_P).squared_length())));
     }
 
     Plane_3 _plane;
+    Point_2 center_P = CGAL::ORIGIN;
+    double max_distance = 0;
     std::list<KPolygon_2> _kpolygons_2;
     std::list<KPoint_2> all_KP;
     std::list<KLine_2> _klines;
@@ -393,16 +400,16 @@ public:
         all_KP.erase(kp);
     }
 
-    KPoly_Ref insert_kpoly_2(const Polygon_2 &poly_2)
+    KPoly_Ref insert_kpoly_2(const Polygon_2 &poly_2, size_t K)
     {
         auto ref = _kpolygons_2.emplace(_kpolygons_2.end(), this, poly_2);
-        init_kpoly(ref);
+        init_kpoly(ref, K);
         return ref;
     }
-    KPoly_Ref insert_kpoly_2()
+    KPoly_Ref insert_kpoly_2(size_t K)
     {
         auto ref = _kpolygons_2.emplace(_kpolygons_2.end());
-        init_kpoly(ref);
+        init_kpoly(ref, K);
         return ref;
     }
 
@@ -468,11 +475,7 @@ public:
     }
 
 private:
-    void init_kpoly(KPoly_Ref ref)
-    {
-        ref->parent = this;
-        ref->id = next_id();
-    }
+    void init_kpoly(KPoly_Ref ref, size_t K);
 };
 
 class KPolygons_SET
@@ -480,7 +483,7 @@ class KPolygons_SET
     // set of KPolygons_2 in different supporting planes
 public:
     std::list<KPolygons_2> _kpolygons_set;
-    KPolygons_SET(Polygons_3 polygons_3, bool exhausted = false);
+    KPolygons_SET(Polygons_3 polygons_3, size_t K);
 
     size_t size() const { return _kpolygons_set.size() - 6; }
 
@@ -598,7 +601,7 @@ bool operator<(const Event& r1, const Event& r2);
 class Kinetic_queue
 {
 public:
-    Kinetic_queue(KPolygons_SET &kpolygons_set, bool exhausted = false);
+    Kinetic_queue(KPolygons_SET &kpolygons_set);
     FT to_next_event();
     FT next_time();
     FT move_to_time(FT t);
@@ -622,7 +625,6 @@ public:
 private:
     void insert(const Event &event) { 
         id_events[event.kp_id].push_back(event);
-        event_num[event.kp_id]++;
         queue.insert(event); 
     }
     void remove(const Event &event)
@@ -640,21 +642,26 @@ private:
     }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { 
-        event_num[top().kp_id]--;
         queue.erase(queue.begin()); 
     }
 
     void kp_collide(KP_Ref kp);
     void erase_kp(KPolygons_2* parent, KP_Ref kp);
-    bool stop_extend(KLine_Ref kline, KP_Ref kp )
+    size_t extend(KLine_Ref kline, Vert_Circ vert ) // return 0 means stop; otherwise return new K
     {
-        assert(kline->_line_2.has_on(kp->point()));
+        assert(kline->_line_2.has_on(vert->kp->point()));
         if (kline->is_bbox)
-            return true;
-        if (exhausted) return false;
-        auto ret = kline->has_on(kp->point());
-        //if(ret) kline->is_bbox = true;
-        return ret;
+            return 0;
+
+        //auto dist_v = (vert->kp->point() - vert->face->parent->center_P);
+        //auto dist = std::sqrt(CGAL::to_double(dist_v.squared_length()));
+        //if (dist - vert->face->parent->max_distance > 0.1)
+        //    return 0;
+
+        auto K = vert->face->K;
+        if (kline->has_on(vert->kp->point()))
+            K--;
+        return K;
     }
 
     void update_certificate();
@@ -665,9 +672,7 @@ private:
     KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
-    std::unordered_map<size_t, int> event_num;
     std::vector<KP_Ref> need_update;
-    bool exhausted;
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
 };
@@ -682,7 +687,7 @@ public:
     };
 
     Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end);
-    std::vector<Record> next_hit(KP_Ref kp);
+    Record next_hit(KP_Ref kp);
     bool is_reverse(const KPoint_2 &kpoint) {
         if (kpoint._speed * vec > 0) {
             assert(kpoint._speed.direction() == vec.direction());

@@ -552,7 +552,7 @@ Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set)
 
 	//A
 	double sum_area = 0;
-	for (auto polygons = std::prev(polygons_set._kpolygons_set.end(), 6); polygons != polygons_set._kpolygons_set.end(); polygons++) {
+	for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != std::prev(polygons_set._kpolygons_set.end(), 6); polygons++) {
 		Plane_3 plane = polygons->plane();
 		for (auto &kpoly : polygons->_kpolygons_2) {
 			sum_area += CGAL::to_double(kpoly.area());
