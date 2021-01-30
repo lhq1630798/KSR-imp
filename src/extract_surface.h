@@ -64,7 +64,7 @@ struct Myitem
 	template<class CMap>
 	struct Dart_wrapper
 	{
-		typedef std::pair<Direction_3,bool> Dart_info;
+		typedef Direction_3 Dart_info;
 		typedef CGAL::Cell_attribute<CMap, polyhedra_attributes> Polyhedra_attribute; // A number
 		typedef CGAL::Cell_attribute<CMap, face_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor > Face_attribute; // area of this face
 		typedef CGAL::Cell_attribute<CMap, vertex_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor> Vertex_attribute; // A vertex
@@ -104,6 +104,4 @@ using Neighbor = std::map<NeighborKey, NeighborDarts>;
 Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane);
 void build_map(CMap_3& cm, KPolygons_SET& polygons_set);
 int D(CMap_3& cm, Dart_handle d, int status);
-CMap_3 merge_face(KPolygons_SET& polygons_set);
-Polygon_Mesh get_merged_mesh(CMap_3& cm);
-Polygon_Mesh extract_surface(CMap_3& cm, KPolygons_SET& polygons_set);
+void extract_surface(KPolygons_SET& polygons_set);
