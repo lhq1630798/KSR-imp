@@ -20,8 +20,7 @@ int main()
     plt.loop(shader, k_queue, kpolys_set);
     timer("kinetic partition", &Kinetic_queue::Kpartition, k_queue);
 
-    timer("extract surface", extract_surface, kpolys_set);
-
+    //timer("extract surface", extract_surface, kpolys_set);
 
      return 0;
 }

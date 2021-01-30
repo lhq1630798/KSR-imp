@@ -27,6 +27,9 @@ bool grow = false;
 bool dirty = false;
 float grow_speed = -1;
 
+bool finish = false;
+bool merge = false;
+
 // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
 void processInput(GLFWwindow *window)
 {
@@ -195,6 +198,16 @@ void Platform::render_imgui(Kinetic_queue &k_queue, KPolygons_SET &kpolys_set)
 
 	ImGui::Text("kinetic time = %.3f", kinetic_time);
 	ImGui::Text("next time = %.3f", (float)CGAL::to_double(k_queue.next_time()));
+	
+	if (ImGui::Button("merge faces"))
+	{
+		merge = true;
+	}
+
+	if (ImGui::Button("extract surface"))
+	{
+		finish = true;
+	}
 
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::End();
@@ -222,6 +235,17 @@ void Platform::render_3d(Shader &shader,  Kinetic_queue &k_queue, KPolygons_SET 
 		dirty = false;
 		mesh = kpolys_set.Get_mesh();
 	}
+	if (merge) {
+		merge = false;
+		CMap_3 cm = merge_face(kpolys_set);
+		mesh = get_merged_mesh(cm);
+	}
+	if (finish) {
+		finish = false;
+		CMap_3 cm = merge_face(kpolys_set);
+		mesh = extract_surface(cm, kpolys_set);
+	}
+
 	if (show_plane)
 		mesh.render(shader);
 	if (show_boundary)
