@@ -2,6 +2,7 @@
 #include <limits>
 #include <algorithm>
 #include "log.h"
+#include "tqdm/tqdm.h"
 #undef max
 #undef min
 
@@ -706,13 +707,14 @@ void KPolygons_SET::bbox_clip()
 
 void KPolygons_SET::decompose()
 {
-
-    for (auto &kpolys_2 : _kpolygons_set)
+    std::cout << "split polygons..." << std::endl;
+    auto kpolys_2 = _kpolygons_set.begin();
+    for (auto _ : tq::trange(_kpolygons_set.size()))
     {
         // init collide_ray
-        for (auto& kp : kpolys_2.all_KP)
-            kp.set_collide_ray(std::make_shared<Collide_Ray>(Ray_2{ kp.point(), kp._speed }, kpolys_2.klines().begin(), kpolys_2.klines().end()));
-        for (auto& kline_2 : kpolys_2.klines()) {
+        for (auto& kp : kpolys_2->all_KP)
+            kp.set_collide_ray(std::make_shared<Collide_Ray>(Ray_2{ kp.point(), kp._speed }, kpolys_2->klines().begin(), kpolys_2->klines().end()));
+        for (auto& kline_2 : kpolys_2->klines()) {
             Point_2 start;
             if(kline_2._line_2.is_vertical())
                 start = Point_2{ kline_2._line_2.x_at_y(0), 0 };
@@ -720,24 +722,26 @@ void KPolygons_SET::decompose()
                 start = Point_2{ 0, kline_2._line_2.y_at_x(0) };
 
             auto ray = Ray_2{ start ,kline_2._line_2 };
-            kline_2.collide_ray = std::make_shared<Collide_Ray>(ray, kpolys_2.klines().begin(), kpolys_2.klines().end());
+            kline_2.collide_ray = std::make_shared<Collide_Ray>(ray, kpolys_2->klines().begin(), kpolys_2->klines().end());
         }
 
         // split
-        for (auto kline_2 = kpolys_2.klines().begin(); kline_2 != kpolys_2.klines().end(); kline_2++)
+        for (auto kline_2 = kpolys_2->klines().begin(); kline_2 != kpolys_2->klines().end(); kline_2++)
         {
             auto current_max_id = max_id;
-            auto kpoly_2 = kpolys_2._kpolygons_2.begin();
-            while (kpoly_2 != kpolys_2._kpolygons_2.end())
+            auto kpoly_2 = kpolys_2->_kpolygons_2.begin();
+            while (kpoly_2 != kpolys_2->_kpolygons_2.end())
             {
                 if (kpoly_2->id >= current_max_id)
                     break;
-                if (kpolys_2.try_split(kpoly_2, kline_2))
-                    kpoly_2 = kpolys_2._kpolygons_2.erase(kpoly_2);
+                if (kpolys_2->try_split(kpoly_2, kline_2))
+                    kpoly_2 = kpolys_2->_kpolygons_2.erase(kpoly_2);
                 else
                     kpoly_2++;
             }
         }
+
+        kpolys_2++;
     }
 }
 

@@ -30,6 +30,7 @@ set(KSR_SOURCES
         "src/min-cut/graph.h"
         "src/min-cut/maxflow.cpp"
         "src/min-cut/instances.inc"
+        "deps/tqdm/tqdm.h"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})
