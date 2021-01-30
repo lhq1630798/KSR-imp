@@ -81,23 +81,22 @@ Collide_Ray::Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end) :
         return a.dot < b.dot;
     });
 }
-std::vector<Collide_Ray::Record> Collide_Ray::next_hit(KP_Ref kp) {
+Collide_Ray::Record Collide_Ray::next_hit(KP_Ref kp) {
     bool reverse = kp->ray_reverse;
     auto start_diff = kp->point() - start;
+
     if (!reverse) {
         auto next_record = std::upper_bound(records.begin(), records.end(), start_diff * vec, [](FT dot, Record rec) {
             return dot < rec.dot;
         });
-        return std::vector<Record>{next_record, records.end()};
+        return *next_record;
     }
 
     auto next_record = std::lower_bound(records.begin(), records.end(), start_diff * vec, [](Record rec, FT dot) {
         return rec.dot < dot;
     });
-    auto ret = std::vector<Record>{ records.begin(), next_record };
-    std::reverse(ret.begin(), ret.end());
-    return ret;
-
+    R_assert(next_record != records.begin());
+    return *--next_record;
 }
 
 
@@ -212,7 +211,7 @@ std::vector<KP_Ref> Kinetic_queue::type_c(Event event1, Event event2)
         tmp->set_edge(edge);
         set_twin(new_face->steal_kp(BACK, kp1), extend_vert1);
 
-        return {};
+        return { kp1, kp2 };
     }
 }
 
@@ -299,12 +298,15 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
         {
             auto twin_vert = sliding_vert->twin();
             twin_vert->face->steal_kp(twin_vert, kp)->set_edge(vert->edge);
+            face->erase(vert);
+            return { kp, sliding_vert->kp };
         }
-        else
+        else {
+            face->erase(vert);
             erase_kp(parent, kp);
+            return { sliding_vert->kp };
+        }
 
-        face->erase(vert);
-        return {sliding_vert->kp};
     }
     else if (next_vert->kp->_status == Mode::Sliding && next_vert->kp->sliding_line == kline)
     {
@@ -323,12 +325,14 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
             assert(vert->edge == sliding_twin->edge);
             sliding_twin->face->steal_kp(std::next(sliding_twin), kp)->set_edge(vert->edge);
             sliding_twin->set_edge(prev_vert->edge);
+            face->erase(vert);
+            return { kp, sliding_vert->kp };
         }
-        else
+        else {
             erase_kp(parent, kp);
-
-        face->erase(vert);
-        return {sliding_vert->kp};
+            face->erase(vert);
+            return { sliding_vert->kp };
+        }
     }
 
     {
@@ -357,15 +361,15 @@ std::vector<KP_Ref> Kinetic_queue::type_a(const Event &event)
             tri_vert1->set_edge(prev_edge);
             set_twin(new_vert2, tri_vert2);
             set_twin(new_vert1, tri_vert1);
+            face->erase(vert);
+            return { kp, new_vert1->kp, new_vert2->kp };
         }
         else
         { //stop extend
             erase_kp(parent, kp);
-
+            face->erase(vert);
+            return { new_vert1->kp, new_vert2->kp };
         }
-        
-        face->erase(vert);
-        return {new_vert1->kp, new_vert2->kp};
     }
 }
 
@@ -391,20 +395,22 @@ void Kinetic_queue::update_certificate()
         accumulated = 0;
         std::cout << "kinetic time : " << CGAL::to_double(last_t) << "  queue size : " << queue.size() << std::endl;
     }
-    auto next_event = top();
 
     preproc_event(event);
     if (event.kp->_status == Mode::Normal)
     {
-        assert((next_event.t != event.t));
+        if(!queue.empty())
+            assert((top().t != event.t));
         need_update = type_a(event);
     }
 
-    else if (next_event.t == event.t)
-    //else if (same_point(event,next_event))
+     else if (!queue.empty() && top().t == event.t)
+    //else if (!queue.empty() && same_point(event, top()))
     {
+        auto next_event = top();
         pop();
-        R_assert(top().t != next_event.t);
+        if (!queue.empty())
+            R_assert(top().t != next_event.t);
         preproc_event(next_event);
         need_update = type_c(event, next_event);
     }
@@ -419,10 +425,6 @@ void Kinetic_queue::update_certificate()
         remove_events(kp);
         kp_collide(kp);
     }
-    //if (event_num[event.kp_id] == 0 && id_events[event.kp_id].size() > 0)
-    //    kp_collide(event.kp);
-    //if (event_num[next_event.kp_id] == 0 && id_events[next_event.kp_id].size() > 0)
-    //    kp_collide(next_event.kp);
 }
 
 Kinetic_queue::Kinetic_queue(KPolygons_SET &kpolygons_set)
@@ -441,16 +443,11 @@ void Kinetic_queue::kp_collide(KP_Ref kp)
     if (kp->_status == Mode::Frozen)
         return;
 
-    auto next_records = kp->collide_ray->next_hit(kp);
-    size_t max_event = (size_t)-1;
-    for (const auto& rec : next_records) {
-        if (max_event-- == 0)
-            break;
-        auto diff = rec.pos - *kp;
-        auto t = last_t;
-        t += Vec_div(diff, kp->_speed);
-        insert(Event{t, kp, rec.kline_2, rec.pos, kp->sliding_line});
-    }
+    auto rec = kp->collide_ray->next_hit(kp);
+    auto diff = rec.pos - *kp;
+    auto t = last_t;
+    t += Vec_div(diff, kp->_speed);
+    insert(Event{t, kp, rec.kline_2, rec.pos, kp->sliding_line});
 
 }
 
@@ -968,8 +965,14 @@ inline void Vertex::set_edge(const std::shared_ptr<Edge>& _edge, No_Check) {
 bool operator<(const Event& r1, const Event& r2)
 {
     if (r1.event_id == r2.event_id) return false;
-    //if (same_point(r1,r2) && CGAL::abs(r1.t - r2.t) < 1e-99)
-    //    return &*r1.kp < &*r2.kp;
+
+    //auto dif = r1.t - r2.t;
+    //constexpr auto max_dif = 1e-20;
+    //if (same_point(r1,r2) && 
+    //    -max_dif < dif && 
+    //    dif < max_dif)
+    //    return r1.event_id < r2.event_id;
+
     if (r1.t != r2.t)
     {
         return r1.t < r2.t;

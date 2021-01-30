@@ -625,7 +625,6 @@ public:
 private:
     void insert(const Event &event) { 
         id_events[event.kp_id].push_back(event);
-        event_num[event.kp_id]++;
         queue.insert(event); 
     }
     void remove(const Event &event)
@@ -643,7 +642,6 @@ private:
     }
     const Event &top(void) const { return *(queue.begin()); }
     void pop(void) { 
-        event_num[top().kp_id]--;
         queue.erase(queue.begin()); 
     }
 
@@ -674,7 +672,6 @@ private:
     KPolygons_SET &kpolygons_set;
     std::set<Event> queue;
     std::unordered_map<size_t, std::vector<Event>> id_events;
-    std::unordered_map<size_t, int> event_num;
     std::vector<KP_Ref> need_update;
     // I think last_t may cause stack overflow https://github.com/CGAL/cgal/issues/1118
     FT last_t = 0;
@@ -690,7 +687,7 @@ public:
     };
 
     Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end);
-    std::vector<Record> next_hit(KP_Ref kp);
+    Record next_hit(KP_Ref kp);
     bool is_reverse(const KPoint_2 &kpoint) {
         if (kpoint._speed * vec > 0) {
             assert(kpoint._speed.direction() == vec.direction());
