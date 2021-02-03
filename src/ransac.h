@@ -1,57 +1,27 @@
 #pragma once
+#include "cgal_object.h"
 
-// STL includes.
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <numeric>
-
-// Boost includes.
-#include <boost/function_output_iterator.hpp>
-
-// CGAL includes.
 #include <CGAL/Timer.h>
-#include <CGAL/Random.h>
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Point_set_3.h>
-#include <CGAL/Point_set_3/IO.h>
-#include <CGAL/number_utils.h>
 #include <CGAL/property_map.h>
-#include <CGAL/IO/read_xyz_points.h>
-#include <CGAL/Point_with_normal_3.h>
-
-#include <CGAL/Shape_detection/Region_growing/Region_growing.h>
-#include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
-
 #include <CGAL/Shape_detection/Efficient_RANSAC.h>
-#include <CGAL/Shape_detection/Efficient_RANSAC/Plane.h>
+#include <CGAL/Cartesian_converter.h>
 
-#include <CGAL/Regularization/regularize_planes.h>
+namespace Ransac
+{
+    // Type declarations.
+    typedef CGAL::Exact_predicates_inexact_constructions_kernel EPIC_K;
+    typedef std::pair<EPIC_K::Point_3, EPIC_K::Vector_3> Point_with_normal;
+    typedef std::vector<Point_with_normal> Pwn_vector;
+    typedef CGAL::First_of_pair_property_map<Point_with_normal> Point_map;
+    typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
+    typedef CGAL::Shape_detection::Efficient_RANSAC_traits<EPIC_K, Pwn_vector, Point_map, Normal_map> Traits;
+    typedef CGAL::Shape_detection::Efficient_RANSAC<Traits> Efficient_ransac;
+    typedef CGAL::Shape_detection::Plane<Traits> Plane_Shape;
+    // converter
+    typedef CGAL::Cartesian_converter<EPIC_K, K> IK_to_EK;
+    typedef CGAL::Cartesian_converter<K, EPIC_K> EK_to_IK;
+    using Detected_shape = std::pair<Plane_3, std::vector<PWN>>;
+} // namespace Ransac
 
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/linear_least_squares_fitting_3.h>
-
-// Type declarations.
-typedef CGAL::Exact_predicates_inexact_constructions_kernel  Kernel;
-typedef Kernel::FT                                           FT;
-typedef Kernel::Point_3                                      Point;
-typedef Kernel::Vector_3                                     Vector;
-typedef std::array<unsigned char, 3>                         Color;
-typedef Kernel::Point_2                                      Point2;
-
-//input Point with xyz,normal
-typedef std::pair<Point, Vector>                             Point_with_normal;
-typedef std::vector<Point_with_normal>                       Pwn_vector;
-typedef CGAL::First_of_pair_property_map<Point_with_normal>  Point_map;
-typedef CGAL::Second_of_pair_property_map<Point_with_normal> Normal_map;
-
-typedef CGAL::Shape_detection::Efficient_RANSAC_traits
-<Kernel, Pwn_vector, Point_map, Normal_map>                  Traits;
-typedef CGAL::Shape_detection::Efficient_RANSAC<Traits>      Efficient_ransac;
-typedef CGAL::Shape_detection::Plane<Traits>                 Plane;
-
-using Detected_shape = std::pair<Plane, std::vector<Point>>;
-std::vector<Detected_shape> ransac(std::string path);
+std::vector<Ransac::Detected_shape> ransac(const std::vector<PWN> &points_E);

@@ -27,30 +27,13 @@ using Vector_3 = CGAL::Vector_3<K>;
 using Polygon_2 = CGAL::Polygon_2<K>;
 class Polygon_3;
 using Polygons_3 = std::vector<Polygon_3>;
-using PWN_E = std::vector<std::pair< Point_3, Vector_3>>;
+using PWN = std::pair< Point_3, Vector_3>;
+using PWN_E = std::vector<PWN>;
 using FT = K::FT;
 using Direction_3 = CGAL::Direction_3<K>;
 using Direction_2 = CGAL::Direction_2<K>;
 
-class Timer
-{
-public:
-    bool enable = true;
-    template <typename Callable, typename... Args>
-    decltype(auto) operator()(const std::string &func_name, Callable &&func, Args &&... args)
-    {
-        if (!enable)
-            return std::invoke(func, std::forward<Args>(args)...);
-        struct time
-        {
-            double start_time;
-            const std::string &_name;
-            time(const std::string &func_name) : _name(func_name), start_time(glfwGetTime()) {}
-            ~time() { std::cout << "time for " + _name + " : " << glfwGetTime() - start_time << "s" << std::endl; }
-        } t(func_name);
-        return std::invoke(func, std::forward<Args>(args)...);
-    }
-};
+
 
 Vec3 rand_color();
 
@@ -99,6 +82,7 @@ private:
 Polygons_3 generate_rand_polys_3(size_t num);
 Polygons_3 generate_polys_3();
 Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end);
-Polygons_3 detect_shape(std::string path);
+Polygons_3 detect_shape(const std::vector<PWN> &pwns);
+Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon);

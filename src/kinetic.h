@@ -368,6 +368,7 @@ public:
     bool is_bbox = false;
     size_t plane_id = next_plane_id++;
     inline static size_t next_plane_id = 0;
+    Vec3 _color = rand_color();
 
     KPolygons_2 &operator=(const KPolygons_2 &) = delete;
 
@@ -469,7 +470,8 @@ public:
     {
         Polygons_3 result;
         for (const auto &kpoly_2 : _kpolygons_2)
-            result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
+            //result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
+            result.emplace_back(_plane, kpoly_2.polygon_2(), _color);
         //inline
         return result;
     }
@@ -502,7 +504,7 @@ public:
     Polygon_Mesh Get_mesh()
     {
         Polygons_3 polys_3;
-        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 3); kpolys++)
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
         {
             auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
