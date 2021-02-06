@@ -801,9 +801,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
                     kp->sliding_line_2 = kline_2;
                     assert(kp->sliding_line._Ptr != kp->sliding_line_2._Ptr);
                 }
-                kp_edges.push_back(std::make_pair(
-                    kp,
-                    edge));
+                kp_edges.emplace_back(kp, edge);
             }
             else {
                 //release kp
@@ -861,11 +859,11 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
         if (new_poly1->polygon_2().has_on_bounded_side(point_2))
         {
             assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
-            new_poly1->inline_points.push_back(std::make_pair(point_3, normal));
+            new_poly1->inline_points.emplace_back(point_3, normal);
         }
         else if (new_poly2->polygon_2().has_on_bounded_side(point_2))
         {
-            new_poly2->inline_points.push_back(std::make_pair(point_3, normal));
+            new_poly2->inline_points.emplace_back(point_3, normal);
         }
     }
 
@@ -904,10 +902,10 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     //FT scale = 1;
     auto square = Points_2{};
 
-    square.push_back(Point_2{scale, scale});
-    square.push_back(Point_2{-scale, scale});
-    square.push_back(Point_2{-scale, -scale});
-    square.push_back(Point_2{scale, -scale});
+    square.emplace_back(scale, scale);
+    square.emplace_back(-scale, scale);
+    square.emplace_back(-scale, -scale);
+    square.emplace_back(scale, -scale);
 
     // don't frozen because we need to set kp's sliding_line and sliding_line_2
     {

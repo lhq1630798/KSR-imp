@@ -1,19 +1,20 @@
 #include "ransac.h"
 #include "cgal_object.h"
 
-using namespace Ransac;
+#include <CGAL/Timer.h>
+#include <CGAL/Shape_detection/Efficient_RANSAC.h>
 
-std::vector<Detected_shape> ransac(const std::vector<PWN> &points_E)
+using namespace EPIC;
+using Traits = CGAL::Shape_detection::Efficient_RANSAC_traits<EPIC_K, Pwn_vector, Point_map, Normal_map>;
+using Efficient_ransac = CGAL::Shape_detection::Efficient_RANSAC<Traits>;
+using Plane_Shape = CGAL::Shape_detection::Plane<Traits>;
+
+
+std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 {
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
-	//********read point with normal********
-	// Points with normals.
-	Pwn_vector points{};
 
-	for(auto [p, n] : points_E){
-		points.emplace_back(to_inexact(p), to_inexact(n));
-	}
 	//std::cout << points_E.front().first << " " << points_E.front().second << std::endl;
 	//std::cout << points.front().first << " " << points.front().second << std::endl;
 	//************ processing ************
@@ -29,11 +30,11 @@ std::vector<Detected_shape> ransac(const std::vector<PWN> &points_E)
 	std::cout << "preprocessing took: " << time.time() * 1000 << "ms" << std::endl;
 
 	//// Set parameters for shape detection.
-	//Efficient_ransac::Parameters parameters;
+	Efficient_ransac::Parameters parameters;
 	//// Set probability to miss the largest primitive at each iteration.
 	//parameters.probability = 0.05;
 	//// Detect shapes with at least 200 points.
-	//parameters.min_points = 200;
+	//parameters.min_points = 20;
 	//// Set maximum Euclidean distance between a point and a shape.
 	//parameters.epsilon = 0.002;
 	//// Set maximum Euclidean distance between points to be clustered.
@@ -46,7 +47,7 @@ std::vector<Detected_shape> ransac(const std::vector<PWN> &points_E)
 
 	time.reset();
 	time.start();
-	ransac.detect();                // Detect shapes.
+	ransac.detect(parameters);                // Detect shapes.
 	time.stop();
 	auto shapes = ransac.shapes();
 
@@ -103,10 +104,9 @@ std::vector<Detected_shape> ransac(const std::vector<PWN> &points_E)
 		std::cout << (*it)->info();
 
 		// Iterate through point indices assigned to each detected shape.
-		std::vector<std::size_t>::const_iterator
-			index_it = (*it)->indices_of_assigned_points().begin();
+		auto index_it = (*it)->indices_of_assigned_points().begin();
 
-		Plane_Shape* plane = dynamic_cast<Plane_Shape*>(it->get());
+		auto* plane = dynamic_cast<Plane_Shape*>(it->get());
 		auto normal = plane->plane_normal();
 		auto plane_3 = to_exact(plane->operator CGAL::Plane_3<CGAL::Epick>());
 
@@ -116,13 +116,13 @@ std::vector<Detected_shape> ransac(const std::vector<PWN> &points_E)
 		while (index_it != (*it)->indices_of_assigned_points().end()) {
 			// Retrieve point.
 			const Point_with_normal& p = *(points.begin() + (*index_it));
-			v.push_back(std::make_pair(to_exact(p.first), to_exact(p.second)));
+			v.emplace_back(to_exact(p.first), to_exact(p.second));
 
 			// Proceed with the next point.
 			index_it++;
 		}
 
-		detected_shape.push_back(std::make_pair(plane_3, v));
+		detected_shape.emplace_back(plane_3, v);
 
 		std::cout << std::endl;
 

@@ -1,31 +1,24 @@
 #include "region_growing.h"
 
-std::vector<Detected_shape> region_growing(std::string path) {
-	std::cout << std::endl <<
-		"region_growing_on_point_set_3 example started"
-		<< std::endl << std::endl;
+#include <CGAL/Shape_detection/Region_growing/Region_growing.h>
+#include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
+#include <CGAL/linear_least_squares_fitting_3.h>
 
-	// Load data
-	Pwn_vector points;
-	std::ifstream stream(path);
-	if (!stream ||
-		//  !CGAL::read_xyz_points(
-		 !CGAL::read_ply_points(
-		//!CGAL::read_off_points(
-			stream,
-			std::back_inserter(points),
-			CGAL::parameters::point_map(Point_map()).
-			normal_map(Normal_map()))) {
-		std::cerr << "Error: cannot read file " << path << std::endl;
-		return {};
-	}
+using namespace EPIC;
+using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<EPIC_K, Pwn_vector, Point_map>;
+using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<EPIC_K, Pwn_vector, Point_map, Normal_map>;
+using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbor_query, Region_type>;
+using Region = std::vector<std::size_t>;
+using Regions = std::vector<Region>;
 
-	std::cout << "* loaded " << points.size() << " points with normals" << std::endl;
+std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points) {
+	EK_to_IK to_inexact;
+	IK_to_EK to_exact;
 
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = 12;
-	const FT2          max_distance_to_plane = FT2(2);
-	const FT2          max_accepted_angle = FT2(20);
+	const EPIC_K::FT          max_distance_to_plane = 2;
+	const EPIC_K::FT          max_accepted_angle = 20;
 	const std::size_t min_region_size = 50;
 
 	// Create instances of the classes Neighbor_query and Region_type.
@@ -54,25 +47,27 @@ std::vector<Detected_shape> region_growing(std::string path) {
 	// Iterate through all regions.
 	std::vector<Detected_shape> detected_shape;
 	for (const auto& region : regions) {
-		Pwn_vector region_points;
-		std::vector<Point> points_coord;
+		PWN_vector region_points;
+		std::vector<EPIC_K::Point_3> points_coord;
 
 		// Iterate through all region items.
 		for (const auto index : region) {
 			const Point_with_normal& point = *(points.begin() + index);
-			region_points.push_back(point);
+			region_points.emplace_back(
+					to_exact(point.first),
+					to_exact(point.second));
 			points_coord.push_back(point.first);
 		}
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
-		Plane plane;
+		EPIC_K::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
 
 		//std::cout << plane << std::endl;
 		//std::cout << region_points.size() << std::endl;
 
-		detected_shape.push_back(std::make_pair(plane, region_points));
+		detected_shape.emplace_back(to_exact(plane), region_points);
 	}
 
 	// Save the result to a file in the user-provided path if any.

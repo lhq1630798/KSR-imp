@@ -1,5 +1,5 @@
 #include "cgal_object.h"
-// #include "region_growing.h"
+#include "region_growing.h"
 #include "ransac.h"
 #include "log.h"
 
@@ -8,14 +8,14 @@
 Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 
-Polygons_3 detect_shape(const std::vector<PWN> &pwns)
+Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns)
 {
-	// std::vector<Detected_shape> detected_shape = region_growing(path);
-	auto detected_shape = ransac(pwns);
+	auto detected_shape = region_growing(pwns);
+	//auto detected_shape = ransac(pwns);
 	Polygons_3 results;
 	for (auto& [plane_3, pwn] : detected_shape)
 	{
-		PWN_E inline_points;
+		PWN_vector inline_points;
 		std::vector<Point_2> projected_points;
 		for (auto &[point_3, normal] : pwn)
 		{

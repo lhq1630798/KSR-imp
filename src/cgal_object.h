@@ -3,6 +3,7 @@
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/random_convex_hull_in_disc_2.h>
 #include <CGAL/convex_hull_2.h>
+#include <CGAL/property_map.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
 #include <vector>
@@ -27,13 +28,24 @@ using Vector_3 = CGAL::Vector_3<K>;
 using Polygon_2 = CGAL::Polygon_2<K>;
 class Polygon_3;
 using Polygons_3 = std::vector<Polygon_3>;
-using PWN = std::pair< Point_3, Vector_3>;
-using PWN_E = std::vector<PWN>;
 using FT = K::FT;
 using Direction_3 = CGAL::Direction_3<K>;
 using Direction_2 = CGAL::Direction_2<K>;
+using PWN = std::pair< Point_3, Vector_3>;
+using PWN_vector = std::vector<PWN>;
+using Detected_shape = std::pair<Plane_3, std::vector<PWN>>;
 
-
+namespace EPIC
+{ // inexact_constructions_kernel
+	using EPIC_K = CGAL::Exact_predicates_inexact_constructions_kernel;
+	using Point_with_normal = std::pair<EPIC_K::Point_3, EPIC_K::Vector_3>;
+	using Pwn_vector = std::vector<Point_with_normal>;
+	using Point_map = CGAL::First_of_pair_property_map<Point_with_normal>;
+	using Normal_map = CGAL::Second_of_pair_property_map<Point_with_normal>;
+	// converter
+	using IK_to_EK = CGAL::Cartesian_converter<EPIC_K, K>;
+	using EK_to_IK = CGAL::Cartesian_converter<K, EPIC_K>;
+}
 
 Vec3 rand_color();
 
@@ -51,7 +63,7 @@ public:
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
-    void set_inline_points(PWN_E points)
+    void set_inline_points(PWN_vector points)
     {
         inline_points = std::move(points);
     }
@@ -62,7 +74,7 @@ public:
     const Points_3 &points_3() const { return _points_3; }
 
     Vec3 _color;
-	PWN_E inline_points;
+	PWN_vector inline_points;
 
 private:
     void update_points_3()
@@ -82,7 +94,7 @@ private:
 Polygons_3 generate_rand_polys_3(size_t num);
 Polygons_3 generate_polys_3();
 Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end);
-Polygons_3 detect_shape(const std::vector<PWN> &pwns);
+Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns);
 Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon);

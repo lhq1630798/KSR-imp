@@ -24,14 +24,12 @@ void Scene::load_point_cloud()
 
 bool Scene::read_PWN(fs::path path)
 {
-	points.clear();
-	point_cloud.reset();
+	reset();
 	std::ifstream stream(path);
 	auto paremeters =
-		CGAL::parameters::point_map(CGAL::First_of_pair_property_map<PWN>{}).
-		normal_map(CGAL::Second_of_pair_property_map<PWN>{});
-		//CGAL::parameters::point_map(Ransac::Point_map()).
-		//normal_map(Ransac::Normal_map());
+		CGAL::parameters::point_map(EPIC::Point_map()).
+		normal_map(EPIC::Normal_map());
+
 	if (stream) {
 		if (path.extension() == ".ply")
 			return CGAL::read_ply_points(
@@ -46,6 +44,15 @@ bool Scene::read_PWN(fs::path path)
 				paremeters);
 	}
 	return false;
+}
+
+void Scene::reset()
+{
+	points.clear();
+	kpolys_set.reset();
+	k_queue.reset();
+	mesh.reset();
+	point_cloud.reset();
 }
 
 void Scene::init_point_cloud() {

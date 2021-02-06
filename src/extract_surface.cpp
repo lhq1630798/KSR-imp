@@ -31,7 +31,7 @@ Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 		vertex_attributes v_att = { plane.to_3d(id_points2[i].pos_2), id_points2[i].ID };
 		id_points.push_back(v_att);
 	}
-	PWN_E inline_points = polygon.inline_points;//属于多边形内部的输入点
+	PWN_vector inline_points = polygon.inline_points;//属于多边形内部的输入点
 	FT area = polygon.area();
 	Direction_3 normal = cross_product((id_points[1].pos_3 - id_points[0].pos_3), (id_points[2].pos_3 - id_points[1].pos_3)).direction();
 	//bool removed = false;
@@ -69,7 +69,7 @@ Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 		vertex_attributes v_att = { plane.to_3d(id_points2[i].pos_2), id_points2[i].ID };
 		id_points.push_back(v_att);
 	}
-	PWN_E inline_points = polygon.inline_points;//属于多边形内部的输入点
+	PWN_vector inline_points = polygon.inline_points;//属于多边形内部的输入点
 	FT area = polygon.area();
 	Direction_3 normal = cross_product((id_points[1].pos_3 - id_points[2].pos_3), (id_points[0].pos_3 - id_points[1].pos_3)).direction();
 	//bool removed = false;
@@ -106,7 +106,7 @@ Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 //		points.push_back(plane.to_3d(points2[i]));
 //		//std::cout << plane.to_3d(points2[i])<< std::endl;
 //	}
-//	PWN_E inline_points = polygon.inline_points;//属于多边形内部的输入点
+//	PWN_vector inline_points = polygon.inline_points;//属于多边形内部的输入点
 //	FT area = polygon.area();
 //	Direction normal = cross_product((points[1] - points[0]), (points[2] - points[1])).direction();
 //	face_attributes face_att = { area,plane,inline_points,normal };
@@ -485,7 +485,7 @@ void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
 }
 
 //0:out  1:in
-int D(CMap_3& cm, PWN_E polyhedra_points, Point_3 center,int status) {
+int D(CMap_3& cm, PWN_vector polyhedra_points, Point_3 center,int status) {
 
 	int sum_d = 0;
 	if (status == 0) {
@@ -634,7 +634,7 @@ void extract_surface(KPolygons_SET& polygons_set)
 		//g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, D(cm, C[i], 0) / points_count, D(cm, C[i], 1) / points_count);
 		Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
 		std::vector<Dart_handle> face_darts;
-		PWN_E polyhedra_points;
+		PWN_vector polyhedra_points;
 		//找到d所在的polyhedra的所有face上的dart
 		for (CMap_3::One_dart_per_incident_cell_range<2, 3>::iterator it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
 			face_darts.push_back(it);

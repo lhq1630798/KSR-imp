@@ -167,7 +167,7 @@ public:
     KPolygon_2(const KPolygon_2 &) = delete;
     KPolygon_2 &operator=(const KPolygon_2 &) = delete;
 
-    void set_inline_points(PWN_E points)
+    void set_inline_points(PWN_vector points)
     {
         inline_points = std::move(points);
     }
@@ -223,7 +223,7 @@ public:
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
-    PWN_E inline_points;
+    PWN_vector inline_points;
     std::list<Vertex> vertices;
 
     FT area()
@@ -642,8 +642,8 @@ private:
             remove(rm_event);
         id_events.erase(kp->id());
     }
-    const Event &top(void) const { return *(queue.begin()); }
-    void pop(void) { 
+    const Event &top() const { return *(queue.begin()); }
+    void pop() { 
         queue.erase(queue.begin()); 
     }
 

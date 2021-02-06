@@ -31,7 +31,7 @@ struct face_attributes {
 	//bool removed;
 	FT area;
 	Plane_3 plane;
-	PWN_E inline_points;
+	PWN_vector inline_points;
 	//Direction normal;
 };
 
