@@ -2,6 +2,7 @@
 #include <limits>
 #include <algorithm>
 #include "log.h"
+#include "tqdm/tqdm.h"
 #undef max
 #undef min
 
@@ -503,6 +504,7 @@ size_t next_id()
 
 FT Kinetic_queue::move_to_time(FT t)
 {
+	if (queue.empty()) return last_t;
     assert(t >= last_t);
     auto next_t = next_time();
     if (t < next_t)
@@ -605,6 +607,7 @@ void Kinetic_queue::finalize() {
 
 }
 
+
 void freeze_plane(KPolygons_2 & kpolys) {
     // set sliding_line/_2 for bbox clipped polygon in order to get point_ID, then frozen it.
     for (auto& kp : kpolys.all_KP) {
@@ -706,13 +709,14 @@ void KPolygons_SET::bbox_clip()
 
 void KPolygons_SET::decompose()
 {
-
-    for (auto &kpolys_2 : _kpolygons_set)
+    std::cout << "split polygons..." << std::endl;
+    auto kpolys_2 = _kpolygons_set.begin();
+    for (auto _ : tq::trange(_kpolygons_set.size()))
     {
         // init collide_ray
-        for (auto& kp : kpolys_2.all_KP)
-            kp.set_collide_ray(std::make_shared<Collide_Ray>(Ray_2{ kp.point(), kp._speed }, kpolys_2.klines().begin(), kpolys_2.klines().end()));
-        for (auto& kline_2 : kpolys_2.klines()) {
+        for (auto& kp : kpolys_2->all_KP)
+            kp.set_collide_ray(std::make_shared<Collide_Ray>(Ray_2{ kp.point(), kp._speed }, kpolys_2->klines().begin(), kpolys_2->klines().end()));
+        for (auto& kline_2 : kpolys_2->klines()) {
             Point_2 start;
             if(kline_2._line_2.is_vertical())
                 start = Point_2{ kline_2._line_2.x_at_y(0), 0 };
@@ -720,24 +724,26 @@ void KPolygons_SET::decompose()
                 start = Point_2{ 0, kline_2._line_2.y_at_x(0) };
 
             auto ray = Ray_2{ start ,kline_2._line_2 };
-            kline_2.collide_ray = std::make_shared<Collide_Ray>(ray, kpolys_2.klines().begin(), kpolys_2.klines().end());
+            kline_2.collide_ray = std::make_shared<Collide_Ray>(ray, kpolys_2->klines().begin(), kpolys_2->klines().end());
         }
 
         // split
-        for (auto kline_2 = kpolys_2.klines().begin(); kline_2 != kpolys_2.klines().end(); kline_2++)
+        for (auto kline_2 = kpolys_2->klines().begin(); kline_2 != kpolys_2->klines().end(); kline_2++)
         {
             auto current_max_id = max_id;
-            auto kpoly_2 = kpolys_2._kpolygons_2.begin();
-            while (kpoly_2 != kpolys_2._kpolygons_2.end())
+            auto kpoly_2 = kpolys_2->_kpolygons_2.begin();
+            while (kpoly_2 != kpolys_2->_kpolygons_2.end())
             {
                 if (kpoly_2->id >= current_max_id)
                     break;
-                if (kpolys_2.try_split(kpoly_2, kline_2))
-                    kpoly_2 = kpolys_2._kpolygons_2.erase(kpoly_2);
+                if (kpolys_2->try_split(kpoly_2, kline_2))
+                    kpoly_2 = kpolys_2->_kpolygons_2.erase(kpoly_2);
                 else
                     kpoly_2++;
             }
         }
+
+        kpolys_2++;
     }
 }
 
@@ -797,9 +803,7 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
                     kp->sliding_line_2 = kline_2;
                     assert(kp->sliding_line._Ptr != kp->sliding_line_2._Ptr);
                 }
-                kp_edges.push_back(std::make_pair(
-                    kp,
-                    edge));
+                kp_edges.emplace_back(kp, edge);
             }
             else {
                 //release kp
@@ -857,11 +861,11 @@ bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
         if (new_poly1->polygon_2().has_on_bounded_side(point_2))
         {
             assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
-            new_poly1->inline_points.push_back(std::make_pair(point_3, normal));
+            new_poly1->inline_points.emplace_back(point_3, normal);
         }
         else if (new_poly2->polygon_2().has_on_bounded_side(point_2))
         {
-            new_poly2->inline_points.push_back(std::make_pair(point_3, normal));
+            new_poly2->inline_points.emplace_back(point_3, normal);
         }
     }
 
@@ -900,10 +904,10 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     //FT scale = 1;
     auto square = Points_2{};
 
-    square.push_back(Point_2{scale, scale});
-    square.push_back(Point_2{-scale, scale});
-    square.push_back(Point_2{-scale, -scale});
-    square.push_back(Point_2{scale, -scale});
+    square.emplace_back(scale, scale);
+    square.emplace_back(-scale, scale);
+    square.emplace_back(-scale, -scale);
+    square.emplace_back(scale, -scale);
 
     // don't frozen because we need to set kp's sliding_line and sliding_line_2
     {

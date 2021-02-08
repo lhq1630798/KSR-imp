@@ -1,27 +1,25 @@
 #include "ransac.h"
+#include "cgal_object.h"
 
-std::vector<Detected_shape> ransac(std::string path)
+#include <CGAL/Timer.h>
+#include <CGAL/Shape_detection/Efficient_RANSAC.h>
+#include <CGAL/Regularization/regularize_planes.h>
+
+using namespace EPIC;
+using Traits = CGAL::Shape_detection::Efficient_RANSAC_traits<EPIC_K, Pwn_vector, Point_map, Normal_map>;
+using Efficient_ransac = CGAL::Shape_detection::Efficient_RANSAC<Traits>;
+using Plane_Shape = CGAL::Shape_detection::Plane<Traits>;
+
+
+std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 {
-	//********read point with normal********
-	// Points with normals.
-	Pwn_vector points;
-
-	// Load point set from a file.
-	std::ifstream stream(path);
-	if (!stream ||
-		!CGAL::read_xyz_points(
-			stream,
-			std::back_inserter(points),
-			CGAL::parameters::point_map(Point_map()).
-			normal_map(Normal_map()))) {
-		std::cerr << "Error: cannot read file cube.pwn!" << std::endl;
-		return {};
-	}
+	EK_to_IK to_inexact;
+	IK_to_EK to_exact;
 
 	//************ processing ************
 	Efficient_ransac ransac;            // Instantiate shape detection engine.
 	ransac.set_input(points);           // Provide input data.
-	ransac.add_shape_factory<Plane>();  // Register detection of planes.
+	ransac.add_shape_factory<Plane_Shape>();  // Register detection of planes.
 
 	// Measure time before setting up the shape detection.
 	CGAL::Timer time;
@@ -30,14 +28,27 @@ std::vector<Detected_shape> ransac(std::string path)
 	time.stop();                        // Measure time after preprocessing.
 	std::cout << "preprocessing took: " << time.time() * 1000 << "ms" << std::endl;
 
-	// Perform detection once (you can also perform several time and choose the best coverage)
-	Efficient_ransac::Shape_range shapes = ransac.shapes();
+	//// Set parameters for shape detection.
+	Efficient_ransac::Parameters parameters;
+	//// Set probability to miss the largest primitive at each iteration.
+	//parameters.probability = 0.05;
+	//// Detect shapes with at least 200 points.
+	//parameters.min_points = 20;
+	//// Set maximum Euclidean distance between a point and a shape.
+	//parameters.epsilon = 0.002;
+	//// Set maximum Euclidean distance between points to be clustered.
+	//parameters.cluster_epsilon = 0.01;
+	//// Set maximum normal deviation.
+	//// 0.9 < dot(surface_normal, point_normal);
+	//parameters.normal_threshold = 0.9;
+
+
 
 	time.reset();
 	time.start();
-	ransac.detect();                // Detect shapes.
+	ransac.detect(parameters);                // Detect shapes.
 	time.stop();
-	shapes = ransac.shapes();
+	auto shapes = ransac.shapes();
 
 	// Compute coverage, i.e. ratio of the points assigned to a shape.
 	FT coverage = FT(points.size() - ransac.number_of_unassigned_points()) / FT(points.size());
@@ -45,42 +56,43 @@ std::vector<Detected_shape> ransac(std::string path)
 	std::cout << shapes.end() - shapes.begin() << " primitives, " << coverage << " coverage" << std::endl;
 
 	//print the detected plane with normal
-	Efficient_ransac::Shape_range::iterator it = shapes.begin();
+	auto it = shapes.begin();
 	while (it != shapes.end()) {
 		// Get specific parameters depending on the detected shape.
-		if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
-			Vector normal = plane->plane_normal();
+		if (auto* plane = dynamic_cast<Plane_Shape*>(it->get())) {
+			auto normal = plane->plane_normal();
 			std::cout << "Plane with normal " << normal << std::endl;
 		}
 		// Proceed with the next detected shape.
 		it++;
 	}
 
-	// Regularize detected planes.
-	Efficient_ransac::Plane_range planes = ransac.planes();
-	CGAL::regularize_planes(points,
-		Point_map(),
-		planes,
-		CGAL::Shape_detection::Plane_map<Traits>(),
-		CGAL::Shape_detection::Point_to_shape_index_map<Traits>(points, planes),
-		true,  // regularize parallelism
-		true,  // regularize orthogonality
-		false, // do not regularize coplanarity
-		true,  // regularize Z-symmetry (default)
-		10);   // 10 degrees of tolerance for parallelism / orthogonality
+	 // Regularize detected planes.
+	auto planes = ransac.planes();
+	 CGAL::regularize_planes(points,
+	 	Point_map(),
+	 	planes,
+	 	CGAL::Shape_detection::Plane_map<Traits>(),
+	 	CGAL::Shape_detection::Point_to_shape_index_map<Traits>(points, planes),
+	 	true,  // regularize parallelism
+	 	true,  // regularize orthogonality
+		false, // regularize coplanarity
+		false,  // regularize Z-symmetry 
+	 	10);   // 10 degrees of tolerance for parallelism / orthogonality
 
-	//print regularized plane with normal
-	std::cout << planes.end() - planes.begin() << " primitives" << std::endl;
-	it = shapes.begin();
-	while (it != shapes.end()) {
-		// Get specific parameters depending on the detected shape.
-		if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
-			Vector normal = plane->plane_normal();
-			std::cout << "Plane with normal " << normal << std::endl;
-		}
-		// Proceed with the next detected shape.
-		it++;
-	}
+	 //print regularized plane with normal
+	 std::cout << planes.end() - planes.begin() << " primitives" << std::endl;
+	 it = shapes.begin();
+	 while (it != shapes.end()) {
+	 	// Get specific parameters depending on the detected shape.
+	 	if (auto* plane = dynamic_cast<Plane_Shape*>(it->get())) {
+	 		auto normal = plane->plane_normal();
+	 		std::cout << "Plane with normal " << normal << std::endl;
+	 	}
+	 	// Proceed with the next detected shape.
+	 	it++;
+	 }
+
 	//********get planes and points on each plane********
 
 	it = shapes.begin();
@@ -92,27 +104,25 @@ std::vector<Detected_shape> ransac(std::string path)
 		std::cout << (*it)->info();
 
 		// Iterate through point indices assigned to each detected shape.
-		std::vector<std::size_t>::const_iterator
-			index_it = (*it)->indices_of_assigned_points().begin();
+		auto index_it = (*it)->indices_of_assigned_points().begin();
 
-		Plane* plane = dynamic_cast<Plane*>(it->get());
-		Vector normal = plane->plane_normal();
-		FT d = plane->d();
+		auto* plane = dynamic_cast<Plane_Shape*>(it->get());
+		auto normal = plane->plane_normal();
+		auto plane_3 = to_exact(plane->operator CGAL::Plane_3<CGAL::Epick>());
 
 		//out: get convex point index
-		std::vector<Point> v;
+		std::vector<PWN> v;
 
-		//计算每个平面的convex
 		while (index_it != (*it)->indices_of_assigned_points().end()) {
 			// Retrieve point.
 			const Point_with_normal& p = *(points.begin() + (*index_it));
-			v.push_back(p.first);
+			v.emplace_back(to_exact(p.first), to_exact(p.second));
 
 			// Proceed with the next point.
 			index_it++;
 		}
 
-		detected_shape.push_back(std::make_pair(*plane,v));
+		detected_shape.emplace_back(plane_3, v);
 
 		std::cout << std::endl;
 

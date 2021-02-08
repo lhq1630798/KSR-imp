@@ -167,7 +167,7 @@ public:
     KPolygon_2(const KPolygon_2 &) = delete;
     KPolygon_2 &operator=(const KPolygon_2 &) = delete;
 
-    void set_inline_points(PWN_E points)
+    void set_inline_points(PWN_vector points)
     {
         inline_points = std::move(points);
     }
@@ -223,7 +223,7 @@ public:
     Vec3 _color = rand_color();
     KPolygons_2 *parent = nullptr;
 
-    PWN_E inline_points;
+    PWN_vector inline_points;
     std::list<Vertex> vertices;
 
     FT area()
@@ -368,6 +368,7 @@ public:
     bool is_bbox = false;
     size_t plane_id = next_plane_id++;
     inline static size_t next_plane_id = 0;
+    Vec3 _color = rand_color();
 
     KPolygons_2 &operator=(const KPolygons_2 &) = delete;
 
@@ -470,6 +471,7 @@ public:
         Polygons_3 result;
         for (const auto &kpoly_2 : _kpolygons_2)
             result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
+            //result.emplace_back(_plane, kpoly_2.polygon_2(), _color);
         //inline
         return result;
     }
@@ -502,7 +504,7 @@ public:
     Polygon_Mesh Get_mesh()
     {
         Polygons_3 polys_3;
-        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 3); kpolys++)
+        for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
         {
             auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
@@ -607,6 +609,7 @@ public:
     FT move_to_time(FT t);
     void Kpartition();
     void finalize();
+	bool is_done() { return queue.empty(); }
     size_t size() { return queue.size(); }
     Update_Point get_update_point()
     {
@@ -640,8 +643,8 @@ private:
             remove(rm_event);
         id_events.erase(kp->id());
     }
-    const Event &top(void) const { return *(queue.begin()); }
-    void pop(void) { 
+    const Event &top() const { return *(queue.begin()); }
+    void pop() { 
         queue.erase(queue.begin()); 
     }
 
