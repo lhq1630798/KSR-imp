@@ -94,7 +94,7 @@ private:
 Polygons_3 generate_rand_polys_3(size_t num);
 Polygons_3 generate_polys_3();
 Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end);
-Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns);
+Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns, bool);
 Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon);

@@ -504,6 +504,7 @@ size_t next_id()
 
 FT Kinetic_queue::move_to_time(FT t)
 {
+	if (queue.empty()) return last_t;
     assert(t >= last_t);
     auto next_t = next_time();
     if (t < next_t)
@@ -605,6 +606,7 @@ void Kinetic_queue::finalize() {
     Erase_Single_Face{ kpolygons_set };
 
 }
+
 
 void freeze_plane(KPolygons_2 & kpolys) {
     // set sliding_line/_2 for bbox clipped polygon in order to get point_ID, then frozen it.

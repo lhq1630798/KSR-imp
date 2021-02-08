@@ -31,11 +31,7 @@ void App::render_imgui()
 
 
 	ImGui::Begin("KSR");
-	ImGui::Checkbox("Demo Window", &show_demo_window);
-	if (ImGui::Button("Open File"))
-		scene.load_point_cloud();
-	if (ImGui::Button("Detect shape"))
-		scene.detect_shape();
+	ImGui::Checkbox("Imgui Demo Window", &show_demo_window);
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 	ImGui::Checkbox("plane", &show_plane);
 	ImGui::SameLine();
@@ -44,35 +40,41 @@ void App::render_imgui()
 	ImGui::Checkbox("line", &show_seg_line);
 	ImGui::SameLine();
 	ImGui::Checkbox("boundary", &show_boundary);
-	ImGui::SliderFloat("depth", &depth, -1, 1);
+	//ImGui::SliderFloat("depth", &depth, -1, 1);
 
-	if (scene.kpolys_set) {
-		auto& kpolys_set = *scene.kpolys_set;
-		ImGui::Text("detected size = %d", kpolys_set.size());
-	}
-	if (scene.k_queue) {
-		auto& k_queue = *scene.k_queue;
+	ImGui::Separator();
+	ImGui::BulletText("Start by loading point cloud with oriented normal");
+	if (ImGui::Button("Open File"))
+		manager.load_point_cloud();
+
+	ImGui::Checkbox("Regularize after detect shape", &regularize);
+	if (ImGui::Button("Detect shape"))
+		manager.detect_shape(regularize);
+	ImGui::Text("detected size = %d", manager.detected_shape.size());
+
+	ImGui::Separator();
+	if (ImGui::Button("init kinetic queue"))
+		manager.init_Kqueue();
+	if (manager.k_queue) {
+		auto& k_queue = *manager.k_queue;
 		ImGui::Checkbox("growing", &grow);
 		ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
-		ImGui::SameLine();
 		ImGui::Text("queue size = %d", k_queue.size());
 		ImGui::Text("next time = %.3f", (float)CGAL::to_double(k_queue.next_time()));
 		if (grow)
 			kinetic_time = (float)CGAL::to_double(k_queue.move_to_time(kinetic_time + kinetic_dt));
-		if (ImGui::Button("finish partition"))
-		{
-			dirty = true;
-			k_queue.Kpartition();
-		}
-		if (ImGui::Button("next event")) {
-			dirty = true;
-			kinetic_time = (float)CGAL::to_double(k_queue.to_next_event());
-		}
 		ImGui::Text("kinetic time = %.3f", kinetic_time);
 	}
+	if (ImGui::Button("finish partition"))
+		manager.partition();
 
+	ImGui::Separator();
+	if (ImGui::Button("extract surface"))
+		manager.extract_surface();
 
+	ImGui::Separator();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	
 	ImGui::End();
 }
 
@@ -80,43 +82,44 @@ void App::render_3d()
 {
 
 	shader.use();
-	glm::mat4 model(1); //model¾ØÕó£¬¾Ö²¿×ø±ê±ä»»ÖÁÊÀ½ç×ø±ê
+	glm::mat4 model(1); //modelçŸ©é˜µï¼Œå±€éƒ¨åæ ‡å˜æ¢è‡³ä¸–ç•Œåæ ‡
 	if (rotate)
 		model = glm::rotate(model, (float)ImGui::GetTime(), glm::vec3(0.5f, 1.0f, 0.0f));
-	glm::mat4 view(1); //view¾ØÕó£¬ÊÀ½ç×ø±ê±ä»»ÖÁ¹Û²ì×ø±êÏµ
+	glm::mat4 view(1); //viewçŸ©é˜µï¼Œä¸–ç•Œåæ ‡å˜æ¢è‡³è§‚å¯Ÿåæ ‡ç³»
 	view = camera.GetViewMatrix();
-	glm::mat4 projection(1); //projection¾ØÕó£¬Í¶Ó°¾ØÕó
+	glm::mat4 projection(1); //projectionçŸ©é˜µï¼ŒæŠ•å½±çŸ©é˜µ
 	projection = glm::perspective(glm::radians(45.0f), (float)plt.SCR_WIDTH / (float)plt.SCR_HEIGHT, 0.1f, 100.0f);
 
-	// Ïò×ÅÉ«Æ÷ÖĞ´«Èë²ÎÊı
+	// å‘ç€è‰²å™¨ä¸­ä¼ å…¥å‚æ•°
 	shader.setMat4("model", model);
 	shader.setMat4("view", view);
 	shader.setMat4("projection", projection);
 
-	if (show_point_cloud && scene.point_cloud) {
-		scene.point_cloud->render(shader);
+	if (show_point_cloud && manager.point_cloud) {
+		manager.point_cloud->render(shader);
 	}
 
-	if (scene.mesh) {
-		auto& kpolys_set = *scene.kpolys_set;
-		auto& mesh = *scene.mesh;
-		if (grow || dirty) {
-			dirty = false;
-			mesh = kpolys_set.Get_mesh();
-		}
+	if (manager.mesh) {
+		auto& mesh = *manager.mesh;
 		if (show_plane)
 			mesh.render(shader);
 		if (show_boundary)
 			mesh.render_boundary(shader);
-
-		if (show_seg_line)
-		{
-			auto segs = kpolys_set.Get_Segments();
-			segs.render(shader);
+		if (manager.kpolys_set) {
+			auto& kpolys_set = *manager.kpolys_set;
+			if (grow || dirty) {
+				dirty = false;
+				mesh = kpolys_set.Get_mesh();
+			}
+			if (show_seg_line)
+			{
+				auto segs = kpolys_set.Get_Segments();
+				segs.render(shader);
+			}
+			//auto update_p = k_queue.get_update_point();
+			//update_p.render(shader);
 		}
-
-		//auto update_p = k_queue.get_update_point();
-		//update_p.render(shader);
 	}
+
 
 }

@@ -3,6 +3,7 @@
 
 #include <CGAL/Timer.h>
 #include <CGAL/Shape_detection/Efficient_RANSAC.h>
+#include <CGAL/Regularization/regularize_planes.h>
 
 using namespace EPIC;
 using Traits = CGAL::Shape_detection::Efficient_RANSAC_traits<EPIC_K, Pwn_vector, Point_map, Normal_map>;
@@ -15,8 +16,6 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
 
-	//std::cout << points_E.front().first << " " << points_E.front().second << std::endl;
-	//std::cout << points.front().first << " " << points.front().second << std::endl;
 	//************ processing ************
 	Efficient_ransac ransac;            // Instantiate shape detection engine.
 	ransac.set_input(points);           // Provide input data.
@@ -57,10 +56,10 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 	std::cout << shapes.end() - shapes.begin() << " primitives, " << coverage << " coverage" << std::endl;
 
 	//print the detected plane with normal
-	Efficient_ransac::Shape_range::iterator it = shapes.begin();
+	auto it = shapes.begin();
 	while (it != shapes.end()) {
 		// Get specific parameters depending on the detected shape.
-		if (Plane_Shape* plane = dynamic_cast<Plane_Shape*>(it->get())) {
+		if (auto* plane = dynamic_cast<Plane_Shape*>(it->get())) {
 			auto normal = plane->plane_normal();
 			std::cout << "Plane with normal " << normal << std::endl;
 		}
@@ -68,31 +67,32 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 		it++;
 	}
 
-	// // Regularize detected planes.
-	// Efficient_ransac::Plane_range planes = ransac.planes();
-	// CGAL::regularize_planes(points,
-	// 	Point_map(),
-	// 	planes,
-	// 	CGAL::Shape_detection::Plane_map<Traits>(),
-	// 	CGAL::Shape_detection::Point_to_shape_index_map<Traits>(points, planes),
-	// 	true,  // regularize parallelism
-	// 	true,  // regularize orthogonality
-	// 	false, // do not regularize coplanarity
-	// 	true,  // regularize Z-symmetry (default)
-	// 	10);   // 10 degrees of tolerance for parallelism / orthogonality
+	 // Regularize detected planes.
+	auto planes = ransac.planes();
+	 CGAL::regularize_planes(points,
+	 	Point_map(),
+	 	planes,
+	 	CGAL::Shape_detection::Plane_map<Traits>(),
+	 	CGAL::Shape_detection::Point_to_shape_index_map<Traits>(points, planes),
+	 	true,  // regularize parallelism
+	 	true,  // regularize orthogonality
+		false, // regularize coplanarity
+		false,  // regularize Z-symmetry 
+	 	10);   // 10 degrees of tolerance for parallelism / orthogonality
 
-	// //print regularized plane with normal
-	// std::cout << planes.end() - planes.begin() << " primitives" << std::endl;
-	// it = shapes.begin();
-	// while (it != shapes.end()) {
-	// 	// Get specific parameters depending on the detected shape.
-	// 	if (Plane* plane = dynamic_cast<Plane*>(it->get())) {
-	// 		Vector normal = plane->plane_normal();
-	// 		std::cout << "Plane with normal " << normal << std::endl;
-	// 	}
-	// 	// Proceed with the next detected shape.
-	// 	it++;
-	// }
+	 //print regularized plane with normal
+	 std::cout << planes.end() - planes.begin() << " primitives" << std::endl;
+	 it = shapes.begin();
+	 while (it != shapes.end()) {
+	 	// Get specific parameters depending on the detected shape.
+	 	if (auto* plane = dynamic_cast<Plane_Shape*>(it->get())) {
+	 		auto normal = plane->plane_normal();
+	 		std::cout << "Plane with normal " << normal << std::endl;
+	 	}
+	 	// Proceed with the next detected shape.
+	 	it++;
+	 }
+
 	//********get planes and points on each plane********
 
 	it = shapes.begin();

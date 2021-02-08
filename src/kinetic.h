@@ -470,8 +470,8 @@ public:
     {
         Polygons_3 result;
         for (const auto &kpoly_2 : _kpolygons_2)
-            //result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
-            result.emplace_back(_plane, kpoly_2.polygon_2(), _color);
+            result.emplace_back(_plane, kpoly_2.polygon_2(), kpoly_2._color);
+            //result.emplace_back(_plane, kpoly_2.polygon_2(), _color);
         //inline
         return result;
     }
@@ -609,6 +609,7 @@ public:
     FT move_to_time(FT t);
     void Kpartition();
     void finalize();
+	bool is_done() { return queue.empty(); }
     size_t size() { return queue.size(); }
     Update_Point get_update_point()
     {

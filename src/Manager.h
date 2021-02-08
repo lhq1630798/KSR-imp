@@ -5,11 +5,14 @@
 #include "kinetic.h"
 
 namespace fs = std::filesystem;
-class Scene
+class Manager
 {
 public:
 	void load_point_cloud();
-	void detect_shape();
+	void detect_shape(bool regularize = true);
+	void init_Kqueue();
+	void partition();
+	void extract_surface();
 	EPIC::Pwn_vector points;
 	Polygons_3 detected_shape;
 	std::unique_ptr<KPolygons_SET> kpolys_set;

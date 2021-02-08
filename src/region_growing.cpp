@@ -3,6 +3,9 @@
 #include <CGAL/Shape_detection/Region_growing/Region_growing.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <CGAL/Regularization/regularize_planes.h>
+#include <fmt/core.h>
+#include <algorithm>
 
 using namespace EPIC;
 using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<EPIC_K, Pwn_vector, Point_map>;
@@ -11,7 +14,7 @@ using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbo
 using Region = std::vector<std::size_t>;
 using Regions = std::vector<Region>;
 
-std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points) {
+std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, bool regularize) {
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
 
@@ -44,18 +47,21 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points) {
 		" regions have been found"
 		<< std::endl;
 
-	// Iterate through all regions.
-	std::vector<Detected_shape> detected_shape;
-	for (const auto& region : regions) {
-		PWN_vector region_points;
-		std::vector<EPIC_K::Point_3> points_coord;
+	auto num = std::accumulate(
+		regions.begin(),
+		regions.end(),
+		0.0,
+		[](auto sum, const Region &r) {return sum + r.size(); }
+	);
+	fmt::print("{:.3} coverage\n", num / points.size());
 
+	// fit plane
+	std::vector<EPIC_K::Plane_3> detected_plane;
+	for (const auto& region : regions) {
+		std::vector<EPIC_K::Point_3> points_coord;
 		// Iterate through all region items.
 		for (const auto index : region) {
 			const Point_with_normal& point = *(points.begin() + index);
-			region_points.emplace_back(
-					to_exact(point.first),
-					to_exact(point.second));
 			points_coord.push_back(point.first);
 		}
 
@@ -63,18 +69,65 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points) {
 		// its normal being perpendicular to the plane.
 		EPIC_K::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
-
-		//std::cout << plane << std::endl;
-		//std::cout << region_points.size() << std::endl;
-
-		detected_shape.emplace_back(to_exact(plane), region_points);
+		detected_plane.push_back(plane);
 	}
 
-	// Save the result to a file in the user-provided path if any.
+	// regularize_planes
+	std::vector<int> point_shape_index_map(points.size(), -1);
+	int idx = 0;
+	for (const auto &region : regions) {
+		for (auto index : region) {
+			point_shape_index_map[index] = idx;
+		}
+		idx++;
+	}
+	if (regularize) {
+		CGAL::regularize_planes(points,
+			Point_map(),
+			detected_plane,
+			CGAL::Identity_property_map<EPIC_K::Plane_3>(),
+			CGAL::make_property_map(point_shape_index_map),
+			true,  // regularize parallelism
+			true,  // regularize orthogonality
+			true, // regularize coplanarity
+			false,  // regularize Z-symmetry 
+			10,  // 10 degrees of tolerance for parallelism / orthogonality
+			0.01 // tolerance coplanarity
+		);
+		//merge co-plane points
+		auto it = regions.begin();
+		while (it != regions.end()) {
+			auto plane = detected_plane[point_shape_index_map[(*it)[0]]];
 
-	std::cout << std::endl <<
-		"region_growing_on_point_set_2 example finished"
-		<< std::endl << std::endl;
+			auto other_it = it + 1;
+			while (other_it != regions.end()) {
+				auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
+				if (other_plane == plane || other_plane.opposite() == plane) {
+					it->insert(it->end(), other_it->begin(), other_it->end());
+					other_it = regions.erase(other_it);
+				}
+				else other_it++;
+			}
+			it++;
+		}
+		fmt::print("{} planes after regularization\n", regions.size());
+	}
+
+	// convert to exact kernel type
+	std::vector<Detected_shape> detected_shape;
+	for (const auto& region : regions) {
+		Plane_3 plane = to_exact(detected_plane[point_shape_index_map[region[0]]]);
+		std::cout << "plane " << plane << std::endl;
+		PWN_vector region_points;
+		for (const auto index : region) {
+			const Point_with_normal& point = *(points.begin() + index);
+			region_points.emplace_back(
+				to_exact(point.first),
+				to_exact(point.second));
+		}
+
+		detected_shape.emplace_back(plane, region_points);
+	}
 
 	return detected_shape;
 }

@@ -8,18 +8,16 @@
 Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 
-Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns)
+Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns, bool regularize)
 {
-	auto detected_shape = region_growing(pwns);
+	auto detected_shape = region_growing(pwns, regularize);
 	//auto detected_shape = ransac(pwns);
 	Polygons_3 results;
-	for (auto& [plane_3, pwn] : detected_shape)
+	for (const auto& [plane_3, pwn] : detected_shape)
 	{
-		PWN_vector inline_points;
 		std::vector<Point_2> projected_points;
-		for (auto &[point_3, normal] : pwn)
+		for (const auto &[point_3, normal] : pwn)
 		{
-			inline_points.push_back(std::make_pair(point_3, normal));
 			Point_3 projected = plane_3.projection(point_3);
 			projected_points.push_back(plane_3.to_2d(projected));
 		}
@@ -31,7 +29,7 @@ Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns)
 		//	assert(!polygon2.has_on_unbounded_side(p));
 
 		auto poly3 = Polygon_3{ plane_3, std::move(polygon2) };
-		poly3.set_inline_points(std::move(inline_points));
+		poly3.set_inline_points(pwn);
 		results.push_back(std::move(poly3));
 	}
 	return results;

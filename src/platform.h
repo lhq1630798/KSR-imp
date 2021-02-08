@@ -8,7 +8,24 @@
 
 #include "app.h"
 
-
+class Timer
+{
+public:
+	bool enable = true;
+	template <typename Callable, typename... Args>
+	decltype(auto) operator()(const std::string& func_name, Callable&& func, Args &&... args) {
+		if (!enable)
+			return std::invoke(func, std::forward<Args>(args)...);
+		struct time {
+			double start_time;
+			const std::string& _name;
+			time(const std::string& func_name) : _name(func_name), start_time(glfwGetTime()) {}
+			~time() { fmt::print("time for {} : {}s\n", _name, glfwGetTime() - start_time); }
+		} t(func_name);
+		return std::invoke(func, std::forward<Args>(args)...);
+	}
+};
+extern Timer timer;
 
 class Platform {
 public:
