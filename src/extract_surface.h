@@ -104,4 +104,4 @@ using Neighbor = std::map<NeighborKey, NeighborDarts>;
 Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane);
 void build_map(CMap_3& cm, KPolygons_SET& polygons_set);
 int D(CMap_3& cm, Dart_handle d, int status);
-void extract_surface(KPolygons_SET& polygons_set);
+void extract_surface(KPolygons_SET& polygons_set, std::string filename);

@@ -1,5 +1,5 @@
 #include "region_growing.h"
-
+#include "app.h"
 #include <CGAL/Shape_detection/Region_growing/Region_growing.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
@@ -14,15 +14,15 @@ using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbo
 using Region = std::vector<std::size_t>;
 using Regions = std::vector<Region>;
 
-std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, bool regularize) {
+std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, const DetectShape_Params& params) {
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
 
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = 12;
-	const EPIC_K::FT          max_distance_to_plane = 2;
-	const EPIC_K::FT          max_accepted_angle = 20;
-	const std::size_t min_region_size = 50;
+	const EPIC_K::FT          max_distance_to_plane = params.max_distance_to_plane;
+	const EPIC_K::FT          max_accepted_angle = params.max_accepted_angle;
+	const std::size_t min_region_size = params.min_region_size;
 
 	// Create instances of the classes Neighbor_query and Region_type.
 	Neighbor_query neighbor_query(
@@ -81,7 +81,7 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, bool regular
 		}
 		idx++;
 	}
-	if (regularize) {
+	if (params.regularize) {
 		CGAL::regularize_planes(points,
 			Point_map(),
 			detected_plane,

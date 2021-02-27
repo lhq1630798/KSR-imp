@@ -16,6 +16,14 @@
 
 class Platform;
 
+struct DetectShape_Params
+{
+	bool regularize = true;
+	float max_distance_to_plane = 0.01;
+	float max_accepted_angle = 20;
+	int min_region_size = 50;
+};
+
 class App {
 public:
 	App(Platform& plt, Shader shader);
@@ -41,8 +49,9 @@ private:
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;
+	int K = 1;
 
-	bool regularize = true;
+	DetectShape_Params params;
 
 	Platform& plt;
 };

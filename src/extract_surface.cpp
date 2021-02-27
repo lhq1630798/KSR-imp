@@ -529,7 +529,7 @@ int D(CMap_3& cm, PWN_vector polyhedra_points, Point_3 center,int status) {
 //	return e1.p2 < e2.p2;
 //}
 
-void extract_surface(KPolygons_SET& polygons_set)
+void extract_surface(KPolygons_SET& polygons_set, std::string filename)
 {
 	/*std::map<ID_Edge, std::vector<KPoly_Ref>> Edge_Polygon_Map;
 	for (auto& kpolys_2 : polygons_set._kpolygons_set) {
@@ -730,7 +730,7 @@ void extract_surface(KPolygons_SET& polygons_set)
 	}
 	
 	//输出convex mesh
-	std::ofstream f("src/output/outmesh.off");
+	std::ofstream f("src/output/" + filename + ".off");
 	if (!CGAL::write_off(f, m)) {
 		std::cout << "write wrong" << std::endl;
 	}

@@ -14,6 +14,7 @@ void Manager::load_point_cloud()
 		if (read_PWN(std::string(path))) {
 			fmt::print("* loaded {} points with normals\n", points.size());
 			init_point_cloud();
+			filename = fs::path{ path }.stem().string();
 		}
 		else
 			fmt::print(stderr, "Error: cannot read file {}\n", path);
@@ -49,6 +50,7 @@ bool Manager::read_PWN(fs::path path)
 void Manager::reset()
 {
 	points.clear();
+	detected_shape.clear();
 	kpolys_set.reset();
 	k_queue.reset();
 	mesh.reset();
@@ -71,20 +73,17 @@ void Manager::init_point_cloud() {
 	point_cloud = std::make_unique<Point_cloud_GL>(std::move(point_GL));
 }
 
-void Manager::detect_shape(bool regularize)
+void Manager::detect_shape(DetectShape_Params params)
 {
 	if (points.empty()) load_point_cloud();
 	if (points.empty()) return;
-	detected_shape = ::detect_shape(points, regularize);
+	detected_shape = ::detect_shape(points, params);
 	mesh = std::make_unique<Polygon_Mesh>(detected_shape);
 }
 
-void Manager::init_Kqueue()
+void Manager::init_Kqueue(size_t K)// 0 means exhausted
 {
-	if (detected_shape.empty()) detect_shape();
 	if (detected_shape.empty()) return;
-	//size_t K = 0; // 0 means exhausted
-	size_t K = 1;
 	kpolys_set = std::make_unique<KPolygons_SET>(detected_shape, K);
 	*mesh = kpolys_set->Get_mesh();
 	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
@@ -92,7 +91,6 @@ void Manager::init_Kqueue()
 
 void Manager::partition()
 {
-	if (!k_queue) init_Kqueue();
 	if (!k_queue) return;
 	timer("kinetic partition", &Kinetic_queue::Kpartition, *k_queue);
 	*mesh = kpolys_set->Get_mesh();
@@ -102,5 +100,5 @@ void Manager::extract_surface()
 {
 	if (!k_queue || !k_queue->is_done()) partition();
 	if (!k_queue) return;
-	timer("extract surface", ::extract_surface, *kpolys_set);
+	timer("extract surface", ::extract_surface, *kpolys_set, filename);
 }

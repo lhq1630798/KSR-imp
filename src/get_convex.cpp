@@ -8,9 +8,9 @@
 Polygon_2 simplify_convex(const Polygon_2& polygon);
 
 
-Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns, bool regularize)
+Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns, const DetectShape_Params &params)
 {
-	auto detected_shape = region_growing(pwns, regularize);
+	auto detected_shape = region_growing(pwns, params);
 	//auto detected_shape = ransac(pwns);
 	Polygons_3 results;
 	for (const auto& [plane_3, pwn] : detected_shape)
