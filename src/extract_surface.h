@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <map>
+#include<string>
 #include "kinetic.h"
 #include "min-cut/graph.h"
 
@@ -64,7 +65,7 @@ struct Myitem
 	template<class CMap>
 	struct Dart_wrapper
 	{
-		typedef Direction_3 Dart_info;
+		typedef std::pair<Direction_3, bool> Dart_info;
 		typedef CGAL::Cell_attribute<CMap, polyhedra_attributes> Polyhedra_attribute; // A number
 		typedef CGAL::Cell_attribute<CMap, face_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor > Face_attribute; // area of this face
 		typedef CGAL::Cell_attribute<CMap, vertex_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor> Vertex_attribute; // A vertex

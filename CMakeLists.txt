@@ -28,6 +28,7 @@ set(KSR_SOURCES
         "src/region_growing.h"
         "src/region_growing.cpp"
         "src/get_convex.cpp"
+        "src/surface.cpp"
         "src/extract_surface.cpp"
         "src/extract_surface.h"
         "src/min-cut/block.h"

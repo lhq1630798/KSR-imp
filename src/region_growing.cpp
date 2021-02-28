@@ -20,7 +20,7 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, bool regular
 
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = 12;
-	const EPIC_K::FT          max_distance_to_plane = 2;
+	const EPIC_K::FT          max_distance_to_plane = 0.01;
 	const EPIC_K::FT          max_accepted_angle = 20;
 	const std::size_t min_region_size = 50;
 
@@ -117,7 +117,7 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, bool regular
 	std::vector<Detected_shape> detected_shape;
 	for (const auto& region : regions) {
 		Plane_3 plane = to_exact(detected_plane[point_shape_index_map[region[0]]]);
-		std::cout << "plane " << plane << std::endl;
+		//std::cout << "plane " << plane << std::endl;
 		PWN_vector region_points;
 		for (const auto index : region) {
 			const Point_with_normal& point = *(points.begin() + index);

@@ -11,13 +11,10 @@ void Manager::load_point_cloud()
 	NFD_OpenDialog(point_file_types, nullptr, &path);
 	if (path) {
 		fmt::print("loading {}\n", path);
-		if (read_PWN(std::string(path))) {
+		if (read_PWN(std::string(path)))
 			fmt::print("* loaded {} points with normals\n", points.size());
-			init_point_cloud();
-		}
 		else
 			fmt::print(stderr, "Error: cannot read file {}\n", path);
-
 		free(path);
 	}
 }
@@ -26,24 +23,26 @@ bool Manager::read_PWN(fs::path path)
 {
 	reset();
 	std::ifstream stream(path);
+	if (!stream) return false;
+
 	auto paremeters =
 		CGAL::parameters::point_map(EPIC::Point_map()).
 		normal_map(EPIC::Normal_map());
 
-	if (stream) {
-		if (path.extension() == ".ply")
-			return CGAL::read_ply_points(
-				stream,
-				std::back_inserter(points),
-				paremeters);
-
-		else if (path.extension() == ".off")
-			return CGAL::read_off_points(
-				stream,
-				std::back_inserter(points),
-				paremeters);
+	if (path.extension() == ".ply") {
+		if (!CGAL::read_ply_points(stream, std::back_inserter(points), paremeters))
+			return false;
 	}
-	return false;
+	else if (path.extension() == ".off") {
+		if (!CGAL::read_off_points(stream, std::back_inserter(points), paremeters))
+			return false;
+	}
+	// else if (path.extension() == ".pwn"){...}
+	else
+		return false;
+
+	init_points();
+	return true;
 }
 
 void Manager::reset()
@@ -55,7 +54,8 @@ void Manager::reset()
 	point_cloud.reset();
 }
 
-void Manager::init_point_cloud() {
+void Manager::init_points() {
+	// normalize normal vector
 	for (auto&[p, n] : points) {
 		n = n / CGAL::sqrt(n.squared_length());
 	}
@@ -73,7 +73,8 @@ void Manager::init_point_cloud() {
 
 void Manager::detect_shape(bool regularize)
 {
-	if (points.empty()) load_point_cloud();
+	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
+	//detected_shape = timer("generate_polys_3", generate_polys_3);
 	if (points.empty()) return;
 	detected_shape = ::detect_shape(points, regularize);
 	mesh = std::make_unique<Polygon_Mesh>(detected_shape);
@@ -81,7 +82,6 @@ void Manager::detect_shape(bool regularize)
 
 void Manager::init_Kqueue()
 {
-	if (detected_shape.empty()) detect_shape();
 	if (detected_shape.empty()) return;
 	//size_t K = 0; // 0 means exhausted
 	size_t K = 1;
@@ -100,7 +100,9 @@ void Manager::partition()
 
 void Manager::extract_surface()
 {
-	if (!k_queue || !k_queue->is_done()) partition();
 	if (!k_queue) return;
-	timer("extract surface", ::extract_surface, *kpolys_set);
+	assert(k_queue->is_done());
+	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
+	/**mesh = */timer("extract surface", ::extract_surface, *kpolys_set);
+	//*mesh = ::extract_surface(kpolys_set);
 }

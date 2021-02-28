@@ -9,6 +9,7 @@ class Manager
 {
 public:
 	void load_point_cloud();
+	bool read_PWN(fs::path path);
 	void detect_shape(bool regularize = true);
 	void init_Kqueue();
 	void partition();
@@ -20,8 +21,7 @@ public:
 	std::unique_ptr<Polygon_Mesh> mesh;
 	std::unique_ptr<Point_cloud_GL> point_cloud;
 private:
-	bool read_PWN(fs::path path);
 	void reset();
-	void init_point_cloud();
+	void init_points();
 	static inline const char* point_file_types = "ply,off";
 };

@@ -488,6 +488,7 @@ public:
     KPolygons_SET(Polygons_3 polygons_3, size_t K);
 
     size_t size() const { return _kpolygons_set.size() - 6; }
+	void set_inliner_points(const EPIC::Pwn_vector &points);
 
     void move_dt(FT dt)
     {
