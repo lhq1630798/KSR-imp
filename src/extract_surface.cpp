@@ -717,7 +717,7 @@ void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces
 
 
 
-void extract_surface(KPolygons_SET& polygons_set)
+void extract_surface(KPolygons_SET& polygons_set, std::string filename)
 {
 
 	CMap_3 cm;

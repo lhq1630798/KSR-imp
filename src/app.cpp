@@ -47,14 +47,18 @@ void App::render_imgui()
 	if (ImGui::Button("Open File"))
 		manager.load_point_cloud();
 
-	ImGui::Checkbox("Regularize after detect shape", &regularize);
+	ImGui::Checkbox("Regularize after detect shape", &params.regularize);
+	ImGui::DragFloat("max_distance_to_plane", &params.max_distance_to_plane);
+	ImGui::DragFloat("max_accepted_angle", &params.max_accepted_angle);
+	ImGui::DragInt("min_region_size", &params.min_region_size);
 	if (ImGui::Button("Detect shape"))
-		manager.detect_shape(regularize);
+		manager.detect_shape(params);
 	ImGui::Text("detected size = %d", manager.detected_shape.size());
 
 	ImGui::Separator();
+	ImGui::DragInt("K", &K);
 	if (ImGui::Button("init kinetic queue"))
-		manager.init_Kqueue();
+		manager.init_Kqueue(static_cast<size_t>(K));
 	if (manager.k_queue) {
 		auto& k_queue = *manager.k_queue;
 		ImGui::Checkbox("growing", &grow);
