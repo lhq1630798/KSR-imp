@@ -18,6 +18,7 @@ void Manager::load_point_cloud()
 		}
 		else
 			fmt::print(stderr, "Error: cannot read file {}\n", path);
+
 		free(path);
 	}
 }
@@ -102,6 +103,9 @@ void Manager::extract_surface()
 	if (!k_queue || !k_queue->is_done()) return;
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
-	/* *mesh = */timer("extract surface", ::extract_surface, *kpolys_set);
+	/* *mesh = */
+	auto maybe_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename);
+	if (maybe_lines) 
+		lines = std::make_unique<Lines_GL>(*maybe_lines);
 	//*mesh = ::extract_surface(kpolys_set);
 }

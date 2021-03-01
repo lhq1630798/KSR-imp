@@ -1,5 +1,6 @@
 
 #include "extract_surface.h"
+#include "fmt/core.h"
 //#include "log.h"
 
 /***************************Graph************************/
@@ -605,7 +606,7 @@ void merge_face(std::vector<std::vector<vertex_descriptor>>& boundary_edges) {
 
 }
 
-void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces, std::map<vertex_descriptor, in_Point> index_point) {
+std::optional<std::vector<Vec3>> merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces, std::map<vertex_descriptor, in_Point> index_point) {
 	std::vector<std::pair<int, int>> edges = get_edges(faces);
 	/*for (int i = 0; i < edges.size(); i++) {
 		std::cout << edges[i].first << " " << edges[i].second << std::endl;
@@ -637,12 +638,15 @@ void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces
 	for (int i = 0; i < unionSize; i++) {
 		std::vector<int> unionField = graph->get_unionfield(i + 1);
 		std::vector<std::vector<vertex_descriptor>> boundary_edges = get_boundary_edge(unionField, faces, erased_edges);
+		auto bk_boundary_edges = boundary_edges;
 		merge_face(boundary_edges);
 
 		std::list<vertex_descriptor> vertList;
 		for (int i = 0; i < boundary_edges[0].size() - 1; i++) {
 			vertList.push_back(boundary_edges[0][i]);
 		}
+
+		if (vertList.empty()) fmt::print("empty vertlist\n");
 
 		for (auto it = vertList.begin(); it != vertList.end();) {
 			auto it2 = std::next(it);
@@ -662,12 +666,17 @@ void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces
 			}
 		}
 
+
 		std::vector<vertex_descriptor> results;
 		for (auto it = vertList.begin(); it != vertList.end(); it++) {
 			//std::cout << *it << " ";
 			results.push_back(*it);
 		}
 		//std::cout << std::endl;
+		if (results.empty())
+		{
+			fmt::print("empty results list\n");
+		}
 
 		
 		//将空洞情况的共同点用不同的点索引表示
@@ -702,7 +711,20 @@ void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces
 		//R_assert(f != Surface_Mesh::null_face());
 		if (f == Surface_Mesh::null_face()) {
 			std::cout << "face invalid" << std::endl;
-			
+			std::vector<Vec3> end_points;
+			for (const auto &boundary : bk_boundary_edges) {
+				auto point_iter = boundary.begin();
+				point_iter++;
+				while (point_iter != boundary.end())
+				{
+					auto point = index_point[*(point_iter-1)];
+					end_points.push_back(Vec3{ point.x() ,point.y() ,point.z() });
+					point = index_point[*point_iter];
+					end_points.push_back(Vec3{ point.x() ,point.y() ,point.z() });
+					point_iter++;
+				}
+			}
+			return { end_points };
 			/*std::vector<vertex_descriptor> results2;
 			for (auto it = results.end(); it != results.begin(); it--) {
 				results2.push_back(*it);
@@ -712,12 +734,13 @@ void merge(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces
 		std::cout << f << std::endl;
 		//m.add_face(boundary_edges[0]);
 	}
+	return {};
 }
 /********************************Merge end*****************/
 
 
 
-void extract_surface(KPolygons_SET& polygons_set, std::string filename)
+std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename)
 {
 
 	CMap_3 cm;
@@ -966,7 +989,7 @@ void extract_surface(KPolygons_SET& polygons_set, std::string filename)
 			}
 			faces[i] = v;
 			
-			m.add_face(v);
+			//m.add_face(v);
 
 			/*for (int j = 0; j < faces[i].size(); j++) {
 				std::cout << faces[i][j] << " ";
@@ -978,12 +1001,13 @@ void extract_surface(KPolygons_SET& polygons_set, std::string filename)
 		for (auto it = point_index.begin(); it != point_index.end(); it++) {
 			index_point[it->second] = it->first;
 		}
-		//merge(m, faces,index_point);
-
+		auto maybe_lines = merge(m, faces,index_point);
+		if (num==41) 
+			return maybe_lines;
 		//输出plane
 		
 		
-		std::string file = "src/output/outmesh" + std::to_string(num) + ".off";
+		std::string file = "src/output/" + filename + std::to_string(num) + ".off";
 		std::ofstream f(file);
 		if (!CGAL::write_off(f, m)) {
 			std::cout << "write wrong" << std::endl;

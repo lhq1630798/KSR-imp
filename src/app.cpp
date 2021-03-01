@@ -115,15 +115,11 @@ void App::render_3d()
 				dirty = false;
 				mesh = kpolys_set.Get_mesh();
 			}
-			if (show_seg_line)
-			{
-				auto segs = kpolys_set.Get_Segments();
-				segs.render(shader);
-			}
-			//auto update_p = k_queue.get_update_point();
-			//update_p.render(shader);
 		}
 	}
-
+	if (show_seg_line && manager.lines)
+	{
+		manager.lines->render(shader);
+	}
 
 }

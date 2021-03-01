@@ -22,6 +22,7 @@ public:
 	std::unique_ptr<Kinetic_queue> k_queue;
 	std::unique_ptr<Polygon_Mesh> mesh;
 	std::unique_ptr<Point_cloud_GL> point_cloud;
+	std::unique_ptr<Lines_GL> lines;
 private:
 	bool read_PWN(fs::path path);
 	void reset();
