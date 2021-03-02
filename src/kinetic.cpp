@@ -883,48 +883,62 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
     for (const auto &poly_3 : polygons_3)
         box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
 
-    FT scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
-                              std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
+    box.dilate(1000);
+    auto cube = CGAL::Iso_cuboid_3<K>{ box };
+    //FT scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
+    //                          std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
 
-    //FT scale = 1;
-    auto square = Points_2{};
-
-    square.emplace_back(scale, scale);
-    square.emplace_back(-scale, scale);
-    square.emplace_back(-scale, -scale);
-    square.emplace_back(scale, -scale);
 
     // don't frozen because we need to set kp's sliding_line and sliding_line_2
     {
-        auto plane = Plane_3{1, 0, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
+        auto plane = Plane_3{1, 0, 0, -cube.xmin() };
+		auto square = Points_2{};
+        for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+    
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
     {
-        auto plane = Plane_3{0, 1, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
+        auto plane = Plane_3{0, 1, 0, -cube.ymin() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
 
     {
-        auto plane = Plane_3{0, 0, 1, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
+        auto plane = Plane_3{0, 0, 1, -cube.zmin() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
 
     {
-        auto plane = Plane_3{ -1, 0, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
+        auto plane = Plane_3{ -1, 0, 0, cube.xmax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
     {
-        auto plane = Plane_3{ 0, -1, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
+        auto plane = Plane_3{ 0, -1, 0, cube.ymax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
     {
-        auto plane = Plane_3{ 0, 0, -1, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
+        auto plane = Plane_3{ 0, 0, -1, cube.zmax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
         _kpolygons_set.back().is_bbox = true;
     }
 }

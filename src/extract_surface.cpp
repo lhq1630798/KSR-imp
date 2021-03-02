@@ -1002,7 +1002,7 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 			index_point[it->second] = it->first;
 		}
 		auto maybe_lines = merge(m, faces,index_point);
-		if (num==41) 
+		if (maybe_lines)
 			return maybe_lines;
 		//输出plane
 		
