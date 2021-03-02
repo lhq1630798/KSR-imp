@@ -736,6 +736,97 @@ std::optional<std::vector<Vec3>> merge(Surface_Mesh& m, std::map<int, std::vecto
 	}
 	return {};
 }
+
+void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces, std::map<vertex_descriptor, in_Point> index_point) {
+	std::vector<std::pair<int, int>> edges = get_edges(faces);
+	for (int i = 0; i < edges.size(); i++) {
+		std::cout << edges[i].first << " " << edges[i].second << std::endl;
+	}
+
+	ALGraph* graph = new ALGraph();
+	graph->CreateGraph(faces.size(), edges.size(), edges);
+	//cout << graph->DFS_findUnion() << "个连通域" << endl;
+	//cout << "连通情况为：" << graph->isConnect(6, 7) << endl;
+
+	int unionSize = graph->DFS_findUnion();
+
+	std::set<std::pair<vertex_descriptor, vertex_descriptor> > erased_edges;
+	for (int i = 0; i < edges.size(); i++) {
+
+		std::vector<vertex_descriptor> v1 = faces[edges[i].first];
+		std::vector<vertex_descriptor> v2 = faces[edges[i].second];
+		std::sort(v1.begin(), v1.end());
+		std::sort(v2.begin(), v2.end());
+		std::vector<vertex_descriptor> v_intersection;
+		std::set_intersection(v1.begin(), v1.end(), v2.begin(), v2.end(), std::back_inserter(v_intersection));
+		erased_edges.insert(std::make_pair(v_intersection[0], v_intersection[1]));
+	}
+
+	for (auto it = erased_edges.begin(); it != erased_edges.end(); it++) {
+		std::cout << it->first << " " << it->second << std::endl;
+	}
+
+	for (int i = 0; i < unionSize; i++) {
+		std::vector<int> unionField = graph->get_unionfield(i + 1);
+		std::vector<std::vector<vertex_descriptor>> boundary_edges = get_boundary_edge(unionField, faces, erased_edges);
+		merge_face(boundary_edges);
+
+		for (int p = 0; p < boundary_edges.size(); p++) {
+			std::list<vertex_descriptor> vertList;
+			//去掉最后一个元素
+			for (int i = 0; i < boundary_edges[p].size() - 1; i++) {
+				vertList.push_back(boundary_edges[p][i]);
+			}
+
+			/*for (auto it = vertList.begin(); it != vertList.end();) {
+				auto it2 = std::next(it);
+				if (it2 == vertList.end())
+					it2 = vertList.begin();
+				auto it3 = std::next(it2);
+				if (it3 == vertList.end())
+					it3 = vertList.begin();
+
+
+				if (*it != *it3) {
+					it++;
+				}
+				else {
+					vertList.erase(it2);
+					vertList.erase(it3);
+					if (it != vertList.begin())it = std::prev(it);
+				}
+			}*/
+
+
+			std::vector<vertex_descriptor> results;
+			//std::vector<vertex_descriptor>
+			for (auto it = vertList.begin(); it != vertList.end(); it++) {
+				std::cout << *it << " ";
+				results.push_back(*it);
+			}
+			std::cout << std::endl;
+
+			//std::vector<vertex_descriptor> results2;
+			std::vector<vertex_descriptor>::iterator it, it2;
+			for (it = results.begin(); it != results.end(); it++) {
+				it2 = find(results.begin(), it, *it);
+				if (it2 != it) {
+					vertex_descriptor new_v = m.add_vertex(index_point[*it]);
+					*it = new_v;
+				}
+			}
+
+			for (auto it = results.begin(); it != results.end(); it++) {
+				std::cout << *it << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << m.add_face(results) << std::endl;
+			//m.add_face(boundary_edges[0]);
+		}
+
+	}
+}
 /********************************Merge end*****************/
 
 
@@ -885,7 +976,7 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 
 
 	//-----get surface mesh---------
-	//Surface_Mesh m;
+	Surface_Mesh m;
 
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
@@ -954,12 +1045,12 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 	auto itMEnd = merge_face.end();
 
 	//遍历每个平面
-	int num = 0;
+	//int num = 0;
 	while (itMerge != itMEnd) {
 
 		std::vector<Dart_handle> plane_darts = itMerge->second;
 		
-		Surface_Mesh m;
+		//Surface_Mesh m;
 		
 		//get faces
 		std::map<in_Point, vertex_descriptor> point_index;
@@ -989,41 +1080,44 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 			}
 			faces[i] = v;
 			
-			//m.add_face(v);
-
-			/*for (int j = 0; j < faces[i].size(); j++) {
-				std::cout << faces[i][j] << " ";
-			}
-			std::cout << std::endl;*/
-			
 		}
 		std::map<vertex_descriptor, in_Point> index_point;
 		for (auto it = point_index.begin(); it != point_index.end(); it++) {
 			index_point[it->second] = it->first;
 		}
+
 		auto maybe_lines = merge(m, faces,index_point);
-		if (maybe_lines)
+		if (maybe_lines){
+			fmt::print("merge face wrong\n");
 			return maybe_lines;
+		}
+
 		//输出plane
-		
-		
 		std::string file = "src/output/" + filename + std::to_string(num) + ".off";
 		std::ofstream f(file);
 		if (!CGAL::write_off(f, m)) {
 			std::cout << "write wrong" << std::endl;
 		}
+
 		
-		
-		num++;
+		merge_without_holes(m, faces, index_point);
+
+		//输出plane
+		//std::string file = "src/output/" + filename + std::to_string(num) + ".off";
+		//std::ofstream f(file);
+		//if (!CGAL::write_off(f, m)) {
+		//	std::cout << "write wrong" << std::endl;
+		//}
+		//num++;
 		itMerge++;
 	}
 
-	////输出convex mesh
-	//std::ofstream f("src/output/outmesh.off");
-	//if (!CGAL::write_off(f, m)) {
-	//	std::cout << "write wrong" << std::endl;
-	//}
-
+	//输出convex mesh
+	std::string file = "src/output/" + filename + ".off";
+	std::ofstream f(file);
+	if (!CGAL::write_off(f, m)) {
+		std::cout << "write wrong" << std::endl;
+	}
 	delete g;
-
+	return {};
 }
