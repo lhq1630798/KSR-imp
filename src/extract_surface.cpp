@@ -1086,29 +1086,23 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 			index_point[it->second] = it->first;
 		}
 
-		auto maybe_lines = merge(m, faces,index_point);
-		if (maybe_lines){
-			fmt::print("merge face wrong\n");
-			return maybe_lines;
-		}
+		// auto maybe_lines = merge(m, faces,index_point);
+		// if (maybe_lines){
+		// 	fmt::print("merge face wrong\n");
+		// 	return maybe_lines;
+		// }
 
-		//输出plane
-		std::string file = "src/output/" + filename + std::to_string(num) + ".off";
-		std::ofstream f(file);
-		if (!CGAL::write_off(f, m)) {
-			std::cout << "write wrong" << std::endl;
-		}
+		// //输出plane
+		// std::string file = "src/output/" + filename + std::to_string(num) + ".off";
+		// std::ofstream f(file);
+		// if (!CGAL::write_off(f, m)) {
+		// 	std::cout << "write wrong" << std::endl;
+		// }
+		//num++;
 
 		
 		merge_without_holes(m, faces, index_point);
 
-		//输出plane
-		//std::string file = "src/output/" + filename + std::to_string(num) + ".off";
-		//std::ofstream f(file);
-		//if (!CGAL::write_off(f, m)) {
-		//	std::cout << "write wrong" << std::endl;
-		//}
-		//num++;
 		itMerge++;
 	}
 
