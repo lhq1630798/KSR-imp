@@ -4,9 +4,10 @@
 #include <iostream>
 #include <cstdlib>
 #include <map>
-#include<string>
+#include <string>
 #include "kinetic.h"
 #include "min-cut/graph.h"
+#include "face_graph.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Simple_cartesian.h>
@@ -21,6 +22,7 @@ typedef CGAL::Surface_mesh<in_Point>                         Surface_Mesh;
 typedef Surface_Mesh::Vertex_index                           vertex_descriptor;
 typedef Surface_Mesh::Face_index                             face_descriptor;
 typedef CGAL::SM_Vertex_index                                Vertex_index;
+typedef Graph<int, int, int>                                 GraphType;
 
 struct vertex_attributes {
 	Point_3 pos_3;

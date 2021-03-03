@@ -3,190 +3,6 @@
 #include "fmt/core.h"
 //#include "log.h"
 
-/***************************Graph************************/
-const int MAX = 3000;
-
-struct ENode      //邻接表的中间节点
-{
-	int adjvex;   //对应索引
-	ENode* next;
-};
-
-typedef struct VNode //邻接表顶点
-{
-	int vertex;     //值
-	ENode* firstarc; //指向第一个中间节点
-}AdjList[MAX];
-
-class ALGraph         //图
-{
-private:
-	AdjList adjList;          //邻接表数组
-	int vexNum;              //节点数量
-	int arcNum;              //连边数量
-	bool visited[MAX];        //标记被访问
-	std::map<int, int> unionfield;  //标记节点属于哪个连通域
-
-public:
-	//void CreateGraph();       //创建图
-	void CreateGraph(int vNum, int eNum, std::vector<std::pair<int, int>> edges);
-	void PrintGraph();        //打印图
-	void DFS(int v, int field); //深度优先搜索
-	void BFS();               //广度优先搜索
-	int DFS_findUnion();      //深度优先搜索寻找连通域
-	bool isConnect(int m, int n); //判断两个节点是否连通
-	std::vector<int> get_unionfield(int unionNum);//得到第unionNum个连通分量
-	std::vector<std::pair<int, int> > erase_edges;
-};
-
-void ALGraph::CreateGraph(int vNum, int eNum, std::vector<std::pair<int, int> > edges)
-{
-	this->vexNum = vNum;
-	this->arcNum = eNum;
-	for (int i = 0; i < this->vexNum; i++)  //构建顶点数组
-	{
-		this->adjList[i].vertex = i;
-		this->adjList[i].firstarc = nullptr;
-	}
-
-	for (int i = 0; i < this->arcNum; i++)  //构建每条邻接表
-	{
-		int h1 = edges[i].first;
-		int h2 = edges[i].second;
-
-		ENode* temp = new ENode();
-		temp->adjvex = h2;
-		temp->next = this->adjList[h1].firstarc;
-		this->adjList[h1].firstarc = temp;
-
-		temp = new ENode();
-		temp->adjvex = h1;
-		temp->next = this->adjList[h2].firstarc;
-		this->adjList[h2].firstarc = temp;
-	}
-}
-
-void ALGraph::PrintGraph()
-{
-	for (int i = 0; i < this->vexNum; i++)
-	{
-		//std::cout << this->adjList[i].vertex << "--------->";
-		ENode* p = this->adjList[i].firstarc;
-		while (p)
-		{
-			//std::cout << this->adjList[p->adjvex].vertex << " ";
-			p = p->next;
-		}
-		//std::cout << std::endl;
-	}
-}
-void ALGraph::BFS()
-{
-	for (int i = 0; i < this->vexNum; i++)
-	{
-		visited[i] = false;
-	}
-	std::queue<int> q;
-	for (int i = 0; i < this->vexNum; i++)
-	{
-		if (!visited[i])
-		{
-			visited[i] = true;
-			q.push(i);
-			//std::cout << this->adjList[i].vertex << " ";
-			while (!q.empty())
-			{
-				int x = q.front();
-				q.pop();
-				ENode* p = this->adjList[x].firstarc;
-				while (p)
-				{
-					if (!visited[p->adjvex])
-					{
-						visited[p->adjvex] = true;
-						//std::cout << this->adjList[p->adjvex].vertex << " ";
-						q.push(p->adjvex);
-					}
-					p = p->next;
-				}
-			}
-		}
-	}
-}
-//void ALGraph::DFS(int v, int field)
-//{
-//	visited[v] = true;
-//	this->unionfield.insert(make_pair(v, field));
-//	cout << this->adjList[v].vertex << " ";
-//
-//	ENode* p = this->adjList[v].firstarc;
-//	while (p)
-//	{
-//		if (!visited[p->adjvex])
-//			DFS(p->adjvex, field);
-//		p = p->next;
-//	}
-//}
-void ALGraph::DFS(int v, int field)
-{
-	visited[v] = true;
-	this->unionfield.insert(std::make_pair(v, field));
-	//std::cout << this->adjList[v].vertex << " ";
-
-	ENode* p = this->adjList[v].firstarc;
-	while (p)
-	{
-		if (!visited[p->adjvex]) {
-			this->erase_edges.push_back(std::make_pair(v, p->adjvex));
-			DFS(p->adjvex, field);
-		}
-		p = p->next;
-	}
-}
-
-int ALGraph::DFS_findUnion()
-{
-	this->unionfield.clear();
-	int count = 0;                //连通域个数
-	for (int i = 0; i < this->vexNum; i++)
-	{
-		visited[i] = false;
-	}
-	std::cout << "connected area:" << std::endl;
-	for (int i = 0; i < this->vexNum; i++)
-	{
-		if (!visited[i])
-		{
-			DFS(i, ++count);
-			std::cout << std::endl;
-		}
-
-	}
-	std::cout << std::endl;
-	return count;
-}
-
-std::vector<int> ALGraph::get_unionfield(int unionNum)
-{
-	std::vector<int> connect;
-	for (std::map<int, int>::iterator it = this->unionfield.begin(); it != this->unionfield.end(); it++)
-	{
-		if (it->second == unionNum)
-			connect.push_back(it->first);
-	}
-	return connect;
-}
-
-bool ALGraph::isConnect(int m, int n)
-{
-	return (this->unionfield[m] == this->unionfield[n]) ? true : false;
-}
-
-
-/*******************Graph end*******************/
-
-
-
 bool operator<(const EdgeKey& e1, const EdgeKey& e2) {
 	if (e1.edge.first != e2.edge.first) {
 		return e1.edge.first < e2.edge.first;
@@ -830,15 +646,7 @@ void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descr
 /********************************Merge end*****************/
 
 
-
-std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename)
-{
-
-	CMap_3 cm;
-	build_map(cm, polygons_set);
-
-	//int ghost_num;
-	//C:保存每个polyhedra的一个dart
+std::vector<Dart_handle> get_C(CMap_3& cm) {
 	std::vector<Dart_handle> C;
 	for (CMap_3::One_dart_per_cell_range<3>::iterator it(cm.one_dart_per_cell<3>().begin()), itend(cm.one_dart_per_cell<3>().end()); it != itend; it++) {
 		/*if (cm.info(it).second) {
@@ -847,19 +655,19 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 		}*/
 		C.push_back(it);
 	}
-	int C_num = C.size();
-	std::cout << "polyhedra number:" << C_num << std::endl;
+	return C;
+}
 
-	//F:保存每个face的一个dart
+std::vector<Dart_handle> get_F(CMap_3& cm) {
 	std::vector<Dart_handle> F;
 	for (CMap_3::One_dart_per_cell_range<2>::iterator it(cm.one_dart_per_cell<2>().begin()), itend(cm.one_dart_per_cell<2>().end()); it != itend; it++) {
 		F.push_back(it);
 	}
-	std::cout << "F number" << F.size() << std::endl;
+	return F;
+}
 
-	//N:保存相邻的两个polyhedra的dart,和两个polyhedra之间的共面总面积
+Neighbor get_N(CMap_3& cm, std::vector<Dart_handle> F) {
 	Neighbor N;
-	//std::vector<std::pair<Dart_handle, Dart_handle> > N;
 	for (int i = 0; i < F.size(); i++) {
 		int poly_number1 = cm.info_of_attribute<3>(cm.attribute<3>(F[i])).number;
 		int poly_number2 = cm.info_of_attribute<3>(cm.attribute<3>(cm.beta(F[i], 3))).number;
@@ -895,10 +703,12 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 			}
 		}
 	}
-	int N_num = N.size();
-	std::cout << "N number" << N_num << std::endl;
+	return N;
+}
 
-	typedef Graph<int, int, int> GraphType;
+GraphType* label_polyhedron(CMap_3& cm,std::vector<Dart_handle> C,Neighbor N, KPolygons_SET& polygons_set) {
+	int C_num = C.size();
+	int N_num = N.size();
 	GraphType *g = new GraphType(/*estimated # of nodes*/ C_num, /*estimated # of edges*/ N_num);
 
 	for (int i = 0; i < C_num; i++) {
@@ -973,15 +783,17 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 		else
 			printf("node%d is in the SINK set\n", i);
 	}
+	return g;
 
+}
 
-	//-----get surface mesh---------
+Surface_Mesh get_mesh(CMap_3& cm,GraphType* g,Neighbor N) {
 	Surface_Mesh m;
 
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
-	ite = N.begin();
-	iteEnd = N.end();
+	auto ite = N.begin();
+	auto iteEnd = N.end();
 	while (ite != iteEnd) {
 		int d1 = ite->first.neighbors.first;
 		int d2 = ite->first.neighbors.second;
@@ -992,7 +804,7 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 					surface_darts.push_back(darts[i].first);
 				}
 				else {
-					surface_darts.push_back(cm.beta(darts[i].first,3));
+					surface_darts.push_back(cm.beta(darts[i].first, 3));
 				}
 			}
 		}
@@ -1033,13 +845,6 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 			}
 		}
 	}
-	
-	/*auto faceBegin = merge_face.begin();
-	auto faceEnd = merge_face.end();
-	while (faceBegin != faceEnd) {
-		std::cout<<faceBegin->second.size()<<std::endl;
-		faceBegin++;
-	}*/
 
 	auto itMerge = merge_face.begin();
 	auto itMEnd = merge_face.end();
@@ -1049,9 +854,9 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 	while (itMerge != itMEnd) {
 
 		std::vector<Dart_handle> plane_darts = itMerge->second;
-		
+
 		//Surface_Mesh m;
-		
+
 		//get faces
 		std::map<in_Point, vertex_descriptor> point_index;
 		std::map<int, std::vector<vertex_descriptor>> faces;
@@ -1079,7 +884,7 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 				}
 			}
 			faces[i] = v;
-			
+
 		}
 		std::map<vertex_descriptor, in_Point> index_point;
 		for (auto it = point_index.begin(); it != point_index.end(); it++) {
@@ -1092,26 +897,44 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 		// 	return maybe_lines;
 		// }
 
-		// //输出plane
-		// std::string file = "src/output/" + filename + std::to_string(num) + ".off";
-		// std::ofstream f(file);
-		// if (!CGAL::write_off(f, m)) {
-		// 	std::cout << "write wrong" << std::endl;
-		// }
-		//num++;
-
-		
 		merge_without_holes(m, faces, index_point);
 
 		itMerge++;
 	}
+	return m;
+}
 
-	//输出convex mesh
+std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename)
+{
+	CMap_3 cm;
+	build_map(cm, polygons_set);
+
+	//int ghost_num;
+
+	//C:保存每个polyhedra的一个dart
+	std::vector<Dart_handle> C = get_C(cm);
+	std::cout << "Polyhedron number: " << C.size() << std::endl;
+
+	//F:保存每个face的一个dart
+	std::vector<Dart_handle> F = get_F(cm);
+	std::cout << "F number: " << F.size() << std::endl;
+
+	//N:保存相邻的两个polyhedra的dart,和两个polyhedra之间的共面总面积
+	Neighbor N = get_N(cm, F);
+	std::cout << "N number: " << N.size() << std::endl;
+
+	GraphType *g = label_polyhedron(cm,C,N,polygons_set);
+
+	//-----get surface mesh---------
+	Surface_Mesh m=get_mesh(cm,g,N);
+
 	std::string file = "src/output/" + filename + ".off";
 	std::ofstream f(file);
 	if (!CGAL::write_off(f, m)) {
 		std::cout << "write wrong" << std::endl;
 	}
+
 	delete g;
+
 	return {};
 }
