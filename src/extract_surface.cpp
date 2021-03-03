@@ -131,7 +131,7 @@ void ALGraph::DFS(int v, int field)
 {
 	visited[v] = true;
 	this->unionfield.insert(std::make_pair(v, field));
-	std::cout << this->adjList[v].vertex << " ";
+	//std::cout << this->adjList[v].vertex << " ";
 
 	ENode* p = this->adjList[v].firstarc;
 	while (p)
@@ -739,9 +739,9 @@ std::optional<std::vector<Vec3>> merge(Surface_Mesh& m, std::map<int, std::vecto
 
 void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descriptor>>& faces, std::map<vertex_descriptor, in_Point> index_point) {
 	std::vector<std::pair<int, int>> edges = get_edges(faces);
-	for (int i = 0; i < edges.size(); i++) {
+	/*for (int i = 0; i < edges.size(); i++) {
 		std::cout << edges[i].first << " " << edges[i].second << std::endl;
-	}
+	}*/
 
 	ALGraph* graph = new ALGraph();
 	graph->CreateGraph(faces.size(), edges.size(), edges);
@@ -762,9 +762,9 @@ void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descr
 		erased_edges.insert(std::make_pair(v_intersection[0], v_intersection[1]));
 	}
 
-	for (auto it = erased_edges.begin(); it != erased_edges.end(); it++) {
+	/*for (auto it = erased_edges.begin(); it != erased_edges.end(); it++) {
 		std::cout << it->first << " " << it->second << std::endl;
-	}
+	}*/
 
 	for (int i = 0; i < unionSize; i++) {
 		std::vector<int> unionField = graph->get_unionfield(i + 1);
@@ -801,10 +801,10 @@ void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descr
 			std::vector<vertex_descriptor> results;
 			//std::vector<vertex_descriptor>
 			for (auto it = vertList.begin(); it != vertList.end(); it++) {
-				std::cout << *it << " ";
+				//std::cout << *it << " ";
 				results.push_back(*it);
 			}
-			std::cout << std::endl;
+			//std::cout << std::endl;
 
 			//std::vector<vertex_descriptor> results2;
 			std::vector<vertex_descriptor>::iterator it, it2;
@@ -816,10 +816,10 @@ void merge_without_holes(Surface_Mesh& m, std::map<int, std::vector<vertex_descr
 				}
 			}
 
-			for (auto it = results.begin(); it != results.end(); it++) {
+			/*for (auto it = results.begin(); it != results.end(); it++) {
 				std::cout << *it << " ";
 			}
-			std::cout << std::endl;
+			std::cout << std::endl;*/
 
 			std::cout << m.add_face(results) << std::endl;
 			//m.add_face(boundary_edges[0]);
@@ -837,14 +837,14 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 	CMap_3 cm;
 	build_map(cm, polygons_set);
 
-	int ghost_num;
+	//int ghost_num;
 	//C:保存每个polyhedra的一个dart
 	std::vector<Dart_handle> C;
 	for (CMap_3::One_dart_per_cell_range<3>::iterator it(cm.one_dart_per_cell<3>().begin()), itend(cm.one_dart_per_cell<3>().end()); it != itend; it++) {
-		if (cm.info(it).second) {
+		/*if (cm.info(it).second) {
 			ghost_num = cm.info<3>(it).number;
 			continue;
-		}
+		}*/
 		C.push_back(it);
 	}
 	int C_num = C.size();
@@ -863,9 +863,9 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 	for (int i = 0; i < F.size(); i++) {
 		int poly_number1 = cm.info_of_attribute<3>(cm.attribute<3>(F[i])).number;
 		int poly_number2 = cm.info_of_attribute<3>(cm.attribute<3>(cm.beta(F[i], 3))).number;
-		if (poly_number1 == ghost_num || poly_number2 == ghost_num) {
+		/*if (poly_number1 == ghost_num || poly_number2 == ghost_num) {
 			continue;
-		}
+		}*/
 		if (poly_number1 < poly_number2) {
 			NeighborKey key(std::make_pair(poly_number1, poly_number2));
 			Neighbor::iterator ite = N.find(key);
