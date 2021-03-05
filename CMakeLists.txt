@@ -36,6 +36,12 @@ set(KSR_SOURCES
         "src/min-cut/graph.h"
         "src/min-cut/maxflow.cpp"
         "src/min-cut/instances.inc"
+        "src/build_map.h"
+        "src/face_graph.h"
+        "src/label_polyhedron.h"
+        "src/build_map.cpp"
+        "src/face_graph.cpp"
+        "src/label_polyhedron.cpp"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})
