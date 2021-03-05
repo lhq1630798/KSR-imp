@@ -87,7 +87,7 @@ void Manager::init_Kqueue(size_t K)// 0 means exhausted
 {
 	if (detected_shape.empty()) return;
 	kpolys_set = std::make_unique<KPolygons_SET>(detected_shape, K);
-	*mesh = kpolys_set->Get_mesh();
+	mesh = kpolys_set->Get_mesh();
 	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
 }
 
@@ -95,16 +95,16 @@ void Manager::partition()
 {
 	if (!k_queue) return;
 	timer("kinetic partition", &Kinetic_queue::Kpartition, *k_queue);
-	*mesh = kpolys_set->Get_mesh();
+	mesh = kpolys_set->Get_mesh();
 }
 
-void Manager::extract_surface()
+void Manager::extract_surface(double lamda)
 {
 	if (!k_queue || !k_queue->is_done()) return;
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
 	/* *mesh = */
-	auto maybe_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename);
+	auto maybe_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda);
 	if (maybe_lines) 
 		lines = std::make_unique<Lines_GL>(*maybe_lines);
 	//*mesh = ::extract_surface(kpolys_set);

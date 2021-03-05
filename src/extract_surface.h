@@ -104,7 +104,4 @@ using Edge2darts = std::map<EdgeKey, Darts>;
 using NeighborDarts = std::vector<std::pair<Dart_handle, Dart_handle> >;
 using Neighbor = std::map<NeighborKey, NeighborDarts>;
 
-Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane);
-void build_map(CMap_3& cm, KPolygons_SET& polygons_set);
-int D(CMap_3& cm, Dart_handle d, int status);
-std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename);
+std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda);

@@ -226,7 +226,7 @@ public:
     PWN_vector inline_points;
     std::list<Vertex> vertices;
 
-    FT area()
+    FT area() const
     {
         return polygon_2().area();
     }
@@ -502,7 +502,7 @@ public:
             kpolys.move_dt(dt);
     }
 
-    Polygon_Mesh Get_mesh()
+    std::unique_ptr<Polygon_Mesh> Get_mesh()
     {
         Polygons_3 polys_3;
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -510,10 +510,10 @@ public:
             auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
         }
-        return Polygon_Mesh{std::vector<Polygon_GL>(polys_3.begin(), polys_3.end())};
+        return std::make_unique<Polygon_Mesh>(std::vector<Polygon_GL>(polys_3.begin(), polys_3.end()));
     }
 
-    Lines_GL Get_Segments()
+    std::unique_ptr<Lines_GL> Get_Segments()
     {
         std::vector<Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -529,15 +529,15 @@ public:
                                             (float)CGAL::to_double(point2.y()),
                                             (float)CGAL::to_double(point2.z()));
                 }
-        return Lines_GL{end_points};
+        return std::make_unique<Lines_GL>(end_points);
     }
 
-    Lines_GL Get_Edges()
+    std::unique_ptr<Lines_GL> Get_Edges()
     {
         std::vector<Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
             for (auto& kpoly2 : kpolys->_kpolygons_2)
-                for (auto vert : kpoly2.vertices)
+                for (const auto& vert : kpoly2.vertices)
                 {
                     if (vert.edge) {
                         auto point1 = kpolys->plane().to_3d(vert.kp->point());
@@ -550,10 +550,10 @@ public:
                             (float)CGAL::to_double(point2.z()));
                     }
                 }
-        return Lines_GL{ end_points };
+        return std::make_unique<Lines_GL>( end_points );
     }
 
-    Point_cloud_GL Get_Point_cloud()
+    std::unique_ptr<Point_cloud_GL> Get_Point_cloud()
     {
         std::vector<Vec3> points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -562,7 +562,7 @@ public:
                     points.emplace_back((float)CGAL::to_double(inline_point.x()),
                                         (float)CGAL::to_double(inline_point.y()),
                                         (float)CGAL::to_double(inline_point.z()));
-        return Point_cloud_GL{std::move(points)};
+        return std::make_unique<Point_cloud_GL>(std::move(points));
     }
 
 private:

@@ -22,7 +22,7 @@ bool operator<(const NeighborKey& n1, const NeighborKey& n2) {
 }
 
 //n vertices and area of this face
-Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
+Dart_handle make_polygon(CMap_3& amap, const KPolygon_2& polygon, Plane_3 plane)
 {
 	//多边形的顶点
 	auto id_points2 = polygon.id_polygon_2();
@@ -60,7 +60,7 @@ Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane)
 	return darts1[0];
 }
 
-Dart_handle make_twins_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane, bool is_ghost)
+Dart_handle make_twins_polygon(CMap_3& amap, const KPolygon_2& polygon, Plane_3 plane, bool is_ghost)
 {
 	//多边形的顶点
 	auto id_points2 = polygon.id_polygon_2();
@@ -144,7 +144,7 @@ void build_edge_map(CMap_3& cm, Dart_handle it, Edge2darts& darts_per_edge, vert
 	}
 }
 
-void build_map(CMap_3& cm, KPolygons_SET& polygons_set)
+void build_map(CMap_3& cm, const KPolygons_SET& polygons_set)
 {
 	size_type amark;
 	try
@@ -706,7 +706,7 @@ Neighbor get_N(CMap_3& cm, std::vector<Dart_handle> F) {
 	return N;
 }
 
-GraphType* label_polyhedron(CMap_3& cm,std::vector<Dart_handle> C,Neighbor N, KPolygons_SET& polygons_set) {
+GraphType* label_polyhedron(CMap_3& cm,std::vector<Dart_handle> C,Neighbor N, const KPolygons_SET& polygons_set, double lamda) {
 	int C_num = C.size();
 	int N_num = N.size();
 	GraphType *g = new GraphType(/*estimated # of nodes*/ C_num, /*estimated # of edges*/ N_num);
@@ -760,7 +760,6 @@ GraphType* label_polyhedron(CMap_3& cm,std::vector<Dart_handle> C,Neighbor N, KP
 	}
 
 	//{i,j}
-	double lamda = 0.5;
 	Neighbor::iterator ite = N.begin();
 	Neighbor::iterator iteEnd = N.end();
 	while (ite != iteEnd) {
@@ -904,7 +903,7 @@ Surface_Mesh get_mesh(CMap_3& cm,GraphType* g,Neighbor N) {
 	return m;
 }
 
-std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename)
+std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda)
 {
 	CMap_3 cm;
 	build_map(cm, polygons_set);
@@ -923,7 +922,7 @@ std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, st
 	Neighbor N = get_N(cm, F);
 	std::cout << "N number: " << N.size() << std::endl;
 
-	GraphType *g = label_polyhedron(cm,C,N,polygons_set);
+	GraphType *g = label_polyhedron(cm,C,N,polygons_set, lamda);
 
 	//-----get surface mesh---------
 	Surface_Mesh m=get_mesh(cm,g,N);

@@ -14,7 +14,7 @@ public:
 	void detect_shape(DetectShape_Params params);
 	void init_Kqueue(size_t K = 1);
 	void partition();
-	void extract_surface();
+	void extract_surface(double lamda);
 	std::string filename;
 	EPIC::Pwn_vector points;
 	Polygons_3 detected_shape;
