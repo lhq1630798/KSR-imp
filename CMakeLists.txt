@@ -29,15 +29,19 @@ set(KSR_SOURCES
         "src/region_growing.cpp"
         "src/get_convex.cpp"
         "src/surface.cpp"
-        "src/face_graph.cpp"
-        "src/face_graph.h"
-        "src/extract_surface.cpp"
-        "src/extract_surface.h"
-        "src/min-cut/block.h"
-        "src/min-cut/graph.cpp"
-        "src/min-cut/graph.h"
-        "src/min-cut/maxflow.cpp"
-        "src/min-cut/instances.inc"
+        "src/extract_surface/face_graph.cpp"
+        "src/extract_surface/face_graph.h"
+        "src/extract_surface/extract_surface.cpp"
+        "src/extract_surface/extract_surface.h"
+        "src/extract_surface/min-cut/block.h"
+        "src/extract_surface/min-cut/graph.cpp"
+        "src/extract_surface/min-cut/graph.h"
+        "src/extract_surface/min-cut/maxflow.cpp"
+        "src/extract_surface/min-cut/instances.inc"
+        "src/extract_surface/build_map.h"
+        "src/extract_surface/build_map.cpp"
+        "src/extract_surface/label_polyhedron.h"
+        "src/extract_surface/label_polyhedron.cpp"
         )
         
 add_executable(KSR_imp ${KSR_SOURCES})
@@ -57,4 +61,6 @@ target_link_libraries(KSR_imp
 )
 target_include_directories(KSR_imp 
     PRIVATE "deps/"
+    PRIVATE "src/"
+    PRIVATE "src/extract_surface/"
 )
