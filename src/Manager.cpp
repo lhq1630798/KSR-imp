@@ -58,6 +58,7 @@ void Manager::reset()
 }
 
 void Manager::init_point_cloud() {
+	// normalize normal vector
 	for (auto&[p, n] : points) {
 		n = n / CGAL::sqrt(n.squared_length());
 	}
@@ -75,7 +76,8 @@ void Manager::init_point_cloud() {
 
 void Manager::detect_shape(DetectShape_Params params)
 {
-	if (points.empty()) load_point_cloud();
+	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
+	//detected_shape = timer("generate_polys_3", generate_polys_3);
 	if (points.empty()) return;
 	detected_shape = ::detect_shape(points, params);
 	mesh = std::make_unique<Polygon_Mesh>(detected_shape);
@@ -98,7 +100,12 @@ void Manager::partition()
 
 void Manager::extract_surface()
 {
-	if (!k_queue || !k_queue->is_done()) partition();
-	if (!k_queue) return;
-	timer("extract surface", ::extract_surface, *kpolys_set, filename);
+	if (!k_queue || !k_queue->is_done()) return;
+	assert(k_queue->is_done());
+	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
+	/* *mesh = */
+	auto maybe_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename);
+	if (maybe_lines) 
+		lines = std::make_unique<Lines_GL>(*maybe_lines);
+	//*mesh = ::extract_surface(kpolys_set);
 }

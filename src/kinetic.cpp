@@ -66,6 +66,102 @@ void KPolygons_2::init_kpoly(KPoly_Ref ref, size_t K)
     ref->K = K;
 }
 
+bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
+{
+    const auto &line = kline_2->_line_2;
+    auto edges = kpoly_2->get_edges();
+
+    auto kp_edges = std::vector<std::pair<KP_Ref, Edge>>{};
+    for (const auto &edge : edges)
+    {
+        if (auto res = CGAL::intersection(edge.seg(), line))
+        {
+            if (auto *point_2 = boost::get<Point_2>(&*res))
+            {
+                auto speed = edge.sliding_speed(line);
+                auto mode = speed == CGAL::NULL_VECTOR ? Mode::Frozen : Mode::Sliding;
+                auto kp = new_KP(KPoint_2{*point_2, speed, mode});
+                if (mode == Mode::Sliding)
+                    kp->set_sliding_line(kline_2);
+                else if (mode == Mode::Frozen) {
+                    if (edge.vert1->kp->_status == Mode::Sliding || edge.vert1->kp->sliding_line->_line_2.has_on(kp->point()))
+                        kp->sliding_line = edge.vert1->kp->sliding_line;
+                    else {
+                        kp->sliding_line = edge.vert1->kp->sliding_line_2;
+                        assert(kp->sliding_line->_line_2.has_on(kp->point()));
+                    }
+                    kp->sliding_line_2 = kline_2;
+                    assert(kp->sliding_line._Ptr != kp->sliding_line_2._Ptr);
+                }
+                kp_edges.emplace_back(kp, edge);
+            }
+            else {
+                //release kp
+                if (!kp_edges.empty()) erase_kp(kp_edges[0].first);
+                return false;
+                //     assert(false);
+            }
+        }
+    }
+    if (kp_edges.empty())
+        return false;
+    assert(kp_edges.size() == 2);
+
+    const auto &[new_kp1, e1] = kp_edges[0];
+    const auto &[new_kp2, e2] = kp_edges[1];
+
+    auto origin_size = kpoly_2->size();
+    KPoly_Ref new_poly1 = insert_kpoly_2(kpoly_2->K), new_poly2 = insert_kpoly_2(kpoly_2->K);
+
+    auto poly1_vert1 = new_poly1->steal_kp(BACK, new_kp1);
+    poly1_vert1->set_edge(e1.vert1->edge, No_Check{});
+    for (auto vert = e1.vert2; vert != e2.vert2; vert++)
+    {
+        auto new_vert = new_poly1->steal_kp(BACK, vert->kp);
+        if(vert->edge)
+            new_vert->set_edge(vert->edge, No_Check{});
+        if (vert->has_twin())
+            set_twin(new_vert, vert->twin());
+    }
+    auto poly1_vert2 = new_poly1->steal_kp(BACK, new_kp2);
+
+    auto poly2_vert2 = new_poly2->steal_kp(BACK, new_kp2);
+    poly2_vert2->set_edge(e2.vert1->edge, No_Check{});
+    for (auto vert = e2.vert2; vert != e1.vert2; vert++)
+    {
+        auto new_vert = new_poly2->steal_kp(BACK, vert->kp);
+        if (vert->edge)
+            new_vert->set_edge(vert->edge, No_Check{});
+        if (vert->has_twin())
+            set_twin(new_vert, vert->twin());
+    }
+    auto poly2_vert1 = new_poly2->steal_kp(BACK, new_kp1);
+
+    set_twin(poly2_vert2, poly1_vert2);
+    set_twin(poly2_vert1, poly1_vert1);
+    kline_2->add_seg_twin(poly1_vert1, poly1_vert2);
+
+    //assert(kpoly_2->size() == 0);
+    assert((new_poly1->size() + new_poly2->size()) == (origin_size + 4));
+
+    //split inline points
+    for (auto &[point_3, normal] : kpoly_2->inline_points)
+    {
+        auto point_2 = plane().to_2d(point_3);
+        if (new_poly1->polygon_2().has_on_bounded_side(point_2))
+        {
+            assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
+            new_poly1->inline_points.emplace_back(point_3, normal);
+        }
+        else if (new_poly2->polygon_2().has_on_bounded_side(point_2))
+        {
+            new_poly2->inline_points.emplace_back(point_3, normal);
+        }
+    }
+
+    return true;
+}
+
 Collide_Ray::Collide_Ray(Ray_2 _ray, KLine_Ref begin, KLine_Ref end) :
     ray(_ray), start(_ray.start()), vec(_ray.to_vector())
 {
@@ -383,6 +479,31 @@ void preproc_event(const Event& event) {
     kline->move_to_t(event.t);
 }
 
+FT Vec_div(Vector_2 v1, Vector_2 v2)
+{
+    if (v1 == CGAL::NULL_VECTOR)
+        return 0;
+    assert(v1.direction() == v2.direction() || -v1.direction() == v2.direction());
+    if (v2.x() != 0)
+    {
+        return v1.x() / v2.x();
+    }
+    else
+    {
+        assert(v2.y() != 0);
+        return v1.y() / v2.y();
+    }
+}
+
+size_t max_id = 0;
+size_t next_id()
+{
+    auto next_id = max_id++;
+    if (next_id == 17)
+        std::cout << "debug" << std::endl;
+    return next_id;
+}
+
 void Kinetic_queue::update_certificate()
 {
     auto event = top();
@@ -452,22 +573,6 @@ void Kinetic_queue::kp_collide(KP_Ref kp)
 
 }
 
-FT Vec_div(Vector_2 v1, Vector_2 v2)
-{
-    if (v1 == CGAL::NULL_VECTOR)
-        return 0;
-    assert(v1.direction() == v2.direction() || -v1.direction() == v2.direction());
-    if (v2.x() != 0)
-    {
-        return v1.x() / v2.x();
-    }
-    else
-    {
-        assert(v2.y() != 0);
-        return v1.y() / v2.y();
-    }
-}
-
 void Kinetic_queue::erase_kp(KPolygons_2 *parent, KP_Ref kp)
 {
     kp->frozen(last_t);
@@ -491,15 +596,6 @@ FT Kinetic_queue::to_next_event()
 
     }
     return last_t;
-}
-
-size_t max_id = 0;
-size_t next_id()
-{
-    auto next_id = max_id++;
-    if (next_id == 17)
-        std::cout << "debug" << std::endl;
-    return next_id;
 }
 
 FT Kinetic_queue::move_to_time(FT t)
@@ -676,6 +772,40 @@ KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, size_t K)
         freeze_plane(*polygons);
 }
 
+void KPolygons_SET::set_inliner_points(const EPIC::Pwn_vector &points)
+{
+	EPIC::EK_to_IK to_inexact;
+	EPIC::IK_to_EK to_exact;
+	auto normal_threshold = std::cos(20 * CGAL_PI / 180);
+	auto dis_threshold = 0.001;
+	for (auto &kpolys : _kpolygons_set)
+	{
+		EPIC::Pwn_vector inliner;
+		auto plane = to_inexact(kpolys.plane());
+		auto plane_N = plane.orthogonal_vector();
+		for (const auto &[p,n] : points)
+		{
+			auto cos_value = CGAL::abs(plane_N * n);
+			auto distance_to_plane = std::sqrt(CGAL::squared_distance(p, plane));
+			if (cos_value > normal_threshold && distance_to_plane < dis_threshold)
+				inliner.emplace_back(p, n);
+		}
+
+		for (auto &kpoly : kpolys._kpolygons_2) {
+			kpoly.inline_points.clear();
+			std::vector<EPIC::EPIC_K::Point_2> polygon_con;
+			for (const auto &p : kpoly.polygon_2().container())
+				polygon_con.push_back(to_inexact(p));
+			CGAL::Polygon_2<EPIC::EPIC_K> polygon{ polygon_con.begin(), polygon_con.end() };
+			for (const auto &[p, n] : inliner) {
+				auto projected = plane.to_2d(p);
+				if (polygon.has_on_bounded_side(projected))
+					kpoly.inline_points.emplace_back(to_exact(p), to_exact(n));
+			}
+		}
+	}
+}
+
 void KPolygons_SET::bbox_clip()
 {
     // clip supporting plane by bounding box
@@ -747,17 +877,83 @@ void KPolygons_SET::decompose()
     }
 }
 
+void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
+{
+    auto box = CGAL::Bbox_3{};
+    for (const auto &poly_3 : polygons_3)
+        box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
+
+    box.dilate(1000);
+    auto cube = CGAL::Iso_cuboid_3<K>{ box };
+    //FT scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
+    //                          std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
+
+
+    // don't frozen because we need to set kp's sliding_line and sliding_line_2
+    {
+        auto plane = Plane_3{1, 0, 0, -cube.xmin() };
+		auto square = Points_2{};
+        for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+    
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+    {
+        auto plane = Plane_3{0, 1, 0, -cube.ymin() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+
+    {
+        auto plane = Plane_3{0, 0, 1, -cube.zmin() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+
+    {
+        auto plane = Plane_3{ -1, 0, 0, cube.xmax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+    {
+        auto plane = Plane_3{ 0, -1, 0, cube.ymax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+    {
+        auto plane = Plane_3{ 0, 0, -1, cube.zmax() };
+		auto square = Points_2{};
+		for (int ind = 0; ind != 8; ind++)
+			square.push_back(plane.to_2d(cube[ind]));
+        _kpolygons_set.emplace_back(Polygon_3{ plane, get_convex(square.begin(), square.end()) }, -1);
+        _kpolygons_set.back().is_bbox = true;
+    }
+}
+
 Vector_2 Edge::sliding_speed(const Line_2 &line_2) const
 {
     auto res = CGAL::intersection(line(), line_2);
     assert(res);
-    if (auto cur_point = boost::get<Point_2>(&*res))
+    if (auto *cur_point = boost::get<Point_2>(&*res))
     {
         const auto &line_dt = moved_line();
         auto res_dt = CGAL::intersection(line_dt, line_2);
         assert(res_dt);
 
-        if (auto point_dt = boost::get<Point_2>(&*res_dt))
+        if (auto *point_dt = boost::get<Point_2>(&*res_dt))
         {
             auto speed = *point_dt - *cur_point;
             if (speed.squared_length() > 0)
@@ -774,102 +970,6 @@ Vector_2 Edge::sliding_speed(const Line_2 &line_2) const
     }
 
     return CGAL::NULL_VECTOR;
-}
-
-bool KPolygons_2::try_split(KPoly_Ref kpoly_2, KLine_Ref kline_2)
-{
-    const auto &line = kline_2->_line_2;
-    auto edges = kpoly_2->get_edges();
-
-    auto kp_edges = std::vector<std::pair<KP_Ref, Edge>>{};
-    for (const auto &edge : edges)
-    {
-        if (auto res = CGAL::intersection(edge.seg(), line))
-        {
-            if (auto point_2 = boost::get<Point_2>(&*res))
-            {
-                auto speed = edge.sliding_speed(line);
-                auto mode = speed == CGAL::NULL_VECTOR ? Mode::Frozen : Mode::Sliding;
-                auto kp = new_KP(KPoint_2{*point_2, speed, mode});
-                if (mode == Mode::Sliding)
-                    kp->set_sliding_line(kline_2);
-                else if (mode == Mode::Frozen) {
-                    if (edge.vert1->kp->_status == Mode::Sliding || edge.vert1->kp->sliding_line->_line_2.has_on(kp->point()))
-                        kp->sliding_line = edge.vert1->kp->sliding_line;
-                    else {
-                        kp->sliding_line = edge.vert1->kp->sliding_line_2;
-                        assert(kp->sliding_line->_line_2.has_on(kp->point()));
-                    }
-                    kp->sliding_line_2 = kline_2;
-                    assert(kp->sliding_line._Ptr != kp->sliding_line_2._Ptr);
-                }
-                kp_edges.emplace_back(kp, edge);
-            }
-            else {
-                //release kp
-                if (!kp_edges.empty()) erase_kp(kp_edges[0].first);
-                return false;
-                //     assert(false);
-            }
-        }
-    }
-    if (kp_edges.empty())
-        return false;
-    assert(kp_edges.size() == 2);
-
-    const auto &[new_kp1, e1] = kp_edges[0];
-    const auto &[new_kp2, e2] = kp_edges[1];
-
-    auto origin_size = kpoly_2->size();
-    KPoly_Ref new_poly1 = insert_kpoly_2(kpoly_2->K), new_poly2 = insert_kpoly_2(kpoly_2->K);
-
-    auto poly1_vert1 = new_poly1->steal_kp(BACK, new_kp1);
-    poly1_vert1->set_edge(e1.vert1->edge, No_Check{});
-    for (auto vert = e1.vert2; vert != e2.vert2; vert++)
-    {
-        auto new_vert = new_poly1->steal_kp(BACK, vert->kp);
-        if(vert->edge)
-            new_vert->set_edge(vert->edge, No_Check{});
-        if (vert->has_twin())
-            set_twin(new_vert, vert->twin());
-    }
-    auto poly1_vert2 = new_poly1->steal_kp(BACK, new_kp2);
-
-    auto poly2_vert2 = new_poly2->steal_kp(BACK, new_kp2);
-    poly2_vert2->set_edge(e2.vert1->edge, No_Check{});
-    for (auto vert = e2.vert2; vert != e1.vert2; vert++)
-    {
-        auto new_vert = new_poly2->steal_kp(BACK, vert->kp);
-        if (vert->edge)
-            new_vert->set_edge(vert->edge, No_Check{});
-        if (vert->has_twin())
-            set_twin(new_vert, vert->twin());
-    }
-    auto poly2_vert1 = new_poly2->steal_kp(BACK, new_kp1);
-
-    set_twin(poly2_vert2, poly1_vert2);
-    set_twin(poly2_vert1, poly1_vert1);
-    kline_2->add_seg_twin(poly1_vert1, poly1_vert2);
-
-    //assert(kpoly_2->size() == 0);
-    assert((new_poly1->size() + new_poly2->size()) == (origin_size + 4));
-
-    //split inline points
-    for (auto &[point_3, normal] : kpoly_2->inline_points)
-    {
-        auto point_2 = plane().to_2d(point_3);
-        if (new_poly1->polygon_2().has_on_bounded_side(point_2))
-        {
-            assert(!new_poly2->polygon_2().has_on_bounded_side(point_2));
-            new_poly1->inline_points.emplace_back(point_3, normal);
-        }
-        else if (new_poly2->polygon_2().has_on_bounded_side(point_2))
-        {
-            new_poly2->inline_points.emplace_back(point_3, normal);
-        }
-    }
-
-    return true;
 }
 
 Point_2 KLine_2::transform2twin(const Point_2 &point) const
@@ -890,58 +990,6 @@ std::pair<Point_2, Vector_2> KLine_2::transform2twin(const KPoint_2 &kpoint) con
     assert(twin->_line_2.direction() == vector_twin.direction() ||
            twin->_line_2.direction() == -vector_twin.direction());
     return {point_twin, vector_twin};
-}
-
-void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
-{
-    auto box = CGAL::Bbox_3{};
-    for (const auto &poly_3 : polygons_3)
-        box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
-
-    FT scale = 0.1 + std::max(std::max({box.max(0), box.max(1), box.max(2)}),
-                              std::abs(std::min({box.min(0), box.min(1), box.min(2)})));
-
-    //FT scale = 1;
-    auto square = Points_2{};
-
-    square.emplace_back(scale, scale);
-    square.emplace_back(-scale, scale);
-    square.emplace_back(-scale, -scale);
-    square.emplace_back(scale, -scale);
-
-    // don't frozen because we need to set kp's sliding_line and sliding_line_2
-    {
-        auto plane = Plane_3{1, 0, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
-    {
-        auto plane = Plane_3{0, 1, 0, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
-
-    {
-        auto plane = Plane_3{0, 0, 1, scale};
-        _kpolygons_set.emplace_back(Polygon_3{plane, square}, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
-
-    {
-        auto plane = Plane_3{ -1, 0, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
-    {
-        auto plane = Plane_3{ 0, -1, 0, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
-    {
-        auto plane = Plane_3{ 0, 0, -1, scale };
-        _kpolygons_set.emplace_back(Polygon_3{ plane, square }, -1);
-        _kpolygons_set.back().is_bbox = true;
-    }
 }
 
 inline std::array<size_t, 3> Vertex::T_ID() {

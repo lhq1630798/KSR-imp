@@ -117,7 +117,7 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, const Detect
 	std::vector<Detected_shape> detected_shape;
 	for (const auto& region : regions) {
 		Plane_3 plane = to_exact(detected_plane[point_shape_index_map[region[0]]]);
-		std::cout << "plane " << plane << std::endl;
+		//std::cout << "plane " << plane << std::endl;
 		PWN_vector region_points;
 		for (const auto index : region) {
 			const Point_with_normal& point = *(points.begin() + index);
