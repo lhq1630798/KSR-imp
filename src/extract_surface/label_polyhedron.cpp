@@ -26,6 +26,37 @@ int D(CMap_3& cm, PWN_vector polyhedra_points, Point_3 center, int status) {
 	}
 }
 
+int Dp(CMap_3& cm, std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int status) {
+
+	int sum_d = 0;
+	if (status == 0) {
+		for (int i = 0; i < faces_with_points.size(); i++) {
+			Vector_3 u = faces_with_points[i].first.to_vector();
+			PWN_vector points = faces_with_points[i].second;
+			for (int j = 0; j < points.size(); j++) {
+				Vector_3 n = points[j].second;
+				if (n*u < 0) {
+					sum_d++;
+				}
+			}	
+		}
+		return sum_d;
+	}
+	if (status == 1) {
+		for (int i = 0; i < faces_with_points.size(); i++) {
+			Vector_3 u = faces_with_points[i].first.to_vector();
+			PWN_vector points = faces_with_points[i].second;
+			for (int j = 0; j < points.size(); j++) {
+				Vector_3 n = points[j].second;
+				if (n*u > 0) {
+					sum_d++;
+				}
+			}
+		}
+		return sum_d;
+	}
+}
+
 GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, const KPolygons_SET& polygons_set, double lamda) {
 	int C_num = C.size();
 	int N_num = N.size();
@@ -73,13 +104,32 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 		}
 		std::cout << "Polyhedra " << cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number << " points num:" << polyhedra_points.size() << std::endl;
 
-		int d_out = D(cm, polyhedra_points, center, 0);
-		int d_in = D(cm, polyhedra_points, center, 1);
-		/*if (cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number == C_num) {
-			continue;
-		}*/
-		
+		//int d_out = D(cm, polyhedra_points, center, 0);
+		//int d_in = D(cm, polyhedra_points, center, 1);
+
+		std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points;
+		for (auto dart : face_darts) {
+			Direction_3 normal = cm.info(dart).first;
+			PWN_vector face_points;
+			for (auto p : cm.info_of_attribute<2>(cm.attribute<2>(dart)).inline_points) {
+				face_points.push_back(p);
+			}
+			faces_with_points.push_back(std::make_pair(normal, face_points));
+
+		}
+
+		int d_out = Dp(cm,faces_with_points,0);
+		int d_in = Dp(cm,faces_with_points,1);
+
+		//if (cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number == C_num-1) {
+		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, 100 * sum_area);
+		//	//continue;
+		//}
+		//else {
+		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
+		//}
 		g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
+
 		//std::cout << "node " << cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number << " -->S:" << d_out * sum_area << " -->T:" << d_in * sum_area << std::endl;
 	}
 
@@ -106,9 +156,9 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 		if (g->what_segment(i) == GraphType::SOURCE) {
 			printf("node%d is in the INSIDE set\n", i);
 		}
-		/*else {
+		else {
 			printf("node%d is in the OUTSIDE set\n", i);
-		}*/
+		}
 	}
 	return g;
 

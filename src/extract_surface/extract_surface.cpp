@@ -585,6 +585,40 @@ std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_s
 	GraphType *g = label_polyhedron(cm,C,N,polygons_set, lamda);
 	//GraphType *g = label_polyhedron_simple(cm, C, N, polygons_set);
 
+	/*for (int i = 0; i < C.size(); i++) {
+		if (g->what_segment(i) == GraphType::SOURCE) {
+			
+			Surface_Mesh m;
+			std::vector<Dart_handle> face_darts;
+			for (CMap_3::One_dart_per_incident_cell_range<2, 3>::iterator it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
+				face_darts.push_back(it);
+			}
+			for (auto d : face_darts) {
+				std::vector<vertex_descriptor> v;
+
+				for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
+				{
+					Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+					in_Point p = in_Point(
+						CGAL::to_double(p3.x()),
+						CGAL::to_double(p3.y()),
+						CGAL::to_double(p3.z()));
+
+					
+					v.push_back(m.add_vertex(p));
+					
+				}
+				m.add_face(v);
+			}
+
+			std::string file = "src/output/" + filename + "_polyhedron_"+std::to_string(i)+".ply";
+			std::ofstream f(file);
+			if (!CGAL::write_ply(f, m)) {
+				std::cout << "write wrong" << std::endl;
+			}
+		}
+	}*/
+
 
 
 	/******************get surface mesh*************************/
