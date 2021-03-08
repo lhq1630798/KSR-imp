@@ -63,7 +63,7 @@ void Manager::init_point_cloud() {
 		n = n / CGAL::sqrt(n.squared_length());
 	}
 
-	// TODO: centralize and scale points(not just point cloud)
+	// centralize and scale points(not just point cloud)
 	std::vector<EPIC::EPIC_K::Point_3> points_coord;
 	for (auto&[p, n] : points) {
 		points_coord.push_back(p);
@@ -121,9 +121,8 @@ void Manager::extract_surface(double lamda)
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
 	/* *mesh = */
 	Vec3 trans = Vec3{ translate.x(), translate.y(),translate.z() };
-	auto surface_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, trans, scale);
-	lines = std::move(surface_lines.second);
-	mesh = std::move(surface_lines.first);
-		
-	//*mesh = ::extract_surface(kpolys_set);
+	auto [surface, surface_lines] = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, trans, scale);
+	lines = std::move(surface_lines);
+	mesh = std::move(surface);
+	
 }

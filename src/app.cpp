@@ -74,8 +74,11 @@ void App::render_imgui()
 
 	ImGui::Separator();
 	ImGui::SliderFloat("lambda", &lamda, 0, 1);
-	if (ImGui::Button("extract surface"))
+	if (ImGui::Button("extract surface")) {
 		manager.extract_surface(static_cast<double>(lamda));
+		show_boundary = false;
+		show_seg_line = true;
+	}
 
 	ImGui::Separator();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
