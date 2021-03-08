@@ -64,6 +64,22 @@ void Manager::init_point_cloud() {
 	}
 
 	// TODO: centralize and scale points(not just point cloud)
+	std::vector<EPIC::EPIC_K::Point_3> points_coord;
+	for (auto&[p, n] : points) {
+		points_coord.push_back(p);
+	}
+
+	auto box = CGAL::bbox_3(points_coord.begin(), points_coord.end());
+	double length = box.xmax() - box.xmin();
+	double weight = box.ymax() - box.ymin();
+	double height = box.zmax() - box.zmin();
+	EPIC::EPIC_K::Point_3 center = EPIC::EPIC_K::Point_3{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
+	translate = CGAL::ORIGIN - center;
+	scale = std::max({ length, weight, height })/2;
+
+	for (int i = 0; i < points.size(); i++) {
+		points[i].first = CGAL::ORIGIN + ((points[i].first - CGAL::ORIGIN) + translate) / scale;
+	}
 
 	// visualization
 	std::vector<Vec3> point_GL;
@@ -104,7 +120,8 @@ void Manager::extract_surface(double lamda)
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
 	/* *mesh = */
-	auto surface_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda);
+	Vec3 trans = Vec3{ translate.x(), translate.y(),translate.z() };
+	auto surface_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, trans, scale);
 	lines = std::move(surface_lines.second);
 	mesh = std::move(surface_lines.first);
 		

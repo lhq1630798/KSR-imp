@@ -652,7 +652,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 	return true;
 }
 
-std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda)
+std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda, Vec3 trans, double scale)
 {
 	CMap_3 cm;
 	build_map(cm, polygons_set);
@@ -719,6 +719,13 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 
 	/******************write surface mesh*************************/
 	Surface_Mesh m1 = get_surface(cm, g, N);
+	for (vertex_descriptor vd : vertices(m1)) {
+		m1.point(vd) = in_Point{
+			m1.point(vd).x()*scale - trans.x,
+			m1.point(vd).y()*scale - trans.y,
+			m1.point(vd).z()*scale - trans.z};
+	}
+
 	std::string file = "src/output/" + filename + "_surface_with_merge.ply";
 	std::ofstream f(file);
 	if (!CGAL::write_ply(f, m1)) {
@@ -726,6 +733,12 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	}
 
 	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
+	for (vertex_descriptor vd : vertices(m2)) {
+		m2.point(vd) = in_Point{
+			m2.point(vd).x()*scale - trans.x,
+			m2.point(vd).y()*scale - trans.y,
+			m2.point(vd).z()*scale - trans.z };
+	}
 	std::string file2 = "src/output/" + filename + "_surface_without_merge.ply";
 	std::ofstream f2(file2);
 	if (!CGAL::write_ply(f2, m2)) {
@@ -733,6 +746,13 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	}
 
 	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
+	for (vertex_descriptor vd : vertices(m_outline)) {
+		m_outline.point(vd) = in_Point{
+			m_outline.point(vd).x()*scale - trans.x,
+			m_outline.point(vd).y()*scale - trans.y,
+			m_outline.point(vd).z()*scale - trans.z };
+	}
+
 	std::string file3 = "src/output/" + filename + "_surface_outline.ply";
 	std::ofstream f3(file3);
 	if (!write_ply_pss(f3, m_outline)) {

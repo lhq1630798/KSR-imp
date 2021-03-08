@@ -16,6 +16,8 @@ public:
 	void partition();
 	void extract_surface(double lamda);
 	std::string filename;
+	EPIC::EPIC_K::Vector_3 translate;
+	double scale;
 	EPIC::Pwn_vector points;
 	Polygons_3 detected_shape;
 	std::unique_ptr<KPolygons_SET> kpolys_set;
