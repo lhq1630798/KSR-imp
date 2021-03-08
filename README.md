@@ -1,7 +1,7 @@
 # KSR-imp
 We try to re-implement [Kinetic Shape Reconstruction.](https://dl.acm.org/doi/10.1145/3376918). 
 
-![gif](data/illu.gif)
+![gif](illu.gif)
 
 ## Dependencies
 - [CGAL](https://www.cgal.org/). We use [vcpkg](https://github.com/microsoft/vcpkg) to install CGAL and its dependecies.
