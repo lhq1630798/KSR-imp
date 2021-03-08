@@ -6,23 +6,6 @@
 #include <map>
 #include <string>
 #include "kinetic.h"
-#include "min-cut/graph.h"
-#include "face_graph.h"
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Surface_mesh.h>
-
-//output mesh
-typedef CGAL::Exact_predicates_inexact_constructions_kernel  inexact_K;
-typedef inexact_K::FT                                        in_FT;
-typedef inexact_K::Point_3                                   in_Point;
-typedef inexact_K::Vector_3                                  in_Vector;
-typedef CGAL::Surface_mesh<in_Point>                         Surface_Mesh;
-typedef Surface_Mesh::Vertex_index                           vertex_descriptor;
-typedef Surface_Mesh::Face_index                             face_descriptor;
-typedef CGAL::SM_Vertex_index                                Vertex_index;
-typedef Graph<int, int, int>                                 GraphType;
 
 struct vertex_attributes {
 	Point_3 pos_3;
@@ -104,7 +87,7 @@ using Edge2darts = std::map<EdgeKey, Darts>;
 using NeighborDarts = std::vector<std::pair<Dart_handle, Dart_handle> >;
 using Neighbor = std::map<NeighborKey, NeighborDarts>;
 
-Dart_handle make_polygon(CMap_3& amap, KPolygon_2& polygon, Plane_3 plane);
-void build_map(CMap_3& cm, KPolygons_SET& polygons_set);
-int D(CMap_3& cm, Dart_handle d, int status);
-std::optional<std::vector<Vec3>> extract_surface(KPolygons_SET& polygons_set, std::string filename);
+void build_map(CMap_3& cm, const KPolygons_SET& polygons_set);
+std::vector<Dart_handle> get_C(CMap_3& cm);
+std::vector<Dart_handle> get_F(CMap_3& cm);
+Neighbor get_N(CMap_3& cm, std::vector<Dart_handle> F);

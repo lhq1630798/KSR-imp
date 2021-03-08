@@ -215,7 +215,7 @@ private:
 class Polygon_GL
 {
 public:
-    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0, 0, 0}) : _verts(std::move(verts)), _color(color) { init(); }
+    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0.53, 0.8, 0.98}) : _verts(std::move(verts)), _color(color) { init(); }
 
     explicit Polygon_GL(const Polygon_3 &polygon_3)
     {
@@ -230,6 +230,13 @@ public:
         _color = polygon_3._color;
         init();
     }
+
+	Polygon_GL(const Polygon_GL &other) {
+		_verts = other._verts;
+		_color = other._color;
+		init();
+	}
+
     ~Polygon_GL()
     {
         glDeleteVertexArrays(1, &vao);
@@ -318,7 +325,7 @@ public:
     {
         shader.use();
         shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
-        glLineWidth(1.0f);
+        glLineWidth(6.0f);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_LINES, 0, (GLuint)end_points.size());

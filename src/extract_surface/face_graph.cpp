@@ -113,17 +113,17 @@ int ALGraph::DFS_findUnion()
 	{
 		visited[i] = false;
 	}
-	std::cout << "connected area:" << std::endl;
+	//std::cout << "connected area:" << std::endl;
 	for (int i = 0; i < this->vexNum; i++)
 	{
 		if (!visited[i])
 		{
 			DFS(i, ++count);
-			std::cout << std::endl;
+			//std::cout << std::endl;
 		}
 
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	return count;
 }
 
