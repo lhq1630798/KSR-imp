@@ -104,8 +104,9 @@ void Manager::extract_surface(double lamda)
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
 	/* *mesh = */
-	auto maybe_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda);
-	if (maybe_lines) 
-		lines = std::make_unique<Lines_GL>(*maybe_lines);
+	auto surface_lines = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda);
+	lines = std::move(surface_lines.second);
+	mesh = std::move(surface_lines.first);
+		
 	//*mesh = ::extract_surface(kpolys_set);
 }

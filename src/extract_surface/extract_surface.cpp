@@ -495,6 +495,45 @@ Surface_Mesh get_surface(CMap_3& cm,GraphType* g,Neighbor N) {
 	return m;
 }
 
+Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
+	Surface_Mesh m;
+	//找到source和sink之间的面的dart d
+	std::vector<Dart_handle> surface_darts;
+	auto ite = N.begin();
+	auto iteEnd = N.end();
+	while (ite != iteEnd) {
+		int d1 = ite->first.neighbors.first;
+		int d2 = ite->first.neighbors.second;
+		if (g->what_segment(d1) != g->what_segment(d2)) {
+			NeighborDarts darts = ite->second;
+			for (int i = 0; i < darts.size(); i++) {
+				if (g->what_segment(cm.info<3>(darts[i].first).number) == GraphType::SINK) {
+					surface_darts.push_back(darts[i].first);
+				}
+				else {
+					surface_darts.push_back(cm.beta(darts[i].first, 3));
+				}
+			}
+		}
+		ite++;
+	}
+	for (auto d : surface_darts)
+	{
+		std::vector<vertex_descriptor> verts;
+		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
+		{
+			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+			in_Point p = in_Point{
+				CGAL::to_double(p3.x()),
+				CGAL::to_double(p3.y()),
+				CGAL::to_double(p3.z()) };
+			verts.push_back(m.add_vertex(p));
+		}
+		m.add_face(verts);
+	}
+	return m;
+}
+
 Surface_Mesh get_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
 	Surface_Mesh m;
 	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
@@ -511,6 +550,63 @@ Surface_Mesh get_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
 		m.add_edge(face_with_descriptor[face.size() - 1], face_with_descriptor[0]);
 	}
 	return m;
+}
+
+
+std::unique_ptr<Polygon_Mesh> draw_surface(CMap_3& cm, Neighbor N, GraphType* g) {
+	//找到source和sink之间的面的dart d
+	std::vector<Dart_handle> surface_darts;
+	auto ite = N.begin();
+	auto iteEnd = N.end();
+	while (ite != iteEnd) {
+		int d1 = ite->first.neighbors.first;
+		int d2 = ite->first.neighbors.second;
+		if (g->what_segment(d1) != g->what_segment(d2)) {
+			NeighborDarts darts = ite->second;
+			for (int i = 0; i < darts.size(); i++) {
+				if (g->what_segment(cm.info<3>(darts[i].first).number) == GraphType::SINK) {
+					surface_darts.push_back(darts[i].first);
+				}
+				else {
+					surface_darts.push_back(cm.beta(darts[i].first, 3));
+				}
+			}
+		}
+		ite++;
+	}
+	std::vector<Polygon_GL> polys_3;
+	for (auto d : surface_darts)
+	{
+		std::vector<Vec3> verts;
+		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
+		{
+			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+			Vec3 p = Vec3{
+				CGAL::to_double(p3.x()),
+				CGAL::to_double(p3.y()),
+				CGAL::to_double(p3.z()) };
+			verts.push_back(p);
+		}
+		polys_3.push_back(Polygon_GL(verts));
+	}
+	return std::make_unique<Polygon_Mesh>(polys_3);
+
+}
+std::unique_ptr<Lines_GL> draw_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
+
+	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
+	std::vector<std::vector<in_Point>> all_faces = get_all_faces(cm, merge_face);
+	std::vector<Vec3> face_with_point;
+	for (auto face : all_faces) {
+		for (int j = 1; j < face.size(); j++) {
+			face_with_point.push_back(Vec3{ face[j - 1].x(), face[j - 1].y(), face[j - 1].z()});
+			face_with_point.push_back(Vec3{ face[j].x(), face[j].y(), face[j].z() });
+		}
+		face_with_point.push_back(Vec3{ face[face.size() - 1].x(), face[face.size() - 1].y(), face[face.size() - 1].z() });
+		face_with_point.push_back(Vec3{ face[0].x(), face[0].y(), face[0].z() });
+	}
+
+	return std::make_unique<Lines_GL>(face_with_point);
 }
 
 bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
@@ -556,7 +652,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 	return true;
 }
 
-std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda)
+std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda)
 {
 	CMap_3 cm;
 	build_map(cm, polygons_set);
@@ -582,12 +678,12 @@ std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_s
 		std::cout << n.first.neighbors.first << " " << n.first.neighbors.second << std::endl;
 	}*/
 
-	GraphType *g = label_polyhedron(cm,C,N,polygons_set, lamda);
+	GraphType *g = label_polyhedron(cm, C, N, polygons_set, lamda);
 	//GraphType *g = label_polyhedron_simple(cm, C, N, polygons_set);
 
 	/*for (int i = 0; i < C.size(); i++) {
 		if (g->what_segment(i) == GraphType::SOURCE) {
-			
+
 			Surface_Mesh m;
 			std::vector<Dart_handle> face_darts;
 			for (CMap_3::One_dart_per_incident_cell_range<2, 3>::iterator it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
@@ -604,9 +700,9 @@ std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_s
 						CGAL::to_double(p3.y()),
 						CGAL::to_double(p3.z()));
 
-					
+
 					v.push_back(m.add_vertex(p));
-					
+
 				}
 				m.add_face(v);
 			}
@@ -621,25 +717,38 @@ std::optional<std::vector<Vec3>> extract_surface(const KPolygons_SET& polygons_s
 
 
 
-	/******************get surface mesh*************************/
-	Surface_Mesh m=get_surface(cm, g, N);
-	std::string file = "src/output/" + filename + "_surface.ply";
+	/******************write surface mesh*************************/
+	Surface_Mesh m1 = get_surface(cm, g, N);
+	std::string file = "src/output/" + filename + "_surface_with_merge.ply";
 	std::ofstream f(file);
-	if (!CGAL::write_ply(f, m)) {
+	if (!CGAL::write_ply(f, m1)) {
+		std::cout << "write wrong" << std::endl;
+	}
+
+	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
+	std::string file2 = "src/output/" + filename + "_surface_without_merge.ply";
+	std::ofstream f2(file2);
+	if (!CGAL::write_ply(f2, m2)) {
 		std::cout << "write wrong" << std::endl;
 	}
 
 	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
-	std::string file2 = "src/output/" + filename + "_surface_outline.ply";
-	std::ofstream f2(file2);
-	if (!write_ply_pss(f2, m_outline)) {
+	std::string file3 = "src/output/" + filename + "_surface_outline.ply";
+	std::ofstream f3(file3);
+	if (!write_ply_pss(f3, m_outline)) {
 		std::cout << "write wrong" << std::endl;
 	}
 	/******************get surface mesh*************************/
 
+
+	/******************draw surface mesh*************************/
+	std::unique_ptr<Polygon_Mesh> surface = draw_surface(cm, N, g);
+	std::unique_ptr<Lines_GL> surface_outline = draw_surface_outline(cm, g, N);
+	
+	
 	delete g;
 
-	return {};
+	return {std::move(surface), std::move(surface_outline)};
 }
 
 
