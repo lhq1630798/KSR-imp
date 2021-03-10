@@ -66,20 +66,16 @@ void Platform::scroll_callback(GLFWwindow *window, double xoffset, double yoffse
 	camera.ProcessMouseScroll(yoffset);
 }
 
-Platform::Platform() { platform_init(); }
-
-Platform::~Platform() { platform_shutdown(); }
-
-void Platform::platform_init()
-{
-
+Platform::Platform(bool headless) { 
 	if (!glfwInit())
 	{
 		std::cout << "glfw init failure" << std::endl;
 	}
-	const char *glsl_version = "#version 130";
+	const char* glsl_version = "#version 130";
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	if (headless)
+		glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 
 	window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "KSR-imp", NULL, NULL);
 	glfwMakeContextCurrent(window);
@@ -98,7 +94,7 @@ void Platform::platform_init()
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGuiIO &io = ImGui::GetIO();
+	ImGuiIO& io = ImGui::GetIO();
 	(void)io;
 
 	ImGui::StyleColorsDark();
@@ -108,7 +104,11 @@ void Platform::platform_init()
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	glEnable(GL_DEPTH_TEST);
+
 }
+
+Platform::~Platform() { platform_shutdown(); }
+
 
 void Platform::platform_shutdown()
 {

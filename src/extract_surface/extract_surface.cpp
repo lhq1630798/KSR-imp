@@ -727,7 +727,7 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	}
 
 	std::string file = "src/output/" + filename + "_surface_with_merge.ply";
-	std::ofstream f(file);
+	std::ofstream f(file, std::ios::binary);
 	if (!CGAL::write_ply(f, m1)) {
 		std::cout << "write wrong" << std::endl;
 	}
@@ -740,7 +740,7 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 			m2.point(vd).z()*scale - trans.z };
 	}
 	std::string file2 = "src/output/" + filename + "_surface_without_merge.ply";
-	std::ofstream f2(file2);
+	std::ofstream f2(file2, std::ios::binary);
 	if (!CGAL::write_ply(f2, m2)) {
 		std::cout << "write wrong" << std::endl;
 	}
@@ -754,7 +754,7 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	}
 
 	std::string file3 = "src/output/" + filename + "_surface_outline.ply";
-	std::ofstream f3(file3);
+	std::ofstream f3(file3, std::ios::binary);
 	if (!write_ply_pss(f3, m_outline)) {
 		std::cout << "write wrong" << std::endl;
 	}

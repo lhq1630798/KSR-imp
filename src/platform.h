@@ -29,7 +29,7 @@ extern Timer timer;
 
 class Platform {
 public:
-	Platform();
+	Platform(bool headless = false);
 	~Platform();
 
 	void loop(App& app);
@@ -37,7 +37,6 @@ public:
 	const unsigned int SCR_HEIGHT = 720;
 
 private:
-	void platform_init();
 	void platform_shutdown();
 	void begin_frame();
 	void complete_frame();

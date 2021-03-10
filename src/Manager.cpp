@@ -4,6 +4,7 @@
 #include <CGAL/IO/read_ply_points.h>
 #include <fmt/core.h>
 #include "platform.h"
+#include "getopt/getopt.hpp"
 
 void Manager::load_point_cloud()
 {
@@ -32,11 +33,20 @@ bool Manager::read_PWN(fs::path path)
 		normal_map(EPIC::Normal_map());
 
 	if (stream) {
-		if (path.extension() == ".ply")
+		if (path.extension() == ".ply") {
+			if (CGAL::read_ply_points(
+				stream,
+				std::back_inserter(points),
+				paremeters))
+				return true;
+			// try binary
+			std::ifstream stream(path, std::ios::binary);
 			return CGAL::read_ply_points(
 				stream,
 				std::back_inserter(points),
 				paremeters);
+		}
+
 
 		else if (path.extension() == ".off")
 			return CGAL::read_off_points(
@@ -125,4 +135,30 @@ void Manager::extract_surface(double lamda)
 	lines = std::move(surface_lines);
 	mesh = std::move(surface);
 	
+}
+
+int Manager::run_offline(fs::path file)
+{
+	auto lamda = getarg(0.5, "-l", "--lambda");
+	auto K = getarg(2, "-K", "-k");
+	auto param = DetectShape_Params{};
+	param.max_accepted_angle = getarg(param.max_accepted_angle, "--angle");
+	param.min_region_size = getarg(param.min_region_size, "--size");
+	param.max_distance_to_plane = getarg(param.max_distance_to_plane, "--dist", "--distance");
+	fmt::print("lambda {}, K {}, max_accepted_angle {}, min_region_size {}, max_distance_to_plane {}\n",
+		lamda, K, param.max_accepted_angle, param.min_region_size, param.max_distance_to_plane);
+
+	if (!read_PWN(file)) {
+		fmt::print(stderr, "Error: cannot read file {}\n", file.string());
+		return 1;
+	}
+	fmt::print("* loaded {} points with normals\n", points.size());
+	init_point_cloud();
+	filename = fs::path{ file }.stem().string();
+
+	detect_shape(param);
+	init_Kqueue(K);
+	partition();
+	extract_surface(lamda);
+	return 0;
 }

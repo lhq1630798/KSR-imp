@@ -15,6 +15,7 @@ public:
 	void init_Kqueue(size_t K = 1);
 	void partition();
 	void extract_surface(double lamda);
+	int run_offline(fs::path file);
 	std::string filename;
 	EPIC::EPIC_K::Vector_3 translate;
 	double scale;

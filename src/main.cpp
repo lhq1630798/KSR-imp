@@ -1,18 +1,22 @@
 #include "platform.h"
+#include "getopt/getopt.hpp"
+#include <fmt/core.h>
 
-void test_polyhedron();
 int main()
 {
-	//test_polyhedron();
-    Platform plt{};
-    App app{ plt, Shader{ "src/7.4.camera.vs", "src/7.4.camera.fs" } };
-    plt.loop(app);
 
-	//Manager manager;
-	//manager.read_PWN("data/building.ply");
-	//manager.detect_shape(true);
-	//manager.partition();
-	//manager.extract_surface();
+	std::string file = getarg("", "-f", "--file", "--input");
+
+	if (file.empty()){
+		Platform plt{};
+		App app{ plt, Shader{ "src/7.4.camera.vs", "src/7.4.camera.fs" } };
+		plt.loop(app);
+	}
+	else {
+		Platform plt{true};
+		Manager manager;
+		return manager.run_offline(file);
+	}
 
      return 0;
 }
