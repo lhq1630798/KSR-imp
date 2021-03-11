@@ -31,7 +31,7 @@ void App::render_imgui()
 
 
 	ImGui::Begin("KSR");
-	ImGui::Checkbox("Imgui Demo Window", &show_demo_window);
+	//ImGui::Checkbox("Imgui Demo Window", &show_demo_window);
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 	ImGui::Checkbox("plane", &show_plane);
 	ImGui::SameLine();
@@ -48,7 +48,7 @@ void App::render_imgui()
 		manager.load_point_cloud();
 
 	ImGui::Checkbox("Regularize after detect shape", &params.regularize);
-	ImGui::DragFloat("max_distance_to_plane", &params.max_distance_to_plane);
+	ImGui::DragFloat("max_distance_to_plane", &params.max_distance_to_plane, 0.001, 0, 1);
 	ImGui::DragFloat("max_accepted_angle", &params.max_accepted_angle);
 	ImGui::DragInt("min_region_size", &params.min_region_size);
 	if (ImGui::Button("Detect shape"))
@@ -73,7 +73,7 @@ void App::render_imgui()
 		manager.partition();
 
 	ImGui::Separator();
-	ImGui::SliderFloat("lambda", &lamda, 0, 1);
+	ImGui::SliderFloat("lambda", &lamda, 0, 2);
 	if (ImGui::Button("extract surface")) {
 		manager.extract_surface(static_cast<double>(lamda));
 		show_boundary = false;

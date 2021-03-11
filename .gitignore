@@ -1,7 +1,8 @@
 .vscode
 build
-doc
+deps/*/doc
 imgui.ini
 src/output
+output
 data
 script

@@ -49,8 +49,8 @@ private:
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;
-	float lamda = 0.5;
-	int K = 1;
+	float lamda = 1;
+	int K = 2;
 
 	DetectShape_Params params;
 

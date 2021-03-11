@@ -10,7 +10,8 @@
 using namespace EPIC;
 using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<EPIC_K, Pwn_vector, Point_map>;
 using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<EPIC_K, Pwn_vector, Point_map, Normal_map>;
-using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbor_query, Region_type>;
+using Sorting = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_sorting<EPIC_K, Pwn_vector, Neighbor_query, Point_map>;
+using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbor_query, Region_type, Sorting::Seed_map>;
 using Region = std::vector<std::size_t>;
 using Regions = std::vector<Region>;
 
@@ -35,8 +36,12 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, const Detect
 		max_distance_to_plane, max_accepted_angle, min_region_size,
 		Point_map(), Normal_map());
 
+	//sort indices
+	Sorting sorting(points, neighbor_query, Point_map());
+	sorting.sort();
+
 	// Create an instance of the region growing class.
-	Region_growing region_growing(points, neighbor_query, region_type);
+	Region_growing region_growing(points, neighbor_query, region_type, sorting.seed_map());
 
 	// Run the algorithm.
 	Regions regions;
