@@ -5,7 +5,7 @@ MVS building meshes, while visually plesant, usually have self-intersections, wr
 The objective of polygonization is the approximation of the original mesh with a set of polygonal surfaces.
 The output mesh is guaranteed to be watertight.
 
-The idea is mainly based on [Kinetic Shape Reconstruction.](https://dl.acm.org/doi/10.1145/3376918)
+The method is mainly based on [Kinetic Shape Reconstruction.](https://dl.acm.org/doi/10.1145/3376918)
 
 ## Dependencies
 - [CGAL](https://www.cgal.org/). We use [vcpkg](https://github.com/microsoft/vcpkg) to install CGAL and its dependecies.
@@ -22,9 +22,9 @@ The idea is mainly based on [Kinetic Shape Reconstruction.](https://dl.acm.org/d
 
 | Input point cloud            | Our Result                |
 | ----------                    | -----------               |
-| ![pc](doc\large_scene_1.png)       | ![rec](doc\large_scene_2.png)       | 
+| ![pc](doc/large_scene_1.png)       | ![rec](doc/large_scene_2.png)       | 
 
 ![gif](doc/illu.gif)
 
 
-Note: Official implementation of KSR may be released in CGAL in future. Our implementation does not represent the quality of official one.
+Note: The official implementation of Kinetic Shape Reconstruction may be released in CGAL in future. Our implementation does not represent the quality of official one.
