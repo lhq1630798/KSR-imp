@@ -1,19 +1,19 @@
 
-#include "extract_surface.h"
-#include "fmt/core.h"
-//#include "log.h"
+#include "extract_surface/extract_surface.h"
+#include <fmt/core.h>
+//#include "util/log.h"
 
 #include <iostream>
 #include <cstdlib>
 #include <map>
 #include <string>
-#include "face_graph.h"
+#include "extract_surface/face_graph.h"
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/Surface_mesh.h>
-#include "build_map.h"
-#include "label_polyhedron.h"
+#include "extract_surface/build_map.h"
+#include "extract_surface/label_polyhedron.h"
 
 //output mesh
 typedef CGAL::Exact_predicates_inexact_constructions_kernel  inexact_K;

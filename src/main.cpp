@@ -1,5 +1,5 @@
-#include "platform.h"
-#include "getopt/getopt.hpp"
+#include "gui/platform.h"
+#include <getopt/getopt.hpp>
 #include <fmt/core.h>
 
 int main()
@@ -9,7 +9,7 @@ int main()
 
 	if (file.empty()){
 		Platform plt{};
-		App app{ plt, Shader{ "src/7.4.camera.vs", "src/7.4.camera.fs" } };
+		App app{ plt, Shader{ "src/gui/camera.vs", "src/gui/camera.fs" } };
 		plt.loop(app);
 	}
 	else {

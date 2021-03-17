@@ -1,13 +1,21 @@
 #pragma once
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
-#include <CGAL/random_convex_hull_in_disc_2.h>
-#include <CGAL/convex_hull_2.h>
 #include <CGAL/property_map.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
 #include <vector>
-#include "math/vec3.h"
+
+#include "glm/vec3.hpp"
+using Vec3 = glm::vec3;
+
+inline Vec3 rand_color()
+{
+    static auto color_rand = CGAL::Random{ 0 };
+    return Vec3{ (float)color_rand.get_double(0, 0.8),
+                (float)color_rand.get_double(0.2, 1),
+                (float)color_rand.get_double(0.2, 1) };
+}
 
 using K = CGAL::Exact_predicates_exact_constructions_kernel;
 // using K = CGAL::Simple_cartesian<CGAL::Gmpq>;
@@ -47,7 +55,7 @@ namespace EPIC
 	using EK_to_IK = CGAL::Cartesian_converter<K, EPIC_K>;
 }
 
-Vec3 rand_color();
+
 
 class Polygon_3
 {
@@ -93,9 +101,6 @@ private:
 
 Polygons_3 generate_rand_polys_3(size_t num);
 Polygons_3 generate_polys_3();
-Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end);
-struct DetectShape_Params;
-Polygons_3 detect_shape(const EPIC::Pwn_vector& pwns, const DetectShape_Params&);
-Polygon_2 simplify_convex(const Polygon_2& polygon);
+
 
 std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon);

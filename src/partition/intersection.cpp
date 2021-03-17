@@ -1,4 +1,4 @@
-#include "cgal_object.h"
+#include "cgal/cgal_object.h"
 
 std::optional<std::pair<Point_3, Point_3>> plane_seg_intersect_3(const Plane_3 &plane, const Segments_3 &segments_3){
     auto inters = Points_3{};

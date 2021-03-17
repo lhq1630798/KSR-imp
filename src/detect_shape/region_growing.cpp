@@ -1,5 +1,5 @@
 #include "region_growing.h"
-#include "app.h"
+#include "gui/app.h"
 #include <CGAL/Shape_detection/Region_growing/Region_growing.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
@@ -20,7 +20,7 @@ std::vector<Detected_shape> region_growing(EPIC::Pwn_vector points, const Detect
 	IK_to_EK to_exact;
 
 	// Default parameter values for the data file point_set_3.xyz.
-	const std::size_t k = 12;
+	const std::size_t k = params.neigbor_K;
 	const EPIC_K::FT          max_distance_to_plane = params.max_distance_to_plane;
 	const EPIC_K::FT          max_accepted_angle = params.max_accepted_angle;
 	const std::size_t min_region_size = params.min_region_size;

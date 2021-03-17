@@ -3,8 +3,8 @@
 #include <CGAL/IO/read_off_points.h>
 #include <CGAL/IO/read_ply_points.h>
 #include <fmt/core.h>
-#include "platform.h"
-#include "getopt/getopt.hpp"
+#include "gui/platform.h"
+#include <getopt/getopt.hpp>
 
 void Manager::load_point_cloud()
 {

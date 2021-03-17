@@ -1,16 +1,16 @@
 #pragma once
 
-//#include "platform.h"
+//#include "gui/platform.h"
 
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 #include <vector>
-#include "math/vec3.h"
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include "cgal_object.h"
+#include "cgal/cgal_object.h"
+
 
 class Shader
 {

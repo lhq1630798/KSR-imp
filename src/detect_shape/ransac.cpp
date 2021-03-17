@@ -1,5 +1,5 @@
 #include "ransac.h"
-#include "cgal_object.h"
+#include "gui/app.h"
 
 #include <CGAL/Timer.h>
 #include <CGAL/Shape_detection/Efficient_RANSAC.h>
@@ -11,7 +11,7 @@ using Efficient_ransac = CGAL::Shape_detection::Efficient_RANSAC<Traits>;
 using Plane_Shape = CGAL::Shape_detection::Plane<Traits>;
 
 
-std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
+std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Params& params)
 {
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
@@ -28,19 +28,19 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points)
 	time.stop();                        // Measure time after preprocessing.
 	std::cout << "preprocessing took: " << time.time() * 1000 << "ms" << std::endl;
 
-	//// Set parameters for shape detection.
+	// Set parameters for shape detection.
 	Efficient_ransac::Parameters parameters;
-	//// Set probability to miss the largest primitive at each iteration.
-	//parameters.probability = 0.05;
-	//// Detect shapes with at least 200 points.
-	//parameters.min_points = 20;
-	//// Set maximum Euclidean distance between a point and a shape.
-	//parameters.epsilon = 0.002;
-	//// Set maximum Euclidean distance between points to be clustered.
-	//parameters.cluster_epsilon = 0.01;
-	//// Set maximum normal deviation.
-	//// 0.9 < dot(surface_normal, point_normal);
-	//parameters.normal_threshold = 0.9;
+	// Set probability to miss the largest primitive at each iteration.
+	parameters.probability = 0.05;
+	// Detect shapes with at least 200 points.
+	parameters.min_points = params.min_region_size;
+	// Set maximum Euclidean distance between a point and a shape.
+	parameters.epsilon = params.max_distance_to_plane;
+	// Set maximum Euclidean distance between points to be clustered.
+	//parameters.cluster_epsilon = -1;
+	// Set maximum normal deviation.
+	// 0.9 < dot(surface_normal, point_normal);
+	parameters.normal_threshold = std::cos(params.max_accepted_angle * CGAL_PI / 180);
 
 
 

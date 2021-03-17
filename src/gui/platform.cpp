@@ -1,4 +1,4 @@
-#include "platform.h"
+#include "gui/platform.h"
 
 Timer timer;
 

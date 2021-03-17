@@ -1,39 +1,5 @@
-#include "cgal_object.h"
-#include "region_growing.h"
-#include "ransac.h"
-#include "log.h"
-
-// region_growing.h does not need to be included in cgal_object.h
-
-Polygon_2 simplify_convex(const Polygon_2& polygon);
-
-
-Polygons_3 detect_shape(const EPIC::Pwn_vector &pwns, const DetectShape_Params &params)
-{
-	auto detected_shape = region_growing(pwns, params);
-	//auto detected_shape = ransac(pwns);
-	Polygons_3 results;
-	for (const auto& [plane_3, pwn] : detected_shape)
-	{
-		std::vector<Point_2> projected_points;
-		for (const auto &[point_3, normal] : pwn)
-		{
-			Point_3 projected = plane_3.projection(point_3);
-			projected_points.push_back(plane_3.to_2d(projected));
-		}
-
-		auto polygon2 = get_convex(projected_points.begin(), projected_points.end());
-		polygon2 = simplify_convex(polygon2);
-		
-		//for (const auto& p : projected_points)
-		//	assert(!polygon2.has_on_unbounded_side(p));
-
-		auto poly3 = Polygon_3{ plane_3, std::move(polygon2) };
-		poly3.set_inline_points(pwn);
-		results.push_back(std::move(poly3));
-	}
-	return results;
-}
+#include "convex.h"
+#include <cgal/convex_hull_2.h>
 
 Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end) {
 	//get convex point
@@ -45,9 +11,6 @@ Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator en
 	assert(polygon2.is_counterclockwise_oriented());
 	return polygon2;
 }
-
-
-
 
 
 // --------------- simplify convex ------------------------
@@ -136,7 +99,7 @@ inline bool operator<(const Sim_Event& r1, const Sim_Event& r2)
 Polygon_2 simplify_convex(const Polygon_2& polygon) {
 
 	std::list<Point_2_id> simplified{ polygon.begin(), polygon.end() };
-	std::cout << "simplify before : " << simplified.size();
+	//std::cout << "simplify before : " << simplified.size();
 
 	Vector_2 center_V = CGAL::NULL_VECTOR;
 	for (const auto& point_2 : polygon.container())
@@ -174,6 +137,6 @@ Polygon_2 simplify_convex(const Polygon_2& polygon) {
 		queue.try_insert(prev_p);
 		queue.try_insert(next_p);
 	}
-	std::cout << " after : " << simplified.size() << std::endl;
+	//std::cout << " after : " << simplified.size() << std::endl;
 	return Polygon_2{ simplified.begin(), simplified.end()};
 }

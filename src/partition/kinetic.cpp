@@ -1,8 +1,10 @@
-#include "kinetic.h"
 #include <limits>
 #include <algorithm>
-#include "log.h"
-#include "tqdm/tqdm.h"
+#include <tqdm/tqdm.h>
+#include "partition/kinetic.h"
+#include "detect_shape/detect_shape.h"
+#include "util/convex.h"
+#include "util/log.h"
 #undef max
 #undef min
 

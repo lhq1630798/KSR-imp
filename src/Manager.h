@@ -1,8 +1,8 @@
 #pragma once
 #include <string>
 #include <filesystem>
-#include "cgal_object.h"
-#include "kinetic.h"
+#include "cgal/cgal_object.h"
+#include "partition/kinetic.h"
 
 namespace fs = std::filesystem;
 struct DetectShape_Params;

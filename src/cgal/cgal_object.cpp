@@ -1,12 +1,7 @@
-#include "cgal_object.h"
+#include <CGAL/random_convex_hull_in_disc_2.h>
+#include "cgal/cgal_object.h"
+#include "util/convex.h"
 
-Vec3 rand_color()
-{
-    static auto color_rand = CGAL::Random{0};
-    return Vec3{(float)color_rand.get_double(0, 0.8),
-                (float)color_rand.get_double(0.2, 1),
-                (float)color_rand.get_double(0.2, 1)};
-}
 
 Polygons_3 generate_rand_polys_3(size_t num)
 {

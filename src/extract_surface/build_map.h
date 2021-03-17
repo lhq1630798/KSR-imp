@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <map>
 #include <string>
-#include "kinetic.h"
+#include "partition/kinetic.h"
 
 struct vertex_attributes {
 	Point_3 pos_3;

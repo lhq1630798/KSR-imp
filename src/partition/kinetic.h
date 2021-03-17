@@ -1,6 +1,6 @@
 #pragma once
-#include "gl_object.h"
-#include "cgal_object.h"
+#include "gui/gl_object.h"
+#include "cgal/cgal_object.h"
 #include <list>
 #include <array>
 

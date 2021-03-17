@@ -2,27 +2,20 @@
 
 #include <fmt/core.h>
 #include <glad/glad.h>
-#include "imgui.h"
+#include <imgui.h>
 
-#include "gl_object.h"
-#include "cgal_object.h"
-#include "kinetic.h"
-#include "camera.h"
+#include "gui/gl_object.h"
+#include "cgal/cgal_object.h"
+#include "partition/kinetic.h"
+#include "gui/camera.h"
+#include "detect_shape/detect_shape.h"
 
-#include "extract_surface.h"
+#include "extract_surface/extract_surface.h"
 #include "Manager.h"
-#include "camera.h"
+#include "gui/camera.h"
 
 
 class Platform;
-
-struct DetectShape_Params
-{
-	bool regularize = true;
-	float max_distance_to_plane = 0.01;
-	float max_accepted_angle = 20;
-	int min_region_size = 50;
-};
 
 class App {
 public:

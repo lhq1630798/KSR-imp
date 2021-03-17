@@ -1,5 +1,5 @@
-#include "app.h"
-#include "platform.h"
+#include "gui/app.h"
+#include "gui/platform.h"
 
 App::App(Platform& plt, Shader shader)
 	: plt(plt), shader(shader) {}
@@ -48,9 +48,10 @@ void App::render_imgui()
 		manager.load_point_cloud();
 
 	ImGui::Checkbox("Regularize after detect shape", &params.regularize);
-	ImGui::DragFloat("max_distance_to_plane", &params.max_distance_to_plane, 0.001, 0, 1);
-	ImGui::DragFloat("max_accepted_angle", &params.max_accepted_angle);
-	ImGui::DragInt("min_region_size", &params.min_region_size);
+	ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0, 1);
+	ImGui::DragFloat("max accepted angle", &params.max_accepted_angle);
+	ImGui::DragInt("min region size", &params.min_region_size);
+	ImGui::DragInt("neigbor K", &params.neigbor_K);
 	if (ImGui::Button("Detect shape"))
 		manager.detect_shape(params);
 	ImGui::Text("detected size = %d", manager.detected_shape.size());

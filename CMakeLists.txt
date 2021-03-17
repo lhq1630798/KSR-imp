@@ -7,27 +7,35 @@ add_subdirectory("deps/nfd/")
 add_subdirectory("deps/fmt-7.1.3/")
 
 set(KSR_SOURCES 
-        "src/math/vec3.h"
-        "src/log.h"
-        "src/camera.h"
         "src/main.cpp"
         "src/Manager.h"
         "src/Manager.cpp"
-        "src/app.h"
-        "src/app.cpp"
-        "src/gl_object.h"
-        "src/cgal_object.h"
-        "src/cgal_object.cpp"
-        "src/intersection.cpp"
-        "src/kinetic.cpp"
-        "src/kinetic.h"
-        "src/platform.h"
-        "src/platform.cpp"
-        "src/ransac.h"
-        "src/ransac.cpp"
-        "src/region_growing.h"
-        "src/region_growing.cpp"
-        "src/get_convex.cpp"
+
+        "src/util/convex.h"
+        "src/util/convex.cpp"
+        "src/util/log.h"
+
+        "src/gui/camera.h"
+        "src/gui/app.h"
+        "src/gui/app.cpp"
+        "src/gui/gl_object.h"
+        "src/gui/platform.h"
+        "src/gui/platform.cpp"
+
+        "src/cgal/cgal_object.h"
+        "src/cgal/cgal_object.cpp"
+
+        "src/partition/intersection.cpp"
+        "src/partition/kinetic.cpp"
+        "src/partition/kinetic.h"
+
+        "src/detect_shape/ransac.h"
+        "src/detect_shape/ransac.cpp"
+        "src/detect_shape/region_growing.h"
+        "src/detect_shape/region_growing.cpp"
+        "src/detect_shape/detect_shape.cpp"
+        "src/detect_shape/detect_shape.h"
+
         "src/extract_surface/face_graph.cpp"
         "src/extract_surface/face_graph.h"
         "src/extract_surface/extract_surface.cpp"
@@ -61,5 +69,4 @@ target_link_libraries(KSR_imp
 target_include_directories(KSR_imp 
     PRIVATE "deps/"
     PRIVATE "src/"
-    PRIVATE "src/extract_surface/"
 )
