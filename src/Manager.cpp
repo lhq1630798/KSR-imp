@@ -57,6 +57,48 @@ bool Manager::read_PWN(fs::path path)
 	return false;
 }
 
+void Manager::load_mesh()
+{
+	char* path = nullptr;
+	NFD_OpenDialog(point_file_types, nullptr, &path);
+	if (path) {
+		fmt::print("loading {}\n", path);
+		if (read_mesh(std::string(path))) {
+			//fmt::print("* loaded {} points with normals\n", points.size());
+			init_mesh();
+			filename = fs::path{ path }.stem().string();
+		}
+		else
+			fmt::print(stderr, "Error: cannot read file {}\n", path);
+
+		free(path);
+	}
+}
+
+bool Manager::read_mesh(fs::path path)
+{
+	reset();
+	std::ifstream stream(path);
+	
+	if (stream) {
+		if (path.extension() == ".ply") {
+			if (CGAL::read_ply(stream, input_mesh)) {
+				fmt::print("* loaded {} points\n", vertices(input_mesh).size());
+				fmt::print("* loaded {} faces\n", faces(input_mesh).size());
+				return true;
+			}
+		}
+		else if (path.extension() == ".off") {
+			if (CGAL::read_off(stream, input_mesh)) {
+				fmt::print("* loaded {} points\n", vertices(input_mesh).size());
+				fmt::print("* loaded {} faces\n", faces(input_mesh).size());
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void Manager::reset()
 {
 	points.clear();
@@ -65,6 +107,7 @@ void Manager::reset()
 	k_queue.reset();
 	mesh.reset();
 	point_cloud.reset();
+	inited_mesh.reset();
 }
 
 void Manager::init_point_cloud() {
@@ -74,7 +117,7 @@ void Manager::init_point_cloud() {
 	}
 
 	// centralize and scale points(not just point cloud)
-	std::vector<EPIC::EPIC_K::Point_3> points_coord;
+	std::vector<EPIC::in_Point> points_coord;
 	for (auto&[p, n] : points) {
 		points_coord.push_back(p);
 	}
@@ -83,7 +126,7 @@ void Manager::init_point_cloud() {
 	double length = box.xmax() - box.xmin();
 	double weight = box.ymax() - box.ymin();
 	double height = box.zmax() - box.zmin();
-	EPIC::EPIC_K::Point_3 center = EPIC::EPIC_K::Point_3{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
+	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
 	translate = CGAL::ORIGIN - center;
 	scale = std::max({ length, weight, height })/2;
 
@@ -100,12 +143,64 @@ void Manager::init_point_cloud() {
 	point_cloud = std::make_unique<Point_cloud_GL>(std::move(point_GL));
 }
 
+void Manager::init_mesh() {
+	
+	// TODO: centralize and scale points(not just point cloud)
+	std::vector<EPIC::in_Point> points_coord;
+	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
+		points_coord.push_back(EPIC::in_Point{
+			input_mesh.point(vd).x(),
+			input_mesh.point(vd).y(),
+			input_mesh.point(vd).z() });
+	}
+
+	auto box = CGAL::bbox_3(points_coord.begin(), points_coord.end());
+	double length = box.xmax() - box.xmin();
+	double weight = box.ymax() - box.ymin();
+	double height = box.zmax() - box.zmin();
+	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
+	translate = CGAL::ORIGIN - center;
+	scale = std::max({ length, weight, height }) / 2;
+
+	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
+		input_mesh.point(vd) = EPIC::in_Point{
+			(input_mesh.point(vd).x() + translate.x())/scale,
+			(input_mesh.point(vd).y() + translate.y())/scale,
+			(input_mesh.point(vd).z() + translate.z())/scale };
+	}
+
+	// visualization
+	std::vector<Polygon_GL> polys_3;
+	for (EPIC::face_descriptor fd : faces(input_mesh))
+	{
+		//std::cout << fd << std::endl;
+		std::vector<Vec3> verts;
+		for (EPIC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
+			Vec3 p = Vec3{
+				input_mesh.point(vd).x(),
+				input_mesh.point(vd).y(),
+				input_mesh.point(vd).z() };
+			verts.push_back(p);
+		}
+		polys_3.push_back(Polygon_GL(verts));
+	}
+	
+	inited_mesh = std::make_unique<Polygon_Mesh>(polys_3);
+}
+
 void Manager::detect_shape(DetectShape_Params params)
 {
 	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
 	//detected_shape = timer("generate_polys_3", generate_polys_3);
-	if (points.empty()) return;
-	detected_shape = ::detect_shape(points, params);
+	if (!input_mesh.is_empty()) {
+		detected_shape = ::detect_shape(input_mesh, params);
+	}
+	else if (!points.empty()) {
+		detected_shape = ::detect_shape(points, params);
+	}
+	else {
+		return;
+	}
 	mesh = std::make_unique<Polygon_Mesh>(detected_shape);
 }
 
@@ -130,8 +225,8 @@ void Manager::extract_surface(double lamda)
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
 	/* *mesh = */
-	Vec3 trans = Vec3{ translate.x(), translate.y(),translate.z() };
-	auto [surface, surface_lines] = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, trans, scale);
+	//Vec3 trans = Vec3{ translate.x(), translate.y(),translate.z() };
+	auto [surface, surface_lines] = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, translate, scale);
 	lines = std::move(surface_lines);
 	mesh = std::move(surface);
 	

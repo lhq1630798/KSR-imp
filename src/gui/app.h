@@ -39,6 +39,7 @@ private:
 	bool show_seg_line = false;
 	bool show_boundary = true;
 	bool show_point_cloud = true;
+	bool show_inited_mesh = true;
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;

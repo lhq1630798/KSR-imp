@@ -37,6 +37,8 @@ void App::render_imgui()
 	ImGui::SameLine();
 	ImGui::Checkbox("point_cloud", &show_point_cloud);
 	ImGui::SameLine();
+	ImGui::Checkbox("init mesh", &show_inited_mesh);
+	ImGui::SameLine();
 	ImGui::Checkbox("line", &show_seg_line);
 	ImGui::SameLine();
 	ImGui::Checkbox("boundary", &show_boundary);
@@ -44,8 +46,11 @@ void App::render_imgui()
 
 	ImGui::Separator();
 	ImGui::BulletText("Start by loading point cloud with oriented normal");
-	if (ImGui::Button("Open File"))
+	if (ImGui::Button("Open Point Cloud"))
 		manager.load_point_cloud();
+
+	if (ImGui::Button("Open Mesh"))
+		manager.load_mesh();
 
 	ImGui::Checkbox("Regularize after detect shape", &params.regularize);
 	ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0, 1);
@@ -122,6 +127,15 @@ void App::render_3d()
 			}
 		}
 	}
+
+	if (manager.inited_mesh && show_inited_mesh) {
+		auto& mesh = manager.inited_mesh;
+		if (show_plane)
+			mesh->render(shader);
+		if (show_boundary)
+			mesh->render_boundary(shader);
+	}
+	
 	if (show_seg_line && manager.lines)
 	{
 		manager.lines->render(shader);

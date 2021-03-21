@@ -1,6 +1,9 @@
 #pragma once
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/random_convex_hull_in_disc_2.h>
+#include <CGAL/convex_hull_2.h>
 #include <CGAL/property_map.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>
@@ -46,13 +49,22 @@ using Detected_shape = std::pair<Plane_3, std::vector<PWN>>;
 namespace EPIC
 { // inexact_constructions_kernel
 	using EPIC_K = CGAL::Exact_predicates_inexact_constructions_kernel;
-	using Point_with_normal = std::pair<EPIC_K::Point_3, EPIC_K::Vector_3>;
+	using in_Point = EPIC_K::Point_3;
+	using in_Vector = EPIC_K::Vector_3;
+	using in_FT = EPIC_K::FT;
+	using Point_with_normal = std::pair<in_Point, in_Vector>;
 	using Pwn_vector = std::vector<Point_with_normal>;
 	using Point_map = CGAL::First_of_pair_property_map<Point_with_normal>;
 	using Normal_map = CGAL::Second_of_pair_property_map<Point_with_normal>;
 	// converter
 	using IK_to_EK = CGAL::Cartesian_converter<EPIC_K, K>;
 	using EK_to_IK = CGAL::Cartesian_converter<K, EPIC_K>;
+
+	using Surface_Mesh = CGAL::Surface_mesh<in_Point>;
+	using vertex_descriptor = Surface_Mesh::Vertex_index;
+	using face_descriptor = Surface_Mesh::Face_index;
+	using Vertex_index = CGAL::SM_Vertex_index;
+    
 }
 
 

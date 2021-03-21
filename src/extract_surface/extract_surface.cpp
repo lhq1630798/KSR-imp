@@ -9,21 +9,13 @@
 #include <string>
 #include "extract_surface/face_graph.h"
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Simple_cartesian.h>
-#include <CGAL/Surface_mesh.h>
 #include "extract_surface/build_map.h"
 #include "extract_surface/label_polyhedron.h"
 
+#include"cgal/cgal_object.h"
+using namespace EPIC;
+
 //output mesh
-typedef CGAL::Exact_predicates_inexact_constructions_kernel  inexact_K;
-typedef inexact_K::FT                                        in_FT;
-typedef inexact_K::Point_3                                   in_Point;
-typedef inexact_K::Vector_3                                  in_Vector;
-typedef CGAL::Surface_mesh<in_Point>                         Surface_Mesh;
-typedef Surface_Mesh::Vertex_index                           vertex_descriptor;
-typedef Surface_Mesh::Face_index                             face_descriptor;
-typedef CGAL::SM_Vertex_index                                Vertex_index;
 
 
 struct myComp {
@@ -652,7 +644,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 	return true;
 }
 
-std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda, Vec3 trans, double scale)
+std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda, in_Vector translate, double scale)
 {
 	CMap_3 cm;
 	build_map(cm, polygons_set);
@@ -721,9 +713,9 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	Surface_Mesh m1 = get_surface(cm, g, N);
 	for (vertex_descriptor vd : vertices(m1)) {
 		m1.point(vd) = in_Point{
-			m1.point(vd).x()*scale - trans.x,
-			m1.point(vd).y()*scale - trans.y,
-			m1.point(vd).z()*scale - trans.z};
+			m1.point(vd).x()*scale - translate.x(),
+			m1.point(vd).y()*scale - translate.y(),
+			m1.point(vd).z()*scale - translate.z()};
 	}
 
 	std::string file = "output/" + filename + "_surface_with_merge.ply";
@@ -731,26 +723,28 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	if (!CGAL::write_ply(f, m1)) {
 		std::cout << "write wrong" << std::endl;
 	}
+	f.close();
 
 	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
 	for (vertex_descriptor vd : vertices(m2)) {
 		m2.point(vd) = in_Point{
-			m2.point(vd).x()*scale - trans.x,
-			m2.point(vd).y()*scale - trans.y,
-			m2.point(vd).z()*scale - trans.z };
+			m2.point(vd).x()*scale - translate.x(),
+			m2.point(vd).y()*scale - translate.y(),
+			m2.point(vd).z()*scale - translate.z() };
 	}
 	std::string file2 = "output/" + filename + "_surface_without_merge.ply";
 	std::ofstream f2(file2, std::ios::binary);
 	if (!CGAL::write_ply(f2, m2)) {
 		std::cout << "write wrong" << std::endl;
 	}
+	f2.close();
 
 	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
 	for (vertex_descriptor vd : vertices(m_outline)) {
 		m_outline.point(vd) = in_Point{
-			m_outline.point(vd).x()*scale - trans.x,
-			m_outline.point(vd).y()*scale - trans.y,
-			m_outline.point(vd).z()*scale - trans.z };
+			m_outline.point(vd).x()*scale - translate.x(),
+			m_outline.point(vd).y()*scale - translate.y(),
+			m_outline.point(vd).z()*scale - translate.z() };
 	}
 
 	std::string file3 = "output/" + filename + "_surface_outline.ply";
@@ -758,6 +752,7 @@ std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_sur
 	if (!write_ply_pss(f3, m_outline)) {
 		std::cout << "write wrong" << std::endl;
 	}
+	f3.close();
 	/******************get surface mesh*************************/
 
 

@@ -12,3 +12,4 @@ struct DetectShape_Params
 
 struct DetectShape_Params;
 Polygons_3 detect_shape(const EPIC::Pwn_vector& pwns, const DetectShape_Params&);
+Polygons_3 detect_shape(const EPIC::Surface_Mesh &polygon_mesh, const DetectShape_Params &params);
