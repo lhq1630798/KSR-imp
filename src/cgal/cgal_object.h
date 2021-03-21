@@ -2,8 +2,6 @@
 
 #include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 #include <CGAL/Surface_mesh.h>
-#include <CGAL/random_convex_hull_in_disc_2.h>
-#include <CGAL/convex_hull_2.h>
 #include <CGAL/property_map.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Random.h>

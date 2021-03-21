@@ -27,8 +27,8 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = params.neigbor_K;
-	const EPIC_K::FT          max_distance_to_plane = params.max_distance_to_plane;
-	const EPIC_K::FT          max_accepted_angle = params.max_accepted_angle;
+	const EPIC_K::FT  max_distance_to_plane = params.max_distance_to_plane;
+	const EPIC_K::FT  max_accepted_angle = params.max_accepted_angle;
 	const std::size_t min_region_size = params.min_region_size;
 
 	// Create instances of the classes Neighbor_query and Region_type.
@@ -170,8 +170,8 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 	const Face_range face_range = faces(polygon_mesh);
 	
 	// Default parameter values for the data file polygon_mesh.off.
-	const EPIC_K::FT          max_distance_to_plane = params.max_distance_to_plane;
-	const EPIC_K::FT          max_accepted_angle = params.max_accepted_angle;
+	const EPIC_K::FT  max_distance_to_plane = params.max_distance_to_plane;
+	const EPIC_K::FT  max_accepted_angle = params.max_accepted_angle;
 	const std::size_t min_region_size = params.min_region_size;
 
 	// Create instances of the classes Neighbor_query and Region_type.

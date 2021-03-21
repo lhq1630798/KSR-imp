@@ -20,8 +20,10 @@ public:
 	std::string filename;
 	EPIC::in_Vector translate;
 	double scale;
+
 	EPIC::Pwn_vector points;
 	EPIC::Surface_Mesh input_mesh;
+
 	Polygons_3 detected_shape;
 	std::unique_ptr<KPolygons_SET> kpolys_set;
 	std::unique_ptr<Kinetic_queue> k_queue;

@@ -5,6 +5,7 @@
 #include <fmt/core.h>
 #include "gui/platform.h"
 #include <getopt/getopt.hpp>
+#include "detect_shape/region_growing.h"
 
 void Manager::load_point_cloud()
 {
@@ -193,10 +194,12 @@ void Manager::detect_shape(DetectShape_Params params)
 	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
 	//detected_shape = timer("generate_polys_3", generate_polys_3);
 	if (!input_mesh.is_empty()) {
-		detected_shape = ::detect_shape(input_mesh, params);
+		auto detect_shape = region_growing_on_mesh(input_mesh, params);
+		detected_shape = ::detect_shape(detect_shape);
 	}
 	else if (!points.empty()) {
-		detected_shape = ::detect_shape(points, params);
+		auto detect_shape = region_growing_on_points(points, params);
+		detected_shape = ::detect_shape(detect_shape);
 	}
 	else {
 		return;
