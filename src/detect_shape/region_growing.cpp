@@ -207,27 +207,6 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 		" regions have been found"
 		<< std::endl;
 
-	// fit plane
-	//using size_type = typename Surface_Mesh::size_type;
-	//std::vector<Detected_shape> detected_shape;
-	//for (const auto& region : regions) {
-	//	// Iterate through all region items.
-	//	std::vector<in_Point> points_coord;
-	//	PWN_vector region_points;
-	//	for (const auto index : region){
-	//		for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
-	//			points_coord.push_back(polygon_mesh.point(vd));
-	//			region_points.emplace_back(
-	//				to_exact(polygon_mesh.point(vd)),
-	//				to_exact(vnormals[vd]));
-	//		}
-	//	}
-	//	EPIC_K::Plane_3 plane;
-	//	linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
-	//	Plane_3 ek_plane = to_exact(plane);
-	//	detected_shape.emplace_back(ek_plane, region_points);
-	//}
-
 	using size_type = typename Surface_Mesh::size_type;
 	std::vector<EPIC_K::Plane_3> detected_plane;
 	Pwn_vector points;
@@ -235,10 +214,18 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 		// Iterate through all region items.
 		std::vector<in_Point> points_coord;
 		for (const auto index : region){
-			for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
+			/*for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
 				points_coord.push_back(polygon_mesh.point(vd));
 				points.emplace_back(polygon_mesh.point(vd), vnormals[vd]);
+			}*/
+			Vec3 center(0, 0, 0);
+			face_descriptor fd = face_descriptor(static_cast<size_type>(index));
+			for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(fd), polygon_mesh)) {
+				center += Vec3(polygon_mesh.point(vd).x(), polygon_mesh.point(vd).y(), polygon_mesh.point(vd).z());
 			}
+			center /= 3;
+			points_coord.emplace_back(in_Point(center.x, center.y, center.z));
+			points.emplace_back(in_Point(center.x, center.y, center.z), fnormals[fd]);
 		}
 
 		// The best fit plane will be a plane fitted to all region points with
@@ -248,24 +235,27 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 		detected_plane.push_back(plane);
 	}
 
-	//TODO: regularize_planes
-	std::vector<int> point_shape_index_map(points.size(), -1);
 
-	std::vector<int> tmesh_shape_index_map(polygon_mesh.faces().size());
+	//regularize_planes
+	std::vector<int> point_shape_index_map(points.size(), -1);//each point belong which shape
+	std::vector<int> tmesh_shape_index_map(polygon_mesh.faces().size(), -1);//each face belong which shape
 
 	int idx = 0;
 	int p_index = 0;
 	for (const auto &region : regions) {
 		for (auto index : region) {
-			for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
+			/*for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
 				point_shape_index_map[p_index] = idx;
 				p_index++;
-			}
+			}*/
+			point_shape_index_map[p_index] = idx;
+			p_index++;
 			tmesh_shape_index_map[index] = idx;
 			
 		}
 		idx++;
 	}
+
 	if (params.regularize) {
 		CGAL::regularize_planes(points,
 			Point_map(),
@@ -300,20 +290,26 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 
 	// convert to exact kernel type
 	std::vector<Detected_shape> detected_shape;
+	//int count = 0;
 	for (const auto& region : regions) {
+		//std::cout << count << std::endl;
+		//count++;
 		Plane_3 plane = to_exact(detected_plane[tmesh_shape_index_map[region[0]]]);
 		//std::cout << "plane " << plane << std::endl;
 		PWN_vector region_points;
 		for (const auto index : region) {
-			for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
-				region_points.emplace_back(
-					to_exact(polygon_mesh.point(vd)),
-					to_exact(vnormals[vd]));
+			Vec3 center(0,0,0);
+			face_descriptor fd = face_descriptor(static_cast<size_type>(index));
+			for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(fd), polygon_mesh)) {
+				center += Vec3(polygon_mesh.point(vd).x(), polygon_mesh.point(vd).y(), polygon_mesh.point(vd).z());
 			}
+			center /= 3;
+			region_points.emplace_back(
+				to_exact(in_Point(center.x, center.y, center.z)),
+				to_exact(fnormals[fd]));
 		}
 		detected_shape.emplace_back(plane, region_points);
 	}
 
 	return detected_shape;
-
 }

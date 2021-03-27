@@ -168,6 +168,7 @@ private:
     }
 };
 
+//render triangles through ebo
 class Mesh
 {
 public:
@@ -192,18 +193,54 @@ public:
 
         glBindVertexArray(0);
     }
+
+	Mesh(const Mesh &other)
+	{
+		_verts = other._verts;
+		_idxs = other._idxs;
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vbo);
+		glGenBuffers(1, &ebo);
+
+		glBindVertexArray(vao);
+
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * _verts.size(), _verts.data(), GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Index) * _idxs.size(), _idxs.data(), GL_DYNAMIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
+		glEnableVertexAttribArray(0);
+
+		glBindVertexArray(0);
+	}
+
     ~Mesh()
     {
         glDeleteVertexArrays(1, &vao);
         glDeleteBuffers(1, &vbo);
         glDeleteBuffers(1, &ebo);
     }
-    void render() const
+    void render(Shader &shader) const
     {
+		shader.use();
+		shader.setVec3("ourColor", Vec3{ 0.53, 0.8, 0.98 });
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, (GLuint)_idxs.size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
+
+	void render_boundary(Shader &shader) const
+	{
+		shader.use();
+		shader.setVec3("ourColor", Vec3{ 1, 0.5, 0.5 });
+		glLineWidth(5.0f);
+		glBindVertexArray(vao);
+		for (int i = 0; i < _verts.size(); i=i+3) {
+			glDrawArrays(GL_LINE_LOOP, (GLint)i, 3);
+		}
+		glBindVertexArray(0);
+	}
 
     std::vector<Vec3> _verts;
     std::vector<Index> _idxs;

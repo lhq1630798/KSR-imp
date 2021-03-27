@@ -103,6 +103,7 @@ bool Manager::read_mesh(fs::path path)
 void Manager::reset()
 {
 	points.clear();
+	input_mesh.clear();
 	detected_shape.clear();
 	kpolys_set.reset();
 	k_queue.reset();
@@ -171,22 +172,30 @@ void Manager::init_mesh() {
 	}
 
 	// visualization
-	std::vector<Polygon_GL> polys_3;
+	//std::vector<Polygon_GL> polys_3;
+	std::vector<Vec3> verts;
+	std::vector<Mesh::Index> idxs;
+	int count = 0;
 	for (EPIC::face_descriptor fd : faces(input_mesh))
 	{
 		//std::cout << fd << std::endl;
-		std::vector<Vec3> verts;
+		//std::vector<Vec3> verts;
 		for (EPIC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
 			Vec3 p = Vec3{
 				input_mesh.point(vd).x(),
 				input_mesh.point(vd).y(),
 				input_mesh.point(vd).z() };
 			verts.push_back(p);
+			//std::cout << count << std::endl;
+			idxs.push_back(count);
+			count++;
 		}
-		polys_3.push_back(Polygon_GL(verts));
+		//polys_3.push_back(Polygon_GL(verts));
 	}
-	
-	inited_mesh = std::make_unique<Polygon_Mesh>(polys_3);
+
+	auto m = Mesh{verts,idxs};
+	//inited_mesh = std::make_unique<Polygon_Mesh>(polys_3);
+	inited_mesh = std::make_unique<Mesh>(m);
 }
 
 void Manager::detect_shape(DetectShape_Params params)
