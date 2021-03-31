@@ -533,6 +533,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 //将表面保存成ply文件格式
 std::pair<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL> > extract_surface(const KPolygons_SET& polygons_set, std::string filename, double lamda, in_Vector translate, double scale)
 {
+	std::cout << "Extract Surface Begin" << std::endl;
 	CMap_3 cm;
 	build_map(cm, polygons_set);
 

@@ -5,7 +5,7 @@
 #include <queue>
 
 /***************************Graph************************/
-const int MAX = 3000;
+//const int MAX = 3000;
 
 struct ENode      //邻接表的中间节点
 {
@@ -13,11 +13,19 @@ struct ENode      //邻接表的中间节点
 	ENode* next;
 };
 
-typedef struct VNode //邻接表顶点
+struct VNode //邻接表顶点
 {
 	int vertex;     //值
 	ENode* firstarc; //指向第一个中间节点
-}AdjList[MAX];
+};
+
+using AdjList = std::vector<VNode>;
+
+//typedef struct VNode //邻接表顶点
+//{
+//	int vertex;     //值
+//	ENode* firstarc; //指向第一个中间节点
+//}AdjList[MAX];
 
 class ALGraph         //图
 {
@@ -25,7 +33,8 @@ private:
 	AdjList adjList;          //邻接表数组
 	int vexNum;              //节点数量
 	int arcNum;              //连边数量
-	bool visited[MAX];        //标记被访问
+	//bool visited[MAX];        //标记被访问
+	std::vector<bool> visited;        //标记被访问
 	std::map<int, int> unionfield;  //标记节点属于哪个连通域
 
 public:

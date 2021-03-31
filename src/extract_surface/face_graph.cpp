@@ -4,6 +4,8 @@ void ALGraph::CreateGraph(int vNum, int eNum, std::vector<std::pair<int, int> > 
 {
 	this->vexNum = vNum;
 	this->arcNum = eNum;
+	this->adjList.resize(vNum);
+	this->visited.resize(vNum);
 	for (int i = 0; i < this->vexNum; i++)  //构建顶点数组
 	{
 		this->adjList[i].vertex = i;
