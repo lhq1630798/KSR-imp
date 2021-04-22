@@ -35,16 +35,21 @@ private:
 	float depth = 1;
 	bool show_demo_window = false;
 	bool rotate = false;
+
 	bool show_plane = true;
 	bool show_seg_line = false;
 	bool show_boundary = true;
 	bool show_point_cloud = true;
 	bool show_inited_mesh = true;
+	bool show_alpha_shape = false;
+
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;
 	float lamda = 1;
 	int K = 2;
+	int GC_term = 3;
+	int DetectShape_option = 2;
 
 	DetectShape_Params params;
 

@@ -124,6 +124,30 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 		fmt::print("{} planes after regularization\n", regions.size());
 	}
 
+	//build adjacency graph
+	std::map<std::size_t, int> point_region_map;
+	int region_number = 0;
+	for (const auto& region : regions) {
+		for (const auto index : region) {
+			point_region_map[index] = region_number;
+		}
+		region_number++;
+	}
+	std::priority_queue<int> a;
+	for (const auto& region : regions) {
+		
+		for (const auto index : region) {
+			std::vector<std::size_t> neighbors;
+			neighbor_query(index, neighbors);
+			for (auto n_index : neighbors) {
+
+			}
+		}
+		region_number++;
+	}
+
+
+
 	// convert to exact kernel type
 	std::vector<Detected_shape> detected_shape;
 	for (const auto& region : regions) {

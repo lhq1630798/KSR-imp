@@ -11,4 +11,5 @@ struct DetectShape_Params
 };
 
 struct DetectShape_Params;
-Polygons_3 detect_shape(std::vector<Detected_shape>&);
+Polygons_3 detect_convexShape(std::vector<Detected_shape>&);//convex shape
+std::list<EPIC::in_Triangle> Triangles_of_alphaShape(const std::vector<Detected_shape>& detected_shape, double alpha_value);//coarse surface

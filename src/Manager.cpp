@@ -6,6 +6,8 @@
 #include "gui/platform.h"
 #include <getopt/getopt.hpp>
 #include "detect_shape/region_growing.h"
+#include "detect_shape/ransac.h"
+#include "detect_shape/detect_shape.h"
 
 void Manager::load_point_cloud()
 {
@@ -16,7 +18,7 @@ void Manager::load_point_cloud()
 		if (read_PWN(std::string(path))) {
 			fmt::print("* loaded {} points with normals\n", points.size());
 			init_point_cloud();
-			filename = fs::path{ path }.stem().string();
+			ES_params.filename = fs::path{ path }.stem().string();
 		}
 		else
 			fmt::print(stderr, "Error: cannot read file {}\n", path);
@@ -63,9 +65,8 @@ void Manager::load_mesh()
 	if (path) {
 		fmt::print("loading {}\n", path);
 		if (read_mesh(std::string(path))) {
-			//fmt::print("* loaded {} points with normals\n", points.size());
 			init_mesh();
-			filename = fs::path{ path }.stem().string();
+			ES_params.filename = fs::path{ path }.stem().string();
 		}
 		else
 			fmt::print(stderr, "Error: cannot read file {}\n", path);
@@ -74,6 +75,7 @@ void Manager::load_mesh()
 	}
 }
 
+//no binary
 bool Manager::read_mesh(fs::path path)
 {
 	reset();
@@ -102,12 +104,21 @@ void Manager::reset()
 {
 	points.clear();
 	input_mesh.clear();
-	detected_shape.clear();
+
+	//detected_shape.clear();
+	convex_shape.clear();
+	//alpha_triangles.clear();
+	
 	kpolys_set.reset();
 	k_queue.reset();
-	mesh.reset();
+	
 	point_cloud.reset();
 	inited_mesh.reset();
+
+	alpha_mesh.reset();
+
+	mesh.reset();
+	lines.reset();
 }
 
 void Manager::init_point_cloud() {
@@ -116,7 +127,7 @@ void Manager::init_point_cloud() {
 		n = n / CGAL::sqrt(n.squared_length());
 	}
 
-	// centralize and scale points(not just point cloud)
+	// centralize and scale points
 	std::vector<EPIC::in_Point> points_coord;
 	for (auto&[p, n] : points) {
 		points_coord.push_back(p);
@@ -127,11 +138,16 @@ void Manager::init_point_cloud() {
 	double weight = box.ymax() - box.ymin();
 	double height = box.zmax() - box.zmin();
 	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
-	translate = CGAL::ORIGIN - center;
-	scale = std::max({ length, weight, height })/2;
+	ES_params.translate = CGAL::ORIGIN - center;
+	ES_params.scale = std::max({ length, weight, height })/2;
 
 	for (int i = 0; i < points.size(); i++) {
-		points[i].first = CGAL::ORIGIN + ((points[i].first - CGAL::ORIGIN) + translate) / scale;
+		points[i].first = CGAL::ORIGIN + ((points[i].first - CGAL::ORIGIN) + ES_params.translate) / ES_params.scale;
+	}
+
+	//Todo: compute alpha value = point dense
+	{
+
 	}
 
 	// visualization
@@ -145,7 +161,7 @@ void Manager::init_point_cloud() {
 
 void Manager::init_mesh() {
 	
-	// TODO: centralize and scale points(not just point cloud)
+	// centralize and scale mesh
 	std::vector<EPIC::in_Point> points_coord;
 	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
 		points_coord.push_back(EPIC::in_Point{
@@ -159,65 +175,104 @@ void Manager::init_mesh() {
 	double weight = box.ymax() - box.ymin();
 	double height = box.zmax() - box.zmin();
 	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
-	translate = CGAL::ORIGIN - center;
-	scale = std::max({ length, weight, height }) / 2;
+	ES_params.translate = CGAL::ORIGIN - center;
+	ES_params.scale = std::max({ length, weight, height }) / 2;
 
 	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
 		input_mesh.point(vd) = EPIC::in_Point{
-			(input_mesh.point(vd).x() + translate.x())/scale,
-			(input_mesh.point(vd).y() + translate.y())/scale,
-			(input_mesh.point(vd).z() + translate.z())/scale };
+			(input_mesh.point(vd).x() + ES_params.translate.x())/ ES_params.scale,
+			(input_mesh.point(vd).y() + ES_params.translate.y())/ ES_params.scale,
+			(input_mesh.point(vd).z() + ES_params.translate.z())/ ES_params.scale };
+	}
+
+	//Todo: compute alpha value = sqrt(longest edge)
+	{
+
 	}
 
 	// visualization
-	//std::vector<Polygon_GL> polys_3;
 	std::vector<Vec3> verts;
 	std::vector<Mesh::Index> idxs;
 	int count = 0;
 	for (EPIC::face_descriptor fd : faces(input_mesh))
 	{
-		//std::cout << fd << std::endl;
-		//std::vector<Vec3> verts;
 		for (EPIC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
 			Vec3 p = Vec3{
 				input_mesh.point(vd).x(),
 				input_mesh.point(vd).y(),
 				input_mesh.point(vd).z() };
 			verts.push_back(p);
-			//std::cout << count << std::endl;
 			idxs.push_back(count);
 			count++;
 		}
-		//polys_3.push_back(Polygon_GL(verts));
 	}
 
 	auto m = Mesh{verts,idxs};
-	//inited_mesh = std::make_unique<Polygon_Mesh>(polys_3);
 	inited_mesh = std::make_unique<Mesh>(m);
 }
 
-void Manager::detect_shape(DetectShape_Params params)
+void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 {
 	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
 	//detected_shape = timer("generate_polys_3", generate_polys_3);
 	if (!input_mesh.is_empty()) {
-		auto detect_shape = region_growing_on_mesh(input_mesh, params);
-		detected_shape = ::detect_shape(detect_shape);
+		if (DetectShape_option == 1) {
+			//Todo: ES_params.detected_shape = ransac(input_mesh, params);
+			/********** Todo:shape merge **********/
+		}
+		else if (DetectShape_option == 2) {
+			ES_params.detected_shape = region_growing_on_mesh(input_mesh, params);
+			/********** Todo:shape merge **********/
+
+		}
+		convex_shape = detect_convexShape(ES_params.detected_shape);
+		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
 	}
 	else if (!points.empty()) {
-		auto detect_shape = region_growing_on_points(points, params);
-		detected_shape = ::detect_shape(detect_shape);
+		if (DetectShape_option == 1) {
+			ES_params.detected_shape = ransac(points, params);
+			/********** Todo:shape merge **********/
+		}
+		else if (DetectShape_option == 2) {
+			ES_params.detected_shape = region_growing_on_points(points, params);
+			/********** Todo:shape merge **********/
+
+
+
+		}
+		convex_shape = detect_convexShape(ES_params.detected_shape);
+		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
 	}
 	else {
 		return;
 	}
-	mesh = std::make_unique<Polygon_Mesh>(detected_shape);
+
+	//visualize convex_shape
+	mesh = std::make_unique<Polygon_Mesh>(convex_shape);
+
+	//visualize alpha_shape
+	std::vector<Vec3> verts;
+	std::vector<Mesh::Index> idxs;
+	int count = 0;
+	for (auto triangle : ES_params.alpha_triangles)
+	{
+		verts.push_back(Vec3{ triangle.vertex(0).x(), triangle.vertex(0).y(), triangle.vertex(0).z() });
+		verts.push_back(Vec3{ triangle.vertex(1).x(), triangle.vertex(1).y(), triangle.vertex(1).z() });
+		verts.push_back(Vec3{ triangle.vertex(2).x(), triangle.vertex(2).y(), triangle.vertex(2).z() });
+		idxs.push_back(count);
+		idxs.push_back(count+1);
+		idxs.push_back(count+2);
+		count = count+3;
+	}
+	auto m = Mesh{ verts,idxs };
+	alpha_mesh = std::make_unique<Mesh>(m);
+
 }
 
 void Manager::init_Kqueue(size_t K)// 0 means exhausted
 {
-	if (detected_shape.empty()) return;
-	kpolys_set = std::make_unique<KPolygons_SET>(detected_shape, K);
+	if (convex_shape.empty()) return;
+	kpolys_set = std::make_unique<KPolygons_SET>(convex_shape, K);
 	mesh = kpolys_set->Get_mesh();
 	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
 }
@@ -229,16 +284,19 @@ void Manager::partition()
 	mesh = kpolys_set->Get_mesh();
 }
 
-void Manager::extract_surface(double lamda)
+void Manager::extract_surface(double lamda, int GC_term)
 {
 	if (!k_queue || !k_queue->is_done()) return;
 	assert(k_queue->is_done());
 	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
-	/* *mesh = */
-	//Vec3 trans = Vec3{ translate.x(), translate.y(),translate.z() };
-	auto [surface, surface_lines] = timer("extract surface", ::extract_surface, *kpolys_set, filename, lamda, translate, scale);
+	
+	ES_params.lamda = lamda;
+	ES_params.GC_term = GC_term;
+
+	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 	lines = std::move(surface_lines);
 	mesh = std::move(surface);
+	Number_of_Facets = F_Number;
 	
 }
 
@@ -246,6 +304,8 @@ int Manager::run_offline(fs::path file)
 {
 	auto lamda = getarg(1, "-l", "--lambda");
 	auto K = getarg(2, "-K", "-k");
+	auto GC_term = getarg(3, "-g", "--gc");
+	auto DetectShape_option = getarg(2, "-d", "--ds");
 	auto param = DetectShape_Params{};
 	param.max_accepted_angle = getarg(param.max_accepted_angle, "--angle");
 	param.min_region_size = getarg(param.min_region_size, "--size");
@@ -258,14 +318,14 @@ int Manager::run_offline(fs::path file)
 		fmt::print(stderr, "Error: cannot read file {}\n", file.string());
 		return 1;
 	}
-	fmt::print("* loaded {} points with normals\n", points.size());
+	//fmt::print("* loaded {} points with normals\n", points.size());
 	//init_point_cloud();
 	init_mesh();
-	filename = fs::path{ file }.stem().string();
+	ES_params.filename = fs::path{ file }.stem().string();
 
-	detect_shape(param);
+	detect_shape(param, DetectShape_option);
 	init_Kqueue(K);
 	partition();
-	extract_surface(lamda);
+	extract_surface(lamda,GC_term);
 	return 0;
 }

@@ -57,14 +57,27 @@ void App::render_imgui()
 	ImGui::DragFloat("max accepted angle", &params.max_accepted_angle);
 	ImGui::DragInt("min region size", &params.min_region_size);
 	ImGui::DragInt("neigbor K", &params.neigbor_K);
-	if (ImGui::Button("Detect shape"))
-		manager.detect_shape(params);
-	ImGui::Text("detected size = %d", manager.detected_shape.size());
+
+	ImGui::BulletText("DetectShape_option=1: RANSAC");
+	ImGui::BulletText("DetectShape_option=2: Region_Growing");
+	ImGui::SliderInt("DetectShape_option", &DetectShape_option, 1, 2);
+	if (ImGui::Button("Detect shape")) {
+		manager.detect_shape(params, static_cast<int>(DetectShape_option));
+		show_inited_mesh = false;
+		show_point_cloud = false;
+	}
+	ImGui::Text("Number_of_planar_shapes = %d", manager.convex_shape.size());
+
+	ImGui::Checkbox("alpha shape", &show_alpha_shape);
 
 	ImGui::Separator();
 	ImGui::DragInt("K", &K);
-	if (ImGui::Button("init kinetic queue"))
+	if (ImGui::Button("init kinetic queue")) {
 		manager.init_Kqueue(static_cast<size_t>(K));
+		show_inited_mesh = false;
+		show_point_cloud = false;
+		show_alpha_shape = false;
+	}
 	if (manager.k_queue) {
 		auto& k_queue = *manager.k_queue;
 		ImGui::Checkbox("growing", &grow);
@@ -75,16 +88,31 @@ void App::render_imgui()
 			kinetic_time = (float)CGAL::to_double(k_queue.move_to_time(kinetic_time + kinetic_dt));
 		ImGui::Text("kinetic time = %.3f", kinetic_time);
 	}
-	if (ImGui::Button("finish partition"))
+	if (ImGui::Button("finish partition")) {
 		manager.partition();
+		show_inited_mesh = false;
+		show_point_cloud = false;
+		show_alpha_shape = false;
+	}
 
 	ImGui::Separator();
 	ImGui::SliderFloat("lambda", &lamda, 0, 2);
+
+	ImGui::BulletText("GC_term=1: center_points");
+	ImGui::BulletText("GC_term=2: face_points");
+	ImGui::BulletText("GC_term=3: alphaShape_rays");
+	ImGui::SliderInt("GC_term", &GC_term, 1, 3);
+
 	if (ImGui::Button("extract surface")) {
-		manager.extract_surface(static_cast<double>(lamda));
+		manager.extract_surface(static_cast<double>(lamda), static_cast<int>(GC_term));
 		show_boundary = false;
 		show_seg_line = true;
+		show_inited_mesh = false;
+		show_point_cloud = false;
+		show_alpha_shape = false;
 	}
+
+	ImGui::Text("Number of Facets = %d", manager.Number_of_Facets);
 
 	ImGui::Separator();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -113,7 +141,7 @@ void App::render_3d()
 		manager.point_cloud->render(shader);
 	}
 
-	if (manager.mesh) {
+	if (manager.mesh && !show_alpha_shape) {
 		auto& mesh = manager.mesh;
 		if (show_plane)
 			mesh->render(shader);
@@ -136,9 +164,18 @@ void App::render_3d()
 			mesh->render_boundary(shader);
 	}
 	
-	if (show_seg_line && manager.lines)
+	if (show_seg_line && manager.lines && !show_alpha_shape)
 	{
 		manager.lines->render(shader);
 	}
+
+	if (manager.alpha_mesh && show_alpha_shape) {
+		auto& mesh = manager.alpha_mesh;
+		if (show_plane)
+			mesh->render(shader);
+		if (show_boundary)
+			mesh->render_boundary(shader);
+	}
+
 
 }

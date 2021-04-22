@@ -28,6 +28,7 @@ using Plane_3 = CGAL::Plane_3<K>;
 using Line_2 = CGAL::Line_2<K>;
 using Line_3 = CGAL::Line_3<K>;
 using Ray_2 = CGAL::Ray_2<K>;
+using Ray_3 = CGAL::Ray_3<K>;
 using Segment_2 = CGAL::Segment_2<K>;
 using Segments_2 = std::vector<Segment_2>;
 using Segment_3 = CGAL::Segment_3<K>;
@@ -35,6 +36,7 @@ using Segments_3 = std::vector<Segment_3>;
 using Vector_2 = CGAL::Vector_2<K>;
 using Vector_3 = CGAL::Vector_3<K>;
 using Polygon_2 = CGAL::Polygon_2<K>;
+using Triangle_3 = CGAL::Triangle_3<K>;
 class Polygon_3;
 using Polygons_3 = std::vector<Polygon_3>;
 using FT = K::FT;
@@ -48,12 +50,20 @@ namespace EPIC
 { // inexact_constructions_kernel
 	using EPIC_K = CGAL::Exact_predicates_inexact_constructions_kernel;
 	using in_Point = EPIC_K::Point_3;
+	using in_Point2 = EPIC_K::Point_2;
 	using in_Vector = EPIC_K::Vector_3;
+	using in_Segment2 = EPIC_K::Segment_2;
+	using in_Plane = EPIC_K::Plane_3;
 	using in_FT = EPIC_K::FT;
 	using Point_with_normal = std::pair<in_Point, in_Vector>;
 	using Pwn_vector = std::vector<Point_with_normal>;
 	using Point_map = CGAL::First_of_pair_property_map<Point_with_normal>;
 	using Normal_map = CGAL::Second_of_pair_property_map<Point_with_normal>;
+
+	using in_Ray3 = EPIC_K::Ray_3;
+	using in_Triangle = EPIC_K::Triangle_3;
+	using in_Polygon2 = CGAL::Polygon_2<EPIC_K>;
+
 	// converter
 	using IK_to_EK = CGAL::Cartesian_converter<EPIC_K, K>;
 	using EK_to_IK = CGAL::Cartesian_converter<K, EPIC_K>;
