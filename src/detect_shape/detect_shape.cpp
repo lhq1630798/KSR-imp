@@ -27,10 +27,11 @@ Polygons_3 detect_convexShape(std::vector<Detected_shape>& detected_shape)
 		}
 
 		auto polygon2 = get_convex(projected_points.begin(), projected_points.end());
-		polygon2 = simplify_convex(polygon2);
-
 		//for (const auto& p : projected_points)
 		//	assert(!polygon2.has_on_unbounded_side(p));
+
+		polygon2 = simplify_convex(polygon2);
+		if(polygon2.size() <= 2) continue; //discard degenerate polygon after simplification
 
 		auto poly3 = Polygon_3{ plane_3, std::move(polygon2) };
 		poly3.set_inline_points(pwn);
