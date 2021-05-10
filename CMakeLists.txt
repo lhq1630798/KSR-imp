@@ -28,6 +28,8 @@ set(KSR_SOURCES
         "src/partition/intersection.cpp"
         "src/partition/kinetic.cpp"
         "src/partition/kinetic.h"
+        "src/partition/BSP.cpp"
+        "src/partition/BSP.h"
 
         "src/detect_shape/ransac.h"
         "src/detect_shape/ransac.cpp"

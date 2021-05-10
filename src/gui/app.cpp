@@ -71,6 +71,21 @@ void App::render_imgui()
 	ImGui::Checkbox("alpha shape", &show_alpha_shape);
 
 	ImGui::Separator();
+	if (ImGui::Button("init BSP")) {
+		manager.init_BSP();
+	}
+	if (manager.bsp) {
+		if (ImGui::Button("split once")) {
+			manager.bsp->partition_next();
+			manager.mesh = manager.bsp->Get_mesh();
+		}
+		if (ImGui::Button("finish partition")) {
+			manager.bsp->partition();
+			manager.mesh = manager.bsp->Get_mesh();
+		}
+	}
+
+	ImGui::Separator();
 	ImGui::DragInt("K", &K);
 	if (ImGui::Button("init kinetic queue")) {
 		manager.init_Kqueue(static_cast<size_t>(K));

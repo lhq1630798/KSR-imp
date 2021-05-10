@@ -81,13 +81,7 @@ class Polygon_3
 {
     //Plane_3 + Polygon_2
 public:
-    Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color = rand_color())
-        : _plane(plane), _polygon_2(std::move(polygon)), _color(color)
-    {
-        update_points_3();
-        // assert(_polygon_2.is_simple());
-        //assert(_polygon_2.is_convex());
-    }
+    Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color = rand_color());
     Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
         : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
@@ -95,6 +89,7 @@ public:
     {
         inline_points = std::move(points);
     }
+    std::optional<std::pair<Polygon_3, Polygon_3>> split_by_plane(Plane_3) const;
     size_t size() const { return points_2().size(); };
     const Points_2 &points_2() const { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
@@ -105,13 +100,8 @@ public:
 	PWN_vector inline_points;
 
 private:
-    void update_points_3()
-    {
-        _points_3.clear();
-        _points_3.reserve(size());
-        for (const auto &p : points_2())
-            _points_3.push_back(_plane.to_3d(p));
-    }
+    Segments_3 edges_3() const;
+    void update_points_3();
 
     // _plane, _polygon_2, _points_3 must be consistent with each other !
     Plane_3 _plane;

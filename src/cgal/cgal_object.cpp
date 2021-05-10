@@ -99,3 +99,61 @@ Polygons_3 generate_polys_3()
 
 //         }
 // }
+
+Polygon_3::Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color)
+    : _plane(plane), _polygon_2(std::move(polygon)), _color(color)
+{
+    update_points_3();
+    // assert(_polygon_2.is_simple());
+    //assert(_polygon_2.is_convex());
+}
+
+Segments_3 Polygon_3::edges_3() const
+{
+    auto segments_3 = Segments_3{};
+    auto num = points_3().size();
+    assert(num >= 3);
+    for (size_t i = 1; i < num; i++)
+        segments_3.push_back(Segment_3{ points_3()[i - 1], points_3()[i] }); //edges_3[0] corresponds to points_3[0,1]
+    segments_3.push_back(Segment_3{ points_3()[num - 1], points_3()[0] });
+    return segments_3;
+}
+
+
+std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3 cutting_plane) const
+{
+    auto edges = edges_3();
+    std::vector<Point_2> poly1, poly2;
+    auto *new_poly = &poly1;
+    for (auto e : edges) {
+        new_poly->push_back(plane().to_2d(e.point(0)));
+        if (auto result = CGAL::intersection(e, cutting_plane))
+        {
+            if (auto inters_point = boost::get<Point_3>(&*result))
+            {
+                auto point_2 = plane().to_2d(*inters_point);
+                new_poly->push_back(point_2);
+                if (new_poly == &poly1) 
+                    new_poly = &poly2;
+                else 
+                    new_poly = &poly1;
+                new_poly->push_back(point_2);
+            }
+            else if (auto inters_seg = boost::get<Segment_3>(&*result)) {
+                std::cout << "Warning Segment_3 on plane\n";
+                return {};
+            }
+        }
+    }
+    if (poly2.empty()) return {};
+    assert((poly1.size() + poly2.size()) == (4 + edges.size()));
+    return { { Polygon_3{plane(), poly1}, Polygon_3{plane(), poly2} } };
+}
+
+void Polygon_3::update_points_3()
+{
+    _points_3.clear();
+    _points_3.reserve(size());
+    for (const auto& p : points_2())
+        _points_3.push_back(_plane.to_3d(p));
+}

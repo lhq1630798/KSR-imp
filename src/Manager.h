@@ -2,6 +2,7 @@
 #include <string>
 #include <filesystem>
 #include "cgal/cgal_object.h"
+#include "partition/BSP.h"
 #include "partition/kinetic.h"
 #include "extract_surface/extract_surface.h"
 
@@ -15,6 +16,7 @@ public:
 	void load_mesh();
 	void detect_shape(DetectShape_Params params, int DetectShape_option);//convex shape + alpha shape
 	void init_Kqueue(size_t K = 1);
+	void init_BSP();
 	void partition();
 	void extract_surface(double lamda, int GC_term);
 	int run_offline(fs::path file);
@@ -26,6 +28,8 @@ public:
 
 	std::unique_ptr<KPolygons_SET> kpolys_set;
 	std::unique_ptr<Kinetic_queue> k_queue;
+
+	std::unique_ptr<BSP_Partition> bsp;
 
 	//std::unique_ptr<Polygon_Mesh> inited_mesh;
 	std::unique_ptr<Mesh> inited_mesh;//Normalized input mesh

@@ -277,6 +277,13 @@ void Manager::init_Kqueue(size_t K)// 0 means exhausted
 	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
 }
 
+void Manager::init_BSP()
+{
+	if (convex_shape.empty()) return;
+	bsp = std::make_unique<BSP_Partition>(convex_shape);
+	mesh = bsp->Get_mesh();
+}
+
 void Manager::partition()
 {
 	if (!k_queue) return;
@@ -293,7 +300,12 @@ void Manager::extract_surface(double lamda, int GC_term)
 	ES_params.lamda = lamda;
 	ES_params.GC_term = GC_term;
 
-	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
+	// save centralized result
+	auto param = ES_params;
+	param.translate = EPIC::in_Vector{0,0,0};
+	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
+
+	// auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 	lines = std::move(surface_lines);
 	mesh = std::move(surface);
 	Number_of_Facets = F_Number;
