@@ -147,7 +147,23 @@ std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3
     }
     if (poly2.empty()) return {};
     assert((poly1.size() + poly2.size()) == (4 + edges.size()));
-    return { { Polygon_3{plane(), poly1}, Polygon_3{plane(), poly2} } };
+    Polygon_3 new_poly1{ plane(), poly1 }, new_poly2{ plane(), poly2 };
+    //split inline points
+    for (auto& [point_3, normal] : inline_points)
+    {
+        auto point_2 = plane().to_2d(point_3);
+        if (new_poly1.polygon_2().has_on_bounded_side(point_2))
+        {
+            assert(!new_poly2.polygon_2().has_on_bounded_side(point_2));
+            new_poly1.inline_points.emplace_back(point_3, normal);
+        }
+        else if (new_poly2.polygon_2().has_on_bounded_side(point_2))
+        {
+            new_poly2.inline_points.emplace_back(point_3, normal);
+        }
+    }
+
+    return { { new_poly1, new_poly2 } };
 }
 
 void Polygon_3::update_points_3()

@@ -1,5 +1,6 @@
 #pragma once
 #include "partition/kinetic.h"
+#include "partition/BSP.h"
 struct ExtractSurface_Params
 {
 	std::string filename;
@@ -12,4 +13,5 @@ struct ExtractSurface_Params
 };
 
 struct ExtractSurface_Params;
-std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params);
+//std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params);
+std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(BSP::LCC_3& cm, ExtractSurface_Params& ES_params);

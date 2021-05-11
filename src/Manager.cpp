@@ -280,7 +280,7 @@ void Manager::init_Kqueue(size_t K)// 0 means exhausted
 void Manager::init_BSP()
 {
 	if (convex_shape.empty()) return;
-	bsp = std::make_unique<BSP_Partition>(convex_shape);
+	bsp = std::make_unique<BSP::BSP_Partition>(convex_shape);
 	mesh = bsp->Get_mesh();
 }
 
@@ -291,27 +291,43 @@ void Manager::partition()
 	mesh = kpolys_set->Get_mesh();
 }
 
+//void Manager::extract_surface(double lamda, int GC_term)
+//{
+//	if (!k_queue || !k_queue->is_done()) return;
+//	assert(k_queue->is_done());
+//	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
+//	
+//	ES_params.lamda = lamda;
+//	ES_params.GC_term = GC_term;
+//
+//	// save centralized result
+//	auto param = ES_params;
+//	param.translate = EPIC::in_Vector{0,0,0};
+//	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
+//
+//	// auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
+//	lines = std::move(surface_lines);
+//	mesh = std::move(surface);
+//	Number_of_Facets = F_Number;
+//	
+//}
 void Manager::extract_surface(double lamda, int GC_term)
 {
-	if (!k_queue || !k_queue->is_done()) return;
-	assert(k_queue->is_done());
-	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
-	
+	if (!bsp || !bsp->is_done()) return;
+
 	ES_params.lamda = lamda;
 	ES_params.GC_term = GC_term;
 
 	// save centralized result
 	auto param = ES_params;
-	param.translate = EPIC::in_Vector{0,0,0};
-	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
+	param.translate = EPIC::in_Vector{ 0,0,0 };
+	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, bsp->lcc, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 
-	// auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 	lines = std::move(surface_lines);
 	mesh = std::move(surface);
 	Number_of_Facets = F_Number;
-	
-}
 
+}
 int Manager::run_offline(fs::path file)
 {
 	auto lamda = getarg(1, "-l", "--lambda");

@@ -38,30 +38,34 @@ int D(PWN_vector polyhedra_points, Point_3 center, int status) {
 }
 
 /****** Data term 2 faces_with_points *******/
-int Dp(std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int status) {
+float Dp(std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int status) {
 
-	int sum_d = 0;
+	float sum_d = 0;
 	if (status == 0) {
 		for (int i = 0; i < faces_with_points.size(); i++) {
 			Vector_3 u = faces_with_points[i].first.to_vector();
+			auto norm = std::sqrt(CGAL::to_double(u * u));
 			PWN_vector points = faces_with_points[i].second;
 			for (int j = 0; j < points.size(); j++) {
 				Vector_3 n = points[j].second;
 				if (n*u < 0) {
 					sum_d++;
+					//sum_d += -CGAL::to_double(n * u) / norm;
 				}
-			}	
+			}
 		}
 		return sum_d;
 	}
 	if (status == 1) {
 		for (int i = 0; i < faces_with_points.size(); i++) {
 			Vector_3 u = faces_with_points[i].first.to_vector();
+			auto norm = std::sqrt(CGAL::to_double(u * u));
 			PWN_vector points = faces_with_points[i].second;
 			for (int j = 0; j < points.size(); j++) {
 				Vector_3 n = points[j].second;
 				if (n*u > 0) {
 					sum_d++;
+					//sum_d += CGAL::to_double(n * u) / norm;
 				}
 			}
 		}
@@ -114,7 +118,11 @@ std::vector<EPIC::in_Vector> get_rays() {
 }
 
 
-GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params) {
+GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
+
+	auto C = BSP::collect(cm.one_dart_per_cell<3>());
+	auto F = BSP::collect(cm.one_dart_per_cell<2>());
+	auto N = get_N(cm, F);
 	int C_num = C.size();
 	int N_num = N.size();
 	GraphType *g = new GraphType(/*estimated # of nodes*/ C_num, /*estimated # of edges*/ N_num);
@@ -125,22 +133,17 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 
 	//|I|
 	int points_count = 0;
-	for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != polygons_set._kpolygons_set.end(); polygons++) {
-		for (auto &kpoly : polygons->_kpolygons_2) {
-			points_count += kpoly.inline_points.size();
-		}
+	for (auto fdh : F) {
+		points_count += cm.info<2>(fdh).inline_points.size();
 	}
 	points_count = points_count * 2;
 	std::cout << "points_count:" << points_count << std::endl;
 
 	//A
 	double sum_area = 0;
-	for (auto polygons = polygons_set._kpolygons_set.begin(); polygons != std::prev(polygons_set._kpolygons_set.end(), 6); polygons++) {
-		Plane_3 plane = polygons->plane();
-		for (auto &kpoly : polygons->_kpolygons_2) {
-			sum_area += CGAL::to_double(kpoly.area());
-		}
-	}
+	for (auto fdh : F) {
+		sum_area += CGAL::to_double(cm.info<2>(fdh).area);
+	} //bbox?
 	std::cout << "sum_area:" << sum_area << std::endl;
 
 
@@ -159,7 +162,7 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 		//compute d_out, d_in
 		if (ES_params.GC_term == 1 || ES_params.GC_term == 2) {
 			std::vector<Dart_handle> face_darts;
-			for (CMap_3::One_dart_per_incident_cell_range<2, 3>::iterator it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
+			for (auto it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
 				face_darts.push_back(it);
 			}
 			if (ES_params.GC_term == 1) {
@@ -178,7 +181,7 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 				/******** Data term 2 *********/
 				std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points;
 				for (auto dart : face_darts) {
-					Direction_3 normal = cm.info(dart).first;
+					Direction_3 normal = cm.info(dart).direction;
 					PWN_vector face_points;
 					for (auto p : cm.info_of_attribute<2>(cm.attribute<2>(dart)).inline_points) {
 						face_points.push_back(p);
@@ -198,13 +201,18 @@ GraphType* label_polyhedron(CMap_3& cm, std::vector<Dart_handle> C, Neighbor N, 
 
 
 		//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
-		if (i == C_num - 1) {
-			g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, sum_area);
-		}
-		else {
+		//if (i == C_num - 1) {
+		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, sum_area);
+		//}
+		//else {
+		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
+		//	//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
+		//}
+
+		if (cm.info<3>(C[i]).is_ghost)
+			g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, points_count * sum_area);
+		else
 			g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
-			//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
-		}
 
 	}
 

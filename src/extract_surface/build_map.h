@@ -6,60 +6,62 @@
 #include <map>
 #include <string>
 #include "partition/kinetic.h"
+#include "partition/BSP.h"
 
-struct vertex_attributes {
-	Point_3 pos_3;
-	std::array<size_t, 3> ID;
-};
-
-struct face_attributes {
-	//int number;
-	//bool removed;
-	FT area;
-	Plane_3 plane;
-	PWN_vector inline_points;
-	//Direction normal;
-};
-
-struct polyhedra_attributes {
-	int number;
-	Point_3 center;
-};
-
-struct Sum_functor
-{
-	template<class Cell_attribute>
-	void operator()(Cell_attribute& ca1, Cell_attribute& ca2)
-	{
-		ca1.info() = ca1.info();
-	}
-};
-struct Divide_by_two_functor
-{
-	template<class Cell_attribute>
-	void operator()(Cell_attribute& ca1, Cell_attribute& ca2)
-	{
-		ca1.info() = ca1.info();
-		ca2.info() = ca1.info();
-	}
-};
-
-// My item class
-struct Myitem
-{
-	template<class CMap>
-	struct Dart_wrapper
-	{
-		typedef std::pair<Direction_3, bool> Dart_info;
-		typedef CGAL::Cell_attribute<CMap, polyhedra_attributes> Polyhedra_attribute; // A number
-		typedef CGAL::Cell_attribute<CMap, face_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor > Face_attribute; // area of this face
-		typedef CGAL::Cell_attribute<CMap, vertex_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor> Vertex_attribute; // A vertex
-		typedef std::tuple<Vertex_attribute, void, Face_attribute, Polyhedra_attribute> Attributes;
-	};
-};
-
-// Definition of my combinatorial map.
-typedef CGAL::Combinatorial_map<3, Myitem> CMap_3;
+//struct vertex_attributes {
+//	Point_3 pos_3;
+//	std::array<size_t, 3> ID;
+//};
+//
+//struct face_attributes {
+//	//int number;
+//	//bool removed;
+//	FT area;
+//	Plane_3 plane;
+//	PWN_vector inline_points;
+//	//Direction normal;
+//};
+//
+//struct polyhedra_attributes {
+//	int number;
+//	Point_3 center;
+//};
+//
+//struct Sum_functor
+//{
+//	template<class Cell_attribute>
+//	void operator()(Cell_attribute& ca1, Cell_attribute& ca2)
+//	{
+//		ca1.info() = ca1.info();
+//	}
+//};
+//struct Divide_by_two_functor
+//{
+//	template<class Cell_attribute>
+//	void operator()(Cell_attribute& ca1, Cell_attribute& ca2)
+//	{
+//		ca1.info() = ca1.info();
+//		ca2.info() = ca1.info();
+//	}
+//};
+//
+//// My item class
+//struct Myitem
+//{
+//	template<class CMap>
+//	struct Dart_wrapper
+//	{
+//		typedef std::pair<Direction_3, bool> Dart_info;
+//		typedef CGAL::Cell_attribute<CMap, polyhedra_attributes> Polyhedra_attribute; // A number
+//		typedef CGAL::Cell_attribute<CMap, face_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor > Face_attribute; // area of this face
+//		typedef CGAL::Cell_attribute<CMap, vertex_attributes, CGAL::Tag_true, Sum_functor, Divide_by_two_functor> Vertex_attribute; // A vertex
+//		typedef std::tuple<Vertex_attribute, void, Face_attribute, Polyhedra_attribute> Attributes;
+//	};
+//};
+//
+//// Definition of my combinatorial map.
+//typedef CGAL::Combinatorial_map<3, Myitem> CMap_3;
+typedef BSP::LCC_3 CMap_3;
 typedef CMap_3::Dart_handle Dart_handle;
 typedef CMap_3::Attribute_type<0>::type    Vertex_attribute;
 typedef CMap_3::Attribute_type<2>::type    Face_attribute;

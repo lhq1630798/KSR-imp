@@ -92,16 +92,18 @@ public:
     std::optional<std::pair<Polygon_3, Polygon_3>> split_by_plane(Plane_3) const;
     size_t size() const { return points_2().size(); };
     const Points_2 &points_2() const { return _polygon_2.container(); }
+    Points_2 &points_2() { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
     const Polygon_2 &polygon_2() const { return _polygon_2; }
+    Polygon_2 &polygon_2() { return _polygon_2; }
     const Points_3 &points_3() const { return _points_3; }
+    void update_points_3(); //todo : auto update
 
     Vec3 _color;
 	PWN_vector inline_points;
 
 private:
     Segments_3 edges_3() const;
-    void update_points_3();
 
     // _plane, _polygon_2, _points_3 must be consistent with each other !
     Plane_3 _plane;

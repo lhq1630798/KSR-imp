@@ -30,7 +30,7 @@ void App::render_imgui()
 	auto kinetic_dt = std::powf(10, grow_speed) * dt;
 
 
-	ImGui::Begin("KSR");
+	ImGui::Begin("BSP");
 	//ImGui::Checkbox("Imgui Demo Window", &show_demo_window);
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 	ImGui::Checkbox("plane", &show_plane);
@@ -86,29 +86,29 @@ void App::render_imgui()
 	}
 
 	ImGui::Separator();
-	ImGui::DragInt("K", &K);
-	if (ImGui::Button("init kinetic queue")) {
-		manager.init_Kqueue(static_cast<size_t>(K));
-		show_inited_mesh = false;
-		show_point_cloud = false;
-		show_alpha_shape = false;
-	}
-	if (manager.k_queue) {
-		auto& k_queue = *manager.k_queue;
-		ImGui::Checkbox("growing", &grow);
-		ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
-		ImGui::Text("queue size = %d", k_queue.size());
-		ImGui::Text("next time = %.3f", (float)CGAL::to_double(k_queue.next_time()));
-		if (grow)
-			kinetic_time = (float)CGAL::to_double(k_queue.move_to_time(kinetic_time + kinetic_dt));
-		ImGui::Text("kinetic time = %.3f", kinetic_time);
-	}
-	if (ImGui::Button("finish partition")) {
-		manager.partition();
-		show_inited_mesh = false;
-		show_point_cloud = false;
-		show_alpha_shape = false;
-	}
+	// ImGui::DragInt("K", &K);
+	// if (ImGui::Button("init kinetic queue")) {
+	// 	manager.init_Kqueue(static_cast<size_t>(K));
+	// 	show_inited_mesh = false;
+	// 	show_point_cloud = false;
+	// 	show_alpha_shape = false;
+	// }
+	// if (manager.k_queue) {
+	// 	auto& k_queue = *manager.k_queue;
+	// 	ImGui::Checkbox("growing", &grow);
+	// 	ImGui::SliderFloat("grow speed", &grow_speed, -2, 1);
+	// 	ImGui::Text("queue size = %d", k_queue.size());
+	// 	ImGui::Text("next time = %.3f", (float)CGAL::to_double(k_queue.next_time()));
+	// 	if (grow)
+	// 		kinetic_time = (float)CGAL::to_double(k_queue.move_to_time(kinetic_time + kinetic_dt));
+	// 	ImGui::Text("kinetic time = %.3f", kinetic_time);
+	// }
+	// if (ImGui::Button("finish partition")) {
+	// 	manager.partition();
+	// 	show_inited_mesh = false;
+	// 	show_point_cloud = false;
+	// 	show_alpha_shape = false;
+	// }
 
 	ImGui::Separator();
 	ImGui::SliderFloat("lambda", &lamda, 0, 2);

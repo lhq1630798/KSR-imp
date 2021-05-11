@@ -29,7 +29,7 @@ public:
 	std::unique_ptr<KPolygons_SET> kpolys_set;
 	std::unique_ptr<Kinetic_queue> k_queue;
 
-	std::unique_ptr<BSP_Partition> bsp;
+	std::unique_ptr<BSP::BSP_Partition> bsp;
 
 	//std::unique_ptr<Polygon_Mesh> inited_mesh;
 	std::unique_ptr<Mesh> inited_mesh;//Normalized input mesh

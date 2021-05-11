@@ -238,7 +238,7 @@ std::map < Plane_3, std::vector<Dart_handle>, myComp > get_merge_face(CMap_3& cm
 	for (int i = 0; i < surface_darts.size(); i++) {
 		Plane_3 plane = cm.info<2>(surface_darts[i]).plane;
 		Direction_3 p_normal = plane.orthogonal_direction();
-		Direction_3 normal = cm.info(surface_darts[i]).first;
+		Direction_3 normal = cm.info(surface_darts[i]).direction;
 		if (normal == p_normal) {
 			auto it = merge_face.find(plane);
 			if (it != merge_face.end()) {
@@ -298,7 +298,7 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 
 			for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 			{
-				Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+				Point_3 p3 = cm.point(it);
 				in_Point p = in_Point(
 					CGAL::to_double(p3.x()),
 					CGAL::to_double(p3.y()),
@@ -386,7 +386,7 @@ Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
 		std::vector<vertex_descriptor> verts;
 		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 		{
-			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+			Point_3 p3 = cm.point(it);
 			in_Point p = in_Point{
 				CGAL::to_double(p3.x()),
 				CGAL::to_double(p3.y()),
@@ -450,7 +450,7 @@ std::unique_ptr<Polygon_Mesh> draw_surface(CMap_3& cm, Neighbor N, GraphType* g)
 		std::vector<Vec3> verts;
 		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 		{
-			Point_3 p3 = cm.info_of_attribute<0>(cm.attribute<0>(it)).pos_3;
+			Point_3 p3 = cm.point(it);
 			Vec3 p = Vec3{
 				CGAL::to_double(p3.x()),
 				CGAL::to_double(p3.y()),
@@ -530,22 +530,104 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 }
 
 
+// //将表面保存成ply文件格式
+// std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params)
+// {
+
+// 	std::cout << "Extract Surface Begin" << std::endl;
+// 	CMap_3 cm;
+// 	build_map(cm, polygons_set);
+
+// 	//int ghost_num;
+
+// 	//C:保存每个polyhedra的一个dart
+// 	std::vector<Dart_handle> C = get_C(cm);
+// 	std::cout << "Polyhedron number: " << C.size() << std::endl;
+
+// 	//F:保存每个face的一个dart
+// 	std::vector<Dart_handle> F = get_F(cm);
+// 	std::cout << "F number: " << F.size() << std::endl;
+
+// 	//N:保存相邻的两个polyhedra的dart
+// 	Neighbor N = get_N(cm, F);
+// 	std::cout << "N number: " << N.size() << std::endl;
+
+// 	//打印所有相邻的polyhedron
+// 	/*for (auto n : N) {
+// 		std::cout << n.first.neighbors.first << " " << n.first.neighbors.second << std::endl;
+// 	}*/
+
+// 	GraphType *g = label_polyhedron(cm, C, N, polygons_set, ES_params);
+
+
+// 	/****************** write surface mesh *************************/
+// 	//合并后的表面
+// 	Surface_Mesh m1 = get_surface(cm, g, N);
+// 	for (vertex_descriptor vd : vertices(m1)) {
+// 		m1.point(vd) = in_Point{
+// 			m1.point(vd).x()*ES_params.scale - ES_params.translate.x(),
+// 			m1.point(vd).y()*ES_params.scale - ES_params.translate.y(),
+// 			m1.point(vd).z()*ES_params.scale - ES_params.translate.z()};
+// 	}
+// 	std::string file = "output/" + ES_params.filename + "_surface_with_merge.ply";
+// 	std::ofstream f(file, std::ios::binary);
+// 	if (!CGAL::write_ply(f, m1)) {
+// 		std::cout << "write wrong" << std::endl;
+// 	}
+// 	f.close();
+
+// 	//未合并的表面
+// 	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
+// 	for (vertex_descriptor vd : vertices(m2)) {
+// 		m2.point(vd) = in_Point{
+// 			m2.point(vd).x()*ES_params.scale - ES_params.translate.x(),
+// 			m2.point(vd).y()*ES_params.scale - ES_params.translate.y(),
+// 			m2.point(vd).z()*ES_params.scale - ES_params.translate.z() };
+// 	}
+// 	std::string file2 = "output/" + ES_params.filename + "_surface_without_merge.ply";
+// 	std::ofstream f2(file2, std::ios::binary);
+// 	if (!CGAL::write_ply(f2, m2)) {
+// 		std::cout << "write wrong" << std::endl;
+// 	}
+// 	f2.close();
+
+// 	//合并后的表面边界
+// 	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
+// 	for (vertex_descriptor vd : vertices(m_outline)) {
+// 		m_outline.point(vd) = in_Point{
+// 			m_outline.point(vd).x()*ES_params.scale - ES_params.translate.x(),
+// 			m_outline.point(vd).y()*ES_params.scale - ES_params.translate.y(),
+// 			m_outline.point(vd).z()*ES_params.scale - ES_params.translate.z() };
+// 	}
+// 	std::string file3 = "output/" + ES_params.filename + "_surface_outline.ply";
+// 	std::ofstream f3(file3, std::ios::binary);
+// 	if (!write_ply_pss(f3, m_outline)) {
+// 		std::cout << "write wrong" << std::endl;
+// 	}
+// 	f3.close();
+
+
+// 	/****************** draw surface mesh *************************/
+// 	std::unique_ptr<Polygon_Mesh> surface = draw_surface(cm, N, g);
+// 	std::unique_ptr<Lines_GL> surface_outline = draw_surface_outline(cm, g, N);
+	
+// 	delete g;
+
+// 	return {std::move(surface), std::move(surface_outline), m1.number_of_faces()};
+// }
+
+
 //将表面保存成ply文件格式
-std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params)
+std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(BSP::LCC_3& cm, ExtractSurface_Params& ES_params)
 {
 
 	std::cout << "Extract Surface Begin" << std::endl;
-	CMap_3 cm;
-	build_map(cm, polygons_set);
-
-	//int ghost_num;
-
 	//C:保存每个polyhedra的一个dart
-	std::vector<Dart_handle> C = get_C(cm);
+	auto C = BSP::collect(cm.one_dart_per_cell<3>());
 	std::cout << "Polyhedron number: " << C.size() << std::endl;
 
 	//F:保存每个face的一个dart
-	std::vector<Dart_handle> F = get_F(cm);
+	auto F = BSP::collect(cm.one_dart_per_cell<2>());
 	std::cout << "F number: " << F.size() << std::endl;
 
 	//N:保存相邻的两个polyhedra的dart
@@ -557,7 +639,7 @@ std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extra
 		std::cout << n.first.neighbors.first << " " << n.first.neighbors.second << std::endl;
 	}*/
 
-	GraphType *g = label_polyhedron(cm, C, N, polygons_set, ES_params);
+	GraphType *g = label_polyhedron(cm, ES_params);
 
 
 	/****************** write surface mesh *************************/
