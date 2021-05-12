@@ -6,6 +6,8 @@
 #undef assert
 #define assert(expr) R_assert(expr)
 
+namespace EC {
+
 Polygons_3 generate_rand_polys_3(size_t num)
 {
     auto rand = CGAL::Random{0};
@@ -184,3 +186,5 @@ void Polygon_3::update_points_3()
     auto center_P = CGAL::ORIGIN + center_V;
     _center = plane().to_3d(center_P);
 }
+
+}// namaspace EC

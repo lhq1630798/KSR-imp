@@ -21,24 +21,24 @@ public:
 	void extract_surface(double lamda, int GC_term);
 	int run_offline(fs::path file);
 
-	EPIC::Pwn_vector points;//input points
-	EPIC::Surface_Mesh input_mesh;//input mesh
+	IC::PWN_vector points;//input points
+	IC::Surface_Mesh input_mesh;//input mesh
 
-	Polygons_3 convex_shape;
+	EC::Polygons_3 convex_shape;
 
-	std::unique_ptr<KPolygons_SET> kpolys_set;
-	std::unique_ptr<Kinetic_queue> k_queue;
+	std::unique_ptr<Kinetic::KPolygons_SET> kpolys_set;
+	std::unique_ptr<Kinetic::Kinetic_queue> k_queue;
 
 	std::unique_ptr<BSP::BSP_Partition> bsp;
 
-	//std::unique_ptr<Polygon_Mesh> inited_mesh;
-	std::unique_ptr<Mesh> inited_mesh;//Normalized input mesh
-	std::unique_ptr<Point_cloud_GL> point_cloud;//Normalized input points
+	//std::unique_ptr<GL::Polygon_Mesh> inited_mesh;
+	std::unique_ptr<GL::Mesh> inited_mesh;//Normalized input mesh
+	std::unique_ptr<GL::Point_cloud> point_cloud;//Normalized input points
 
-	std::unique_ptr<Mesh> alpha_mesh;
+	std::unique_ptr<GL::Mesh> alpha_mesh;
 
-	std::unique_ptr<Polygon_Mesh> mesh;//extracted surface mesh
-	std::unique_ptr<Lines_GL> lines;//extracted surface mesh boundary
+	std::unique_ptr<GL::Polygon_Mesh> mesh;//extracted surface mesh
+	std::unique_ptr<GL::Lines> lines;//extracted surface mesh boundary
 
 	double alpha_value=0.5;
 	int Number_of_Facets;

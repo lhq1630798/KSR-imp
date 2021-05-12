@@ -18,7 +18,7 @@
 //	//bool removed;
 //	FT area;
 //	Plane_3 plane;
-//	PWN_vector inline_points;
+//	IC::PWN_vector inline_points;
 //	//Direction normal;
 //};
 //
@@ -84,12 +84,12 @@ public:
 	friend bool operator<(const NeighborKey&, const NeighborKey&);
 };
 
-using Darts = std::vector<std::pair<Direction_2, Dart_handle> >;
+using Darts = std::vector<std::pair<EC::Direction_2, Dart_handle> >;
 using Edge2darts = std::map<EdgeKey, Darts>;
 using NeighborDarts = std::vector<std::pair<Dart_handle, Dart_handle> >;
 using Neighbor = std::map<NeighborKey, NeighborDarts>;
 
-void build_map(CMap_3& cm, const KPolygons_SET& polygons_set);
+void build_map(CMap_3& cm, const Kinetic::KPolygons_SET& polygons_set);
 std::vector<Dart_handle> get_C(CMap_3& cm);
 std::vector<Dart_handle> get_F(CMap_3& cm);
 Neighbor get_N(CMap_3& cm, std::vector<Dart_handle> F);

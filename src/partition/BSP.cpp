@@ -9,8 +9,8 @@
 //using CMap_3 = CGAL::Combinatorial_map<3>;
 //#include <CGAL/Polygonal_surface_reconstruction.h>
 
-using namespace BSP;
-
+using namespace EC;
+namespace BSP{
 
 
 // Functor called when one polyhedra is split in two.
@@ -401,9 +401,9 @@ void BSP_Partition::partition_next()
 
 }
 
-std::unique_ptr<Polygon_Mesh> BSP_Partition::Get_mesh()
+std::unique_ptr<GL::Polygon_Mesh> BSP_Partition::Get_mesh()
 {
-	std::vector<Polygon_GL> polys;
+	std::vector<GL::Polygon> polys;
 	auto faces = lcc.one_dart_per_cell<2>();
 	for (auto f = faces.begin(); f != faces.end(); f++) {
 
@@ -418,7 +418,9 @@ std::unique_ptr<Polygon_Mesh> BSP_Partition::Get_mesh()
 				});
 		}
 
-		polys.push_back(Polygon_GL{ std::move(verts), rand_color() });
+		polys.push_back(GL::Polygon{ std::move(verts), rand_color() });
 	}
-	return std::make_unique<Polygon_Mesh>(std::move(polys));
+	return std::make_unique<GL::Polygon_Mesh>(std::move(polys));
+}
+
 }

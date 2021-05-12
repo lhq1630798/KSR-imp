@@ -6,24 +6,24 @@
 
 namespace BSP {
 
-using LLC_Traits = CGAL::Linear_cell_complex_traits<3, K>;
+using LLC_Traits = CGAL::Linear_cell_complex_traits<3, EC::K>;
 
 struct vertex_attributes {
 	std::array<size_t, 3> ID;
 };
 struct face_attributes {
-	FT area;
-	Plane_3 plane;
-	PWN_vector inline_points;
+	EC::FT area;
+	EC::Plane_3 plane;
+	EC::PWN_vector inline_points;
 };
 struct polyhedra_attributes {
-	Polygons_3 polygons_3;
-	Point_3 center;
+	EC::Polygons_3 polygons_3;
+	EC::Point_3 center;
 	int number = -1;
 	bool is_ghost = false;
 };
 struct dart_info {
-	Direction_3 direction;
+	EC::Direction_3 direction;
 };
 struct Myitem
 {
@@ -45,16 +45,16 @@ using Dart_handle = LCC_3::Dart_handle;
 class BSP_Partition
 {
 public:
-	BSP_Partition(Polygons_3 _polygons_3, float expand_scale = 0.1);
+	BSP_Partition(EC::Polygons_3 _polygons_3, float expand_scale = 0.1);
 	void partition();
 	void partition_next();
 
-	std::unique_ptr<Polygon_Mesh> Get_mesh();
+	std::unique_ptr<GL::Polygon_Mesh> Get_mesh();
 	bool is_done() { return volumes.empty(); }
 	LCC_3 lcc;
 private:
 	std::vector< LCC_3::Dart_handle > volumes;
-	Polygons_3 polygons_3;
+	EC::Polygons_3 polygons_3;
 	int count = 0;
 };
 

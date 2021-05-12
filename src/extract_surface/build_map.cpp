@@ -30,7 +30,7 @@ bool operator<(const NeighborKey& n1, const NeighborKey& n2) {
 //		vertex_attributes v_att = { plane.to_3d(id_points2[i].pos_2), id_points2[i].ID };
 //		id_points.push_back(v_att);
 //	}
-//	PWN_vector inline_points = polygon.inline_points;//���ڶ�����ڲ��������
+//	IC::PWN_vector inline_points = polygon.inline_points;//���ڶ�����ڲ��������
 //	FT area = polygon.area();
 //	Direction_3 normal = cross_product((id_points[1].pos_3 - id_points[0].pos_3), (id_points[2].pos_3 - id_points[1].pos_3)).direction();
 //	//bool removed = false;
@@ -68,7 +68,7 @@ bool operator<(const NeighborKey& n1, const NeighborKey& n2) {
 //		vertex_attributes v_att = { plane.to_3d(id_points2[i].pos_2), id_points2[i].ID };
 //		id_points.push_back(v_att);
 //	}
-//	PWN_vector inline_points = polygon.inline_points;//���ڶ�����ڲ��������
+//	IC::PWN_vector inline_points = polygon.inline_points;//���ڶ�����ڲ��������
 //	FT area = polygon.area();
 //	Direction_3 normal = cross_product((id_points[1].pos_3 - id_points[2].pos_3), (id_points[0].pos_3 - id_points[1].pos_3)).direction();
 //	//bool removed = false;

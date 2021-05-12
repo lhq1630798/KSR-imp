@@ -5,20 +5,20 @@
 #include <math.h>
 //#include "detect_shape/detect_shape.h"
 
-typedef std::list<EPIC::in_Triangle>::iterator Iterator;
-typedef CGAL::AABB_triangle_primitive<EPIC::EPIC_K, Iterator> Primitive;
-typedef CGAL::AABB_traits<EPIC::EPIC_K, Primitive> AABB_triangle_traits;
+typedef std::list<IC::Triangle_3>::iterator Iterator;
+typedef CGAL::AABB_triangle_primitive<IC::K, Iterator> Primitive;
+typedef CGAL::AABB_traits<IC::K, Primitive> AABB_triangle_traits;
 typedef CGAL::AABB_tree<AABB_triangle_traits> Tree;
 
 //0:out  1:in
 /****** Data term 1 polygedra_with_points *******/
-int D(PWN_vector polyhedra_points, Point_3 center, int status) {
+int D(EC::PWN_vector polyhedra_points, EC::Point_3 center, int status) {
 
 	int sum_d = 0;
 	if (status == 0) {
 		for (int i = 0; i < polyhedra_points.size(); i++) {
-			Vector_3 u = center - polyhedra_points[i].first;
-			Vector_3 n = polyhedra_points[i].second;
+			auto u = center - polyhedra_points[i].first;
+			auto n = polyhedra_points[i].second;
 			if (n*u < 0) {
 				sum_d++;
 			}
@@ -27,8 +27,8 @@ int D(PWN_vector polyhedra_points, Point_3 center, int status) {
 	}
 	if (status == 1) {
 		for (int i = 0; i < polyhedra_points.size(); i++) {
-			Vector_3 u = center - polyhedra_points[i].first;
-			Vector_3 n = polyhedra_points[i].second;
+			auto u = center - polyhedra_points[i].first;
+			auto n = polyhedra_points[i].second;
 			if (n*u > 0) {
 				sum_d++;
 			}
@@ -38,16 +38,16 @@ int D(PWN_vector polyhedra_points, Point_3 center, int status) {
 }
 
 /****** Data term 2 faces_with_points *******/
-float Dp(std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int status) {
+float Dp(std::vector<std::pair<EC::Direction_3, EC::PWN_vector> > faces_with_points, int status) {
 
 	float sum_d = 0;
 	if (status == 0) {
 		for (int i = 0; i < faces_with_points.size(); i++) {
-			Vector_3 u = faces_with_points[i].first.to_vector();
+			auto u = faces_with_points[i].first.to_vector();
 			auto norm = std::sqrt(CGAL::to_double(u * u));
-			PWN_vector points = faces_with_points[i].second;
+			EC::PWN_vector points = faces_with_points[i].second;
 			for (int j = 0; j < points.size(); j++) {
-				Vector_3 n = points[j].second;
+				auto n = points[j].second;
 				if (n*u < 0) {
 					sum_d++;
 					//sum_d += -CGAL::to_double(n * u) / norm;
@@ -58,11 +58,11 @@ float Dp(std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int
 	}
 	if (status == 1) {
 		for (int i = 0; i < faces_with_points.size(); i++) {
-			Vector_3 u = faces_with_points[i].first.to_vector();
+			auto u = faces_with_points[i].first.to_vector();
 			auto norm = std::sqrt(CGAL::to_double(u * u));
-			PWN_vector points = faces_with_points[i].second;
+			EC::PWN_vector points = faces_with_points[i].second;
 			for (int j = 0; j < points.size(); j++) {
-				Vector_3 n = points[j].second;
+				auto n = points[j].second;
 				if (n*u > 0) {
 					sum_d++;
 					//sum_d += CGAL::to_double(n * u) / norm;
@@ -74,12 +74,12 @@ float Dp(std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points, int
 }
 
 /****** Data term 3 ray_intersection *******/
-float Dray(EPIC::in_Point center, std::list<EPIC::in_Triangle>& triangles, std::vector<EPIC::in_Vector>& rays, int status) {
+float Dray(IC::Point_3 center, std::list<IC::Triangle_3>& triangles, std::vector<IC::Vector_3>& rays, int status) {
 	float c = 0;
 	float r = 0;
 	Tree tree(triangles.begin(), triangles.end());
 	for (int i = 0; i < rays.size(); i++) {
-		EPIC::in_Ray3 ray_query(center, center + rays[i]);
+		IC::Ray_3 ray_query(center, center + rays[i]);
 		int num_of_intersection = tree.number_of_intersected_primitives(ray_query);
 		if (num_of_intersection % 2 == 0) {
 			r++;
@@ -99,8 +99,8 @@ float Dray(EPIC::in_Point center, std::list<EPIC::in_Triangle>& triangles, std::
 
 
 //rays direction
-std::vector<EPIC::in_Vector> get_rays() {
-	std::vector<EPIC::in_Vector> rays;
+std::vector<IC::Vector_3> get_rays() {
+	std::vector<IC::Vector_3> rays;
 	double pi = 2 * acos(0.0);
 	//std::cout << pi << std::endl;
 	double gold = 3 - sqrt(5);
@@ -112,7 +112,7 @@ std::vector<EPIC::in_Vector> get_rays() {
 		double x = cos(theta) * sqrt(1 - z * z);
 		double y = sin(theta) * sqrt(1 - z * z);
 		//std::cout << x <<" "<< y <<" "<< z << std::endl;
-		rays.push_back(EPIC::in_Vector(x, y, z));
+		rays.push_back(IC::Vector_3(x, y, z));
 	}
 	return rays;
 }
@@ -148,14 +148,14 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
 
 	//{i,S,T}
-	//std::list<EPIC::in_Triangle> triangles = ES_params.alpha_triangles;
-	std::vector<EPIC::in_Vector> rays = get_rays();
+	//std::list<IC::Triangle_3> triangles = ES_params.alpha_triangles;
+	std::vector<IC::Vector_3> rays = get_rays();
 	for (int i = 0; i < C_num; i++) {
 		
 		//Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
-		EPIC::EK_to_IK to_inexact;
-		Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
-		EPIC::in_Point in_center = to_inexact(center);
+		EK_to_IK to_inexact;
+		auto center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
+		IC::Point_3 in_center = to_inexact(center);
 		
 		float d_out, d_in;
 
@@ -167,7 +167,7 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 			}
 			if (ES_params.GC_term == 1) {
 				/***** Data term 1 ******/
-				PWN_vector polyhedra_points;
+				EC::PWN_vector polyhedra_points;
 				for (auto dart : face_darts) {
 					for (auto p : cm.info_of_attribute<2>(cm.attribute<2>(dart)).inline_points) {
 						polyhedra_points.push_back(p);
@@ -179,10 +179,10 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 			}
 			else if (ES_params.GC_term == 2) {
 				/******** Data term 2 *********/
-				std::vector<std::pair<Direction_3, PWN_vector> > faces_with_points;
+				std::vector<std::pair<EC::Direction_3, EC::PWN_vector> > faces_with_points;
 				for (auto dart : face_darts) {
-					Direction_3 normal = cm.info(dart).direction;
-					PWN_vector face_points;
+					auto normal = cm.info(dart).direction;
+					EC::PWN_vector face_points;
 					for (auto p : cm.info_of_attribute<2>(cm.attribute<2>(dart)).inline_points) {
 						face_points.push_back(p);
 					}

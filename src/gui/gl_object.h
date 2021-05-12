@@ -11,7 +11,7 @@
 #include <iostream>
 #include "cgal/cgal_object.h"
 
-
+namespace GL{
 class Shader
 {
 public:
@@ -249,12 +249,12 @@ private:
     GLuint vao = 0, vbo = 0, ebo = 0;
 };
 
-class Polygon_GL
+class Polygon
 {
 public:
-    explicit Polygon_GL(std::vector<Vec3> verts, Vec3 color = Vec3{0.53, 0.8, 0.98}) : _verts(std::move(verts)), _color(color) { init(); }
+    explicit Polygon(std::vector<Vec3> verts, Vec3 color = Vec3{0.53, 0.8, 0.98}) : _verts(std::move(verts)), _color(color) { init(); }
 
-    explicit Polygon_GL(const Polygon_3 &polygon_3)
+    explicit Polygon(const EC::Polygon_3 &polygon_3)
     {
         for (const auto &point : polygon_3.points_3())
         {
@@ -268,13 +268,13 @@ public:
         init();
     }
 
-	Polygon_GL(const Polygon_GL &other) {
+	Polygon(const Polygon &other) {
 		_verts = other._verts;
 		_color = other._color;
 		init();
 	}
 
-    ~Polygon_GL()
+    ~Polygon()
     {
         glDeleteVertexArrays(1, &vao);
         glDeleteBuffers(1, &vbo);
@@ -315,13 +315,13 @@ private:
 };
 
 class Polygon_Mesh
-{ // a Polygon_GL soup
+{ // a Polygon soup
 private:
-    std::vector<Polygon_GL> _polygons;
+    std::vector<Polygon> _polygons;
 
 public:
-    explicit Polygon_Mesh(std::vector<Polygon_GL> polygons) : _polygons(std::move(polygons)) {}
-    explicit Polygon_Mesh(const Polygons_3 &polygons_3) : _polygons(polygons_3.begin(), polygons_3.end()) {}
+    explicit Polygon_Mesh(std::vector<Polygon> polygons) : _polygons(std::move(polygons)) {}
+    explicit Polygon_Mesh(const EC::Polygons_3 &polygons_3) : _polygons(polygons_3.begin(), polygons_3.end()) {}
     void render(Shader &shader) const
     {
         shader.use();
@@ -348,11 +348,11 @@ public:
     auto &polygons_GL() const { return _polygons; }
 };
 
-class Lines_GL
+class Lines
 {
 public:
-    Lines_GL(std::vector<Vec3> end_points) : end_points(std::move(end_points)) { init(); };
-    ~Lines_GL()
+    Lines(std::vector<Vec3> end_points) : end_points(std::move(end_points)) { init(); };
+    ~Lines()
     {
         glDeleteVertexArrays(1, &vao);
         glDeleteBuffers(1, &vbo);
@@ -387,11 +387,11 @@ private:
     GLuint vao = 0, vbo = 0;
 };
 
-class Point_cloud_GL
+class Point_cloud
 {
 public:
-    Point_cloud_GL(std::vector<Vec3> points) : points(std::move(points)) { init(); };
-    ~Point_cloud_GL()
+    Point_cloud(std::vector<Vec3> points) : points(std::move(points)) { init(); };
+    ~Point_cloud()
     {
         glDeleteVertexArrays(1, &vao);
         glDeleteBuffers(1, &vbo);
@@ -464,3 +464,5 @@ private:
     }
     GLuint vao = 0, vbo = 0;
 };
+
+}

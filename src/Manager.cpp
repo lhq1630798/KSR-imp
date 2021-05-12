@@ -32,8 +32,8 @@ bool Manager::read_PWN(fs::path path)
 	reset();
 	std::ifstream stream(path);
 	auto paremeters =
-		CGAL::parameters::point_map(EPIC::Point_map()).
-		normal_map(EPIC::Normal_map());
+		CGAL::parameters::point_map(IC::Point_map()).
+		normal_map(IC::Normal_map());
 
 	if (stream) {
 		if (path.extension() == ".ply") {
@@ -128,7 +128,7 @@ void Manager::init_point_cloud() {
 	}
 
 	// centralize and scale points
-	std::vector<EPIC::in_Point> points_coord;
+	std::vector<IC::Point_3> points_coord;
 	for (auto&[p, n] : points) {
 		points_coord.push_back(p);
 	}
@@ -137,7 +137,7 @@ void Manager::init_point_cloud() {
 	double length = box.xmax() - box.xmin();
 	double weight = box.ymax() - box.ymin();
 	double height = box.zmax() - box.zmin();
-	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
+	IC::Point_3 center = IC::Point_3{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
 	ES_params.translate = CGAL::ORIGIN - center;
 	ES_params.scale = std::max({ length, weight, height })/2;
 
@@ -156,15 +156,15 @@ void Manager::init_point_cloud() {
 		point_GL.emplace_back((float)CGAL::to_double(p.x()),
 		(float)CGAL::to_double(p.y()),
 			(float)CGAL::to_double(p.z()));
-	point_cloud = std::make_unique<Point_cloud_GL>(std::move(point_GL));
+	point_cloud = std::make_unique<GL::Point_cloud>(std::move(point_GL));
 }
 
 void Manager::init_mesh() {
 	
 	// centralize and scale mesh
-	std::vector<EPIC::in_Point> points_coord;
-	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
-		points_coord.push_back(EPIC::in_Point{
+	std::vector<IC::Point_3> points_coord;
+	for (IC::vertex_descriptor vd : vertices(input_mesh)) {
+		points_coord.push_back(IC::Point_3{
 			input_mesh.point(vd).x(),
 			input_mesh.point(vd).y(),
 			input_mesh.point(vd).z() });
@@ -174,12 +174,12 @@ void Manager::init_mesh() {
 	double length = box.xmax() - box.xmin();
 	double weight = box.ymax() - box.ymin();
 	double height = box.zmax() - box.zmin();
-	EPIC::in_Point center = EPIC::in_Point{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
+	IC::Point_3 center = IC::Point_3{ (box.xmax() + box.xmin()) / 2, (box.ymax() + box.ymin()) / 2, (box.zmax() + box.zmin()) / 2 };
 	ES_params.translate = CGAL::ORIGIN - center;
 	ES_params.scale = std::max({ length, weight, height }) / 2;
 
-	for (EPIC::vertex_descriptor vd : vertices(input_mesh)) {
-		input_mesh.point(vd) = EPIC::in_Point{
+	for (IC::vertex_descriptor vd : vertices(input_mesh)) {
+		input_mesh.point(vd) = IC::Point_3{
 			(input_mesh.point(vd).x() + ES_params.translate.x())/ ES_params.scale,
 			(input_mesh.point(vd).y() + ES_params.translate.y())/ ES_params.scale,
 			(input_mesh.point(vd).z() + ES_params.translate.z())/ ES_params.scale };
@@ -192,11 +192,11 @@ void Manager::init_mesh() {
 
 	// visualization
 	std::vector<Vec3> verts;
-	std::vector<Mesh::Index> idxs;
+	std::vector<GL::Mesh::Index> idxs;
 	int count = 0;
-	for (EPIC::face_descriptor fd : faces(input_mesh))
+	for (IC::face_descriptor fd : faces(input_mesh))
 	{
-		for (EPIC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
+		for (IC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
 			Vec3 p = Vec3{
 				input_mesh.point(vd).x(),
 				input_mesh.point(vd).y(),
@@ -207,8 +207,8 @@ void Manager::init_mesh() {
 		}
 	}
 
-	auto m = Mesh{verts,idxs};
-	inited_mesh = std::make_unique<Mesh>(m);
+	auto m = GL::Mesh{verts,idxs};
+	inited_mesh = std::make_unique<GL::Mesh>(m);
 }
 
 void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
@@ -248,11 +248,11 @@ void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 	}
 
 	//visualize convex_shape
-	mesh = std::make_unique<Polygon_Mesh>(convex_shape);
+	mesh = std::make_unique<GL::Polygon_Mesh>(convex_shape);
 
 	//visualize alpha_shape
 	std::vector<Vec3> verts;
-	std::vector<Mesh::Index> idxs;
+	std::vector<GL::Mesh::Index> idxs;
 	int count = 0;
 	for (auto triangle : ES_params.alpha_triangles)
 	{
@@ -264,17 +264,17 @@ void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 		idxs.push_back(count+2);
 		count = count+3;
 	}
-	auto m = Mesh{ verts,idxs };
-	alpha_mesh = std::make_unique<Mesh>(m);
+	auto m = GL::Mesh{ verts,idxs };
+	alpha_mesh = std::make_unique<GL::Mesh>(m);
 
 }
 
 void Manager::init_Kqueue(size_t K)// 0 means exhausted
 {
 	if (convex_shape.empty()) return;
-	kpolys_set = std::make_unique<KPolygons_SET>(convex_shape, K);
+	kpolys_set = std::make_unique<Kinetic::KPolygons_SET>(convex_shape, K);
 	mesh = kpolys_set->Get_mesh();
-	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
+	k_queue = std::make_unique<Kinetic::Kinetic_queue>(*kpolys_set);
 }
 
 void Manager::init_BSP(float expand_scale)
@@ -287,7 +287,7 @@ void Manager::init_BSP(float expand_scale)
 void Manager::partition()
 {
 	if (!k_queue) return;
-	timer("kinetic partition", &Kinetic_queue::Kpartition, *k_queue);
+	timer("kinetic partition", &Kinetic::Kinetic_queue::Kpartition, *k_queue);
 	mesh = kpolys_set->Get_mesh();
 }
 
@@ -302,7 +302,7 @@ void Manager::partition()
 //
 //	// save centralized result
 //	auto param = ES_params;
-//	param.translate = EPIC::in_Vector{0,0,0};
+//	param.translate = IC::Vector_3{0,0,0};
 //	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 //
 //	// auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
@@ -320,7 +320,7 @@ void Manager::extract_surface(double lamda, int GC_term)
 
 	// save centralized result
 	auto param = ES_params;
-	param.translate = EPIC::in_Vector{ 0,0,0 };
+	param.translate = IC::Vector_3{ 0,0,0 };
 	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, bsp->lcc, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
 
 	lines = std::move(surface_lines);

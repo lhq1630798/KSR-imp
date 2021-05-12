@@ -25,7 +25,6 @@ set(KSR_SOURCES
         "src/cgal/cgal_object.h"
         "src/cgal/cgal_object.cpp"
 
-        "src/partition/intersection.cpp"
         "src/partition/kinetic.cpp"
         "src/partition/kinetic.h"
         "src/partition/BSP.cpp"

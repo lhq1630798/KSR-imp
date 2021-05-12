@@ -9,7 +9,7 @@ int main()
 
 	if (file.empty()){
 		Platform plt{};
-		App app{ plt, Shader{ "src/gui/camera.vs", "src/gui/camera.fs" } };
+		App app{ plt, GL::Shader{ "src/gui/camera.vs", "src/gui/camera.fs" } };
 		plt.loop(app);
 	}
 	else {

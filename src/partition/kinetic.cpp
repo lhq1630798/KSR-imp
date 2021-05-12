@@ -8,8 +8,52 @@
 #undef max
 #undef min
 
+using namespace EC;
 
-inline void KPoint_2::set_sliding_speed(const Vector_2& speed, ::FT t)
+namespace Kinetic{
+
+std::optional<std::pair<Point_3, Point_3>> plane_seg_intersect_3(const Plane_3 &plane, const Segments_3 &segments_3){
+    auto inters = Points_3{};
+    for (size_t i = 0; i < segments_3.size(); i++ )
+    {
+        const auto &seg = segments_3[i];
+        if (auto result = CGAL::intersection(seg, plane))
+        {
+            if (auto inters_point = boost::get<Point_3>(&*result))
+            {
+                inters.push_back(*inters_point);
+            }
+            else if (auto inters_seg = boost::get<Segment_3>(&*result)){
+                // std::cout << "Segment_3 on plane\n";
+                return {};
+            }
+        }
+    }
+    if (inters.empty())
+        return {};
+    assert(inters.size() == 2);
+    return {{inters[0], inters[1]}};
+}
+
+Segments_3 edges_3(const Points_3 &points_3) 
+{
+    auto segments_3 = Segments_3{};
+    auto num = points_3.size();
+    assert(num >= 3);
+    for (size_t i = 1; i < num; i++)
+        segments_3.push_back(Segment_3{points_3[i - 1], points_3[i]}); //edges_3[0] corresponds to points_3[0,1]
+    segments_3.push_back(Segment_3{points_3[num - 1], points_3[0]});
+    return segments_3;
+}
+
+std::optional<std::pair<Point_3, Point_3>> plane_polygon_intersect_3(const Plane_3 &plane, const Polygon_3 &polygon)
+{
+    return plane_seg_intersect_3(plane, edges_3(polygon.points_3()));
+}
+
+
+
+inline void KPoint_2::set_sliding_speed(const Vector_2& speed, EC::FT t)
 {
     assert(_status == Mode::Sliding);
     if (seg_twin_speed) {
@@ -739,6 +783,11 @@ KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, size_t K)
     bool exhausted = K == 0;
     if (exhausted) K = -1; // K is useless
 
+    // large first
+    // std::sort(polygons_3.begin(), polygons_3.end(), [](Polygon_3& poly_3_a, Polygon_3& poly_3_b) {
+    //     return poly_3_a.inline_points.size() > poly_3_b.inline_points.size();
+    // });
+
     for (auto &poly_3 : polygons_3)
         _kpolygons_set.emplace_back(std::move(poly_3), K);
 
@@ -763,26 +812,39 @@ KPolygons_SET::KPolygons_SET(Polygons_3 polygons_3, size_t K)
 
     if (exhausted)
         bbox_clip();
+    // else {
+    //     //exhausted partition for the largest 6 planes
+    //     bbox_clip_firstN(6);
+    // }
 
     decompose();
 
     if (exhausted)
         for (auto& polys : _kpolygons_set)
             freeze_plane(polys);
+    // else {
+    //     //freeze the largest 6 planes
+    //     size_t num = 0;
+    //     for (auto& polys : _kpolygons_set) {
+    //         freeze_plane(polys);
+    //         num++;
+    //         if (num == 6) break;
+    //     }
+    // }
 
     for (auto polygons = std::prev(_kpolygons_set.end(), 6); polygons != _kpolygons_set.end(); polygons++)
         freeze_plane(*polygons);
 }
 
-void KPolygons_SET::set_inliner_points(const EPIC::Pwn_vector &points)
+void KPolygons_SET::set_inliner_points(const IC::PWN_vector &points)
 {
-	EPIC::EK_to_IK to_inexact;
-	EPIC::IK_to_EK to_exact;
+	EK_to_IK to_inexact;
+	IK_to_EK to_exact;
 	auto normal_threshold = std::cos(20 * CGAL_PI / 180);
 	auto dis_threshold = 0.001;
 	for (auto &kpolys : _kpolygons_set)
 	{
-		EPIC::Pwn_vector inliner;
+		IC::PWN_vector inliner;
 		auto plane = to_inexact(kpolys.plane());
 		auto plane_N = plane.orthogonal_vector();
 		for (const auto &[p,n] : points)
@@ -795,10 +857,10 @@ void KPolygons_SET::set_inliner_points(const EPIC::Pwn_vector &points)
 
 		for (auto &kpoly : kpolys._kpolygons_2) {
 			kpoly.inline_points.clear();
-			std::vector<EPIC::EPIC_K::Point_2> polygon_con;
+			std::vector<IC::Point_2> polygon_con;
 			for (const auto &p : kpoly.polygon_2().container())
 				polygon_con.push_back(to_inexact(p));
-			CGAL::Polygon_2<EPIC::EPIC_K> polygon{ polygon_con.begin(), polygon_con.end() };
+			CGAL::Polygon_2<IC::K> polygon{ polygon_con.begin(), polygon_con.end() };
 			for (const auto &[p, n] : inliner) {
 				auto projected = plane.to_2d(p);
 				if (polygon.has_on_bounded_side(projected))
@@ -810,8 +872,13 @@ void KPolygons_SET::set_inliner_points(const EPIC::Pwn_vector &points)
 
 void KPolygons_SET::bbox_clip()
 {
-    // clip supporting plane by bounding box
+    bbox_clip_firstN(_kpolygons_set.size() - 6);
+}
 
+void KPolygons_SET::bbox_clip_firstN(size_t N)
+{
+    // clip supporting plane by bounding box
+    size_t num = 0;
     auto bbox_begin = prev(_kpolygons_set.end(), 6);
     for (auto polys_i = _kpolygons_set.begin(); polys_i != bbox_begin; polys_i++)
     {
@@ -836,6 +903,10 @@ void KPolygons_SET::bbox_clip()
         polys_i->all_KP.clear();
         polys_i->_kpolygons_2.clear();
         polys_i->insert_kpoly_2(polygon_2, K)->set_inline_points(inline_points);
+
+        num++;
+        if (num == N) 
+            return;
     }
 }
 
@@ -947,6 +1018,8 @@ void KPolygons_SET::add_bounding_box(const Polygons_3 &polygons_3)
 
 Vector_2 Edge::sliding_speed(const Line_2 &line_2) const
 {
+    if (frozen)
+        return CGAL::NULL_VECTOR;
     auto res = CGAL::intersection(line(), line_2);
     assert(res);
     if (auto *cur_point = boost::get<Point_2>(&*res))
@@ -1033,4 +1106,6 @@ bool operator<(const Event& r1, const Event& r2)
     }
     assert(r1.plane == r2.plane);
     return r1.event_id < r2.event_id;
+}
+
 }

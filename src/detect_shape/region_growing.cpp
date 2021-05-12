@@ -11,14 +11,14 @@
 #include <fmt/core.h>
 #include <algorithm>
 
-using namespace EPIC;
+using namespace IC;
 namespace PMP = CGAL::Polygon_mesh_processing;
 
-std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const DetectShape_Params& params) {
-	using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<EPIC_K, Pwn_vector, Point_map>;
-	using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<EPIC_K, Pwn_vector, Point_map, Normal_map>;
-	using Sorting = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_sorting<EPIC_K, Pwn_vector, Neighbor_query, Point_map>;
-	using Region_growing = CGAL::Shape_detection::Region_growing<Pwn_vector, Neighbor_query, Region_type, Sorting::Seed_map>;
+std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, const DetectShape_Params& params) {
+	using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<IC::K, IC::PWN_vector, Point_map>;
+	using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<IC::K, IC::PWN_vector, Point_map, Normal_map>;
+	using Sorting = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_sorting<IC::K, IC::PWN_vector, Neighbor_query, Point_map>;
+	using Region_growing = CGAL::Shape_detection::Region_growing<IC::PWN_vector, Neighbor_query, Region_type, Sorting::Seed_map>;
 	using Region = std::vector<std::size_t>;
 	using Regions = std::vector<Region>;
 	
@@ -27,8 +27,8 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = params.neigbor_K;
-	const EPIC_K::FT  max_distance_to_plane = params.max_distance_to_plane;
-	const EPIC_K::FT  max_accepted_angle = params.max_accepted_angle;
+	const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
+	const IC::FT  max_accepted_angle = params.max_accepted_angle;
 	const std::size_t min_region_size = params.min_region_size;
 
 	// Create instances of the classes Neighbor_query and Region_type.
@@ -67,18 +67,18 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 	fmt::print("{:.3} coverage\n", num / points.size());
 
 	// fit plane
-	std::vector<EPIC_K::Plane_3> detected_plane;
+	std::vector<IC::Plane_3> detected_plane;
 	for (const auto& region : regions) {
-		std::vector<in_Point> points_coord;
+		std::vector<IC::Point_3> points_coord;
 		// Iterate through all region items.
 		for (const auto index : region) {
-			const Point_with_normal& point = *(points.begin() + index);
+			const IC::PWN& point = *(points.begin() + index);
 			points_coord.push_back(point.first);
 		}
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
-		EPIC_K::Plane_3 plane;
+		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
 		detected_plane.push_back(plane);
 	}
@@ -96,7 +96,7 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 		CGAL::regularize_planes(points,
 			Point_map(),
 			detected_plane,
-			CGAL::Identity_property_map<EPIC_K::Plane_3>(),
+			CGAL::Identity_property_map<IC::Plane_3>(),
 			CGAL::make_property_map(point_shape_index_map),
 			true,  // regularize parallelism
 			true,  // regularize orthogonality
@@ -149,13 +149,13 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 
 
 	// convert to exact kernel type
-	std::vector<Detected_shape> detected_shape;
+	std::vector<EC::Detected_shape> detected_shape;
 	for (const auto& region : regions) {
-		Plane_3 plane = to_exact(detected_plane[point_shape_index_map[region[0]]]);
+		EC::Plane_3 plane = to_exact(detected_plane[point_shape_index_map[region[0]]]);
 		//std::cout << "plane " << plane << std::endl;
-		PWN_vector region_points;
+		EC::PWN_vector region_points;
 		for (const auto index : region) {
-			const Point_with_normal& point = *(points.begin() + index);
+			const IC::PWN& point = *(points.begin() + index);
 			region_points.emplace_back(
 				to_exact(point.first),
 				to_exact(point.second));
@@ -167,10 +167,10 @@ std::vector<Detected_shape> region_growing_on_points(Pwn_vector points, const De
 	return detected_shape;
 }
 
-std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, const DetectShape_Params& params) {
+std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, const DetectShape_Params& params) {
 	//campute vertices normal
-	auto vnormals = polygon_mesh.add_property_map<vertex_descriptor, in_Vector>("v:normals", CGAL::NULL_VECTOR).first;
-	auto fnormals = polygon_mesh.add_property_map<face_descriptor, in_Vector>("f:normals", CGAL::NULL_VECTOR).first;
+	auto vnormals = polygon_mesh.add_property_map<vertex_descriptor, IC::Vector_3>("v:normals", CGAL::NULL_VECTOR).first;
+	auto fnormals = polygon_mesh.add_property_map<face_descriptor, IC::Vector_3>("f:normals", CGAL::NULL_VECTOR).first;
 	PMP::compute_normals(polygon_mesh, vnormals, fnormals);
 	
 
@@ -180,9 +180,9 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 	using Face_range = typename Surface_Mesh::Face_range;
 	
 	using Neighbor_query = CGAL::Shape_detection::Polygon_mesh::One_ring_neighbor_query<Surface_Mesh>;
-	using Region_type = CGAL::Shape_detection::Polygon_mesh::Least_squares_plane_fit_region<EPIC_K, Surface_Mesh>;
+	using Region_type = CGAL::Shape_detection::Polygon_mesh::Least_squares_plane_fit_region<IC::K, Surface_Mesh>;
 	
-	using Sorting = CGAL::Shape_detection::Polygon_mesh::Least_squares_plane_fit_sorting<EPIC_K, Surface_Mesh, Neighbor_query>;
+	using Sorting = CGAL::Shape_detection::Polygon_mesh::Least_squares_plane_fit_sorting<IC::K, Surface_Mesh, Neighbor_query>;
 
 	using Region = std::vector<std::size_t>;
 	using Regions = std::vector<Region>;
@@ -194,8 +194,8 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 	const Face_range face_range = faces(polygon_mesh);
 	
 	// Default parameter values for the data file polygon_mesh.off.
-	const EPIC_K::FT  max_distance_to_plane = params.max_distance_to_plane;
-	const EPIC_K::FT  max_accepted_angle = params.max_accepted_angle;
+	const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
+	const IC::FT  max_accepted_angle = params.max_accepted_angle;
 	const std::size_t min_region_size = params.min_region_size;
 
 	// Create instances of the classes Neighbor_query and Region_type.
@@ -232,11 +232,11 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 		<< std::endl;
 
 	using size_type = typename Surface_Mesh::size_type;
-	std::vector<EPIC_K::Plane_3> detected_plane;
-	Pwn_vector points;
+	std::vector<IC::Plane_3> detected_plane;
+	IC::PWN_vector points;
 	for (const auto& region : regions) {
 		// Iterate through all region items.
-		std::vector<in_Point> points_coord;
+		std::vector<IC::Point_3> points_coord;
 		for (const auto index : region){
 			/*for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
 				points_coord.push_back(polygon_mesh.point(vd));
@@ -248,13 +248,13 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 				center += Vec3(polygon_mesh.point(vd).x(), polygon_mesh.point(vd).y(), polygon_mesh.point(vd).z());
 			}
 			center /= 3;
-			points_coord.emplace_back(in_Point(center.x, center.y, center.z));
-			points.emplace_back(in_Point(center.x, center.y, center.z), fnormals[fd]);
+			points_coord.emplace_back(IC::Point_3(center.x, center.y, center.z));
+			points.emplace_back(IC::Point_3(center.x, center.y, center.z), fnormals[fd]);
 		}
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
-		EPIC_K::Plane_3 plane;
+		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
 		detected_plane.push_back(plane);
 	}
@@ -284,7 +284,7 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 		CGAL::regularize_planes(points,
 			Point_map(),
 			detected_plane,
-			CGAL::Identity_property_map<EPIC_K::Plane_3>(),
+			CGAL::Identity_property_map<IC::Plane_3>(),
 			CGAL::make_property_map(point_shape_index_map),
 			true,  // regularize parallelism
 			true,  // regularize orthogonality
@@ -313,14 +313,14 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 	}
 
 	// convert to exact kernel type
-	std::vector<Detected_shape> detected_shape;
+	std::vector<EC::Detected_shape> detected_shape;
 	//int count = 0;
 	for (const auto& region : regions) {
 		//std::cout << count << std::endl;
 		//count++;
-		Plane_3 plane = to_exact(detected_plane[tmesh_shape_index_map[region[0]]]);
+		EC::Plane_3 plane = to_exact(detected_plane[tmesh_shape_index_map[region[0]]]);
 		//std::cout << "plane " << plane << std::endl;
-		PWN_vector region_points;
+		EC::PWN_vector region_points;
 		for (const auto index : region) {
 			Vec3 center(0,0,0);
 			face_descriptor fd = face_descriptor(static_cast<size_type>(index));
@@ -329,7 +329,7 @@ std::vector<Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, co
 			}
 			center /= 3;
 			region_points.emplace_back(
-				to_exact(in_Point(center.x, center.y, center.z)),
+				EC::Point_3(center.x, center.y, center.z),
 				to_exact(fnormals[fd]));
 		}
 		detected_shape.emplace_back(plane, region_points);

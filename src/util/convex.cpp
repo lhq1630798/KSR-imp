@@ -1,6 +1,8 @@
 #include "convex.h"
 #include <cgal/convex_hull_2.h>
 
+using namespace EC;
+
 Polygon_2 get_convex(Points_2::const_iterator begin, Points_2::const_iterator end) {
 	//get convex point
 	std::vector<Point_2> convex_points;

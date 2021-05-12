@@ -7,28 +7,30 @@
 #include "cgal/cgal_object.h"
 
 #include <fmt/core.h>
-//#include "util/log.h"
+#include "util/log.h"
+#undef assert
+#define assert(expr) R_assert(expr)
 
 #include <iostream>
 #include <cstdlib>
 #include <map>
 #include <string>
-using namespace EPIC;
+// using namespace IC;
 
 /************* Compare Plane ********************/
 struct myComp {
-	bool operator()(const Plane_3& p1, const Plane_3& p2) const{
-		if (to_double(p1.a()) != to_double(p2.a())) {
-			return to_double(p1.a()) < to_double(p2.a());
+	bool operator()(const EC::Plane_3& p1, const EC::Plane_3& p2) const{
+		if (p1.a() != p2.a()) {
+			return p1.a() < p2.a();
 		}
-		else if (to_double(p1.b()) != to_double(p2.b())) {
-			return to_double(p1.b()) < to_double(p2.b());
+		else if (p1.b() != p2.b()) {
+			return p1.b() < p2.b();
 		}
-		else if (to_double(p1.c()) != to_double(p2.c())) {
-			return to_double(p1.c()) < to_double(p2.c());
+		else if (p1.c() != p2.c()) {
+			return p1.c() < p2.c();
 		}
 		else{
-			return to_double(p1.d()) < to_double(p2.d());
+			return p1.d() < p2.d();
 		}
 	}
 };
@@ -163,7 +165,7 @@ void merge_face(std::vector<std::vector<int>>& boundary_edges) {
 }
 
 //将含有hole的面分成正反两个重叠的面
-std::vector<std::vector<std::vector<int>>> merge_without_holes(std::map<int, std::vector<int>>& faces, std::map<int, in_Point> index_point) {
+std::vector<std::vector<std::vector<int>>> merge_without_holes(std::map<int, std::vector<int>>& faces, std::map<int, IC::Point_3> index_point) {
 	std::vector<std::pair<int, int>> edges = get_edges(faces);
 	/*for (int i = 0; i < edges.size(); i++) {
 		std::cout << edges[i].first << " " << edges[i].second << std::endl;
@@ -211,7 +213,7 @@ std::vector<std::vector<std::vector<int>>> merge_without_holes(std::map<int, std
 
 
 //将属于同一平面的子面聚类，得到 Map[Plane, faces_darts]
-std::map < Plane_3, std::vector<Dart_handle>, myComp > get_merge_face(CMap_3& cm, Neighbor N, GraphType* g) {
+std::map < EC::Plane_3, std::vector<Dart_handle>, myComp > get_merge_face(CMap_3& cm, Neighbor N, GraphType* g) {
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
 	auto ite = N.begin();
@@ -234,11 +236,11 @@ std::map < Plane_3, std::vector<Dart_handle>, myComp > get_merge_face(CMap_3& cm
 	}
 
 	//每个平面上的所有面
-	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face;
+	std::map < EC::Plane_3, std::vector<Dart_handle>, myComp > merge_face;
 	for (int i = 0; i < surface_darts.size(); i++) {
-		Plane_3 plane = cm.info<2>(surface_darts[i]).plane;
-		Direction_3 p_normal = plane.orthogonal_direction();
-		Direction_3 normal = cm.info(surface_darts[i]).direction;
+		EC::Plane_3 plane = cm.info<2>(surface_darts[i]).plane;
+		EC::Direction_3 p_normal = plane.orthogonal_direction();
+		EC::Direction_3 normal = cm.info(surface_darts[i]).direction;
 		if (normal == p_normal) {
 			auto it = merge_face.find(plane);
 			if (it != merge_face.end()) {
@@ -273,7 +275,7 @@ std::map < Plane_3, std::vector<Dart_handle>, myComp > get_merge_face(CMap_3& cm
 
 
 //得到merge后的每个面
-std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face) {
+std::vector<std::vector<IC::Point_3>> get_all_faces(CMap_3& cm, std::map < EC::Plane_3, std::vector<Dart_handle>, myComp > merge_face) {
 	
 	auto itMerge = merge_face.begin();
 	auto itMEnd = merge_face.end();
@@ -281,7 +283,7 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 	//遍历每个平面
 	//int num = 0;
 	int v_index = 0;
-	std::vector<std::vector<in_Point>> all_faces;
+	std::vector<std::vector<IC::Point_3>> all_faces;
 	while (itMerge != itMEnd) {
 
 		std::vector<Dart_handle> plane_darts = itMerge->second;
@@ -289,7 +291,7 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 		//Surface_Mesh m;
 
 		//get faces
-		std::map<in_Point, int> point_index;
+		std::map<IC::Point_3, int> point_index;
 		std::map<int, std::vector<int>> faces;
 		for (int i = 0; i < plane_darts.size(); i++) {
 			Dart_handle d = plane_darts[i];
@@ -298,8 +300,8 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 
 			for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 			{
-				Point_3 p3 = cm.point(it);
-				in_Point p = in_Point(
+				EC::Point_3 p3 = cm.point(it);
+				IC::Point_3 p = IC::Point_3(
 					CGAL::to_double(p3.x()),
 					CGAL::to_double(p3.y()),
 					CGAL::to_double(p3.z()));
@@ -317,18 +319,18 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 			faces[i] = v;
 
 		}
-		std::map<int, in_Point> index_point;
+		std::map<int, IC::Point_3> index_point;
 		for (auto it = point_index.begin(); it != point_index.end(); it++) {
 			index_point[it->second] = it->first;
 		}
 
 		std::vector<std::vector<std::vector<int>>> results = merge_without_holes(faces, index_point);
-		//std::vector<std::vector<std::vector<in_Point>>> point_results;
+		//std::vector<std::vector<std::vector<IC::Point_3>>> point_results;
 		for (auto i : results) {
 			for (auto j : i) {
-				std::vector<in_Point> a_face;
+				std::vector<IC::Point_3> a_face;
 				for (auto k : j) {
-					in_Point v = index_point[k];
+					IC::Point_3 v = index_point[k];
 					a_face.push_back(v);
 				}
 				all_faces.push_back(a_face);
@@ -343,14 +345,14 @@ std::vector<std::vector<in_Point>> get_all_faces(CMap_3& cm, std::map < Plane_3,
 /******************** Get Surface Mesh *************************/
 
 //得到 merge 后的 Surface_mesh（holes由两个正反面重叠表示）
-Surface_Mesh get_surface(CMap_3& cm,GraphType* g,Neighbor N) {
-	Surface_Mesh m;
-	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
-	std::vector<std::vector<in_Point>> all_faces = get_all_faces(cm, merge_face);
+IC::Surface_Mesh get_surface(CMap_3& cm,GraphType* g,Neighbor N) {
+	IC::Surface_Mesh m;
+	auto merge_face = get_merge_face(cm, N, g);
+	std::vector<std::vector<IC::Point_3>> all_faces = get_all_faces(cm, merge_face);
 	for (auto i : all_faces) {
-		std::vector<vertex_descriptor> face_with_descriptor;
+		std::vector<IC::vertex_descriptor> face_with_descriptor;
 		for (auto j : i) {
-			vertex_descriptor v = m.add_vertex(j);
+			auto v = m.add_vertex(j);
 			face_with_descriptor.push_back(v);
 		}
 		m.add_face(face_with_descriptor);
@@ -359,8 +361,8 @@ Surface_Mesh get_surface(CMap_3& cm,GraphType* g,Neighbor N) {
 }
 
 //得到最复杂版本的Surface_mesh，不进行合并
-Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
-	Surface_Mesh m;
+IC::Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
+	IC::Surface_Mesh m;
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
 	auto ite = N.begin();
@@ -381,34 +383,58 @@ Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
 		}
 		ite++;
 	}
+	EK_to_IK to_inexact;
 	for (auto d : surface_darts)
 	{
-		std::vector<vertex_descriptor> verts;
+		std::vector<IC::vertex_descriptor> verts;
 		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 		{
-			Point_3 p3 = cm.point(it);
-			in_Point p = in_Point{
-				CGAL::to_double(p3.x()),
-				CGAL::to_double(p3.y()),
-				CGAL::to_double(p3.z()) };
+			EC::Point_3 p3 = cm.point(it);
+			IC::Point_3 p = to_inexact(p3);
 			verts.push_back(m.add_vertex(p));
 		}
 		m.add_face(verts);
 	}
+	//std::map<EC::Point_3, EC::vertex_descriptor> p2v;
+	//for (auto fdh : BSP::collect(cm.one_dart_per_cell<2>())) {
+	//	auto n1 = cm.info<3>(fdh).number, n2 = cm.info<3>(cm.beta<3>(fdh)).number;
+	//	if (g->what_segment(n1) == g->what_segment(n2))
+	//		continue;
+	//	if (g->what_segment(n1) == GraphType::SOURCE)
+	//		fdh = cm.beta<3>(fdh);
+	//	std::vector<EC::vertex_descriptor> verts;
+	//	EC::Vector_3 center_v{};
+	//	for (auto pdh : BSP::collect(cm.darts_of_cell<2, 2>(fdh))) {
+	//		auto p3 = cm.point(pdh);
+	//		center_v += p3 - CGAL::ORIGIN;
+	//		if (p2v.find(p3) == p2v.end()) {
+	//			p2v[p3] = m.add_vertex(p3);
+	//		}
+	//		verts.push_back(p2v[p3]);
+	//	}
+	//	auto center_p = CGAL::ORIGIN + (center_v / verts.size());
+	//	auto center_vert = m.add_vertex(center_p);
+	//	for (size_t i = 0; i != verts.size(); i++) {
+	//		size_t j = (i+1 == verts.size()) ? 0 : i+1;
+	//		auto f = m.add_face(center_vert, verts[i], verts[j]);
+	//		assert(f != m.null_face());
+	//	}
+	//}
+	//m.is_valid(true);
 	return m;
 }
 
 //得到 merge 后的所有面的边界
-Surface_Mesh get_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
-	Surface_Mesh m;
-	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
-	std::vector<std::vector<in_Point>> all_faces = get_all_faces(cm, merge_face);
+IC::Surface_Mesh get_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
+	IC::Surface_Mesh m;
+	auto merge_face = get_merge_face(cm, N, g);
+	std::vector<std::vector<IC::Point_3>> all_faces = get_all_faces(cm, merge_face);
 	for (auto face : all_faces) {
-		std::vector<vertex_descriptor> face_with_descriptor;
-		vertex_descriptor v0 = m.add_vertex(face[0]);
+		std::vector<IC::vertex_descriptor> face_with_descriptor;
+		auto v0 = m.add_vertex(face[0]);
 		face_with_descriptor.push_back(v0);
 		for (int j = 1; j < face.size(); j++) {
-			vertex_descriptor v = m.add_vertex(face[j]);
+			auto v = m.add_vertex(face[j]);
 			face_with_descriptor.push_back(v);
 			m.add_edge(face_with_descriptor[j - 1], face_with_descriptor[j]);
 		}
@@ -423,7 +449,7 @@ Surface_Mesh get_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
 /******************** Draw Surface Mesh *************************/
 
 //传参给GUI（未合并的表面）
-std::unique_ptr<Polygon_Mesh> draw_surface(CMap_3& cm, Neighbor N, GraphType* g) {
+std::unique_ptr<GL::Polygon_Mesh> draw_surface(CMap_3& cm, Neighbor N, GraphType* g) {
 	//找到source和sink之间的面的dart d
 	std::vector<Dart_handle> surface_darts;
 	auto ite = N.begin();
@@ -444,30 +470,30 @@ std::unique_ptr<Polygon_Mesh> draw_surface(CMap_3& cm, Neighbor N, GraphType* g)
 		}
 		ite++;
 	}
-	std::vector<Polygon_GL> polys_3;
+	std::vector<GL::Polygon> polys_3;
 	for (auto d : surface_darts)
 	{
 		std::vector<Vec3> verts;
 		for (CMap_3::One_dart_per_incident_cell_range<0, 2>::iterator it(cm.one_dart_per_incident_cell<0, 2>(d).begin()), itend(cm.one_dart_per_incident_cell<0, 2>(d).end()); it != itend; ++it)
 		{
-			Point_3 p3 = cm.point(it);
+			EC::Point_3 p3 = cm.point(it);
 			Vec3 p = Vec3{
 				CGAL::to_double(p3.x()),
 				CGAL::to_double(p3.y()),
 				CGAL::to_double(p3.z()) };
 			verts.push_back(p);
 		}
-		polys_3.push_back(Polygon_GL(verts));
+		polys_3.push_back(GL::Polygon(verts));
 	}
-	return std::make_unique<Polygon_Mesh>(polys_3);
+	return std::make_unique<GL::Polygon_Mesh>(polys_3);
 
 }
 
 //传参给GUI（合并后的面的边界）
-std::unique_ptr<Lines_GL> draw_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
+std::unique_ptr<GL::Lines> draw_surface_outline(CMap_3& cm, GraphType* g, Neighbor N) {
 
-	std::map < Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
-	std::vector<std::vector<in_Point>> all_faces = get_all_faces(cm, merge_face);
+	std::map < EC::Plane_3, std::vector<Dart_handle>, myComp > merge_face = get_merge_face(cm, N, g);
+	std::vector<std::vector<IC::Point_3>> all_faces = get_all_faces(cm, merge_face);
 	std::vector<Vec3> face_with_point;
 	for (auto face : all_faces) {
 		for (int j = 1; j < face.size(); j++) {
@@ -478,7 +504,7 @@ std::unique_ptr<Lines_GL> draw_surface_outline(CMap_3& cm, GraphType* g, Neighbo
 		face_with_point.push_back(Vec3{ face[0].x(), face[0].y(), face[0].z() });
 	}
 
-	return std::make_unique<Lines_GL>(face_with_point);
+	return std::make_unique<GL::Lines>(face_with_point);
 }
 
 /******************** Draw Surface Mesh End*************************/
@@ -486,9 +512,9 @@ std::unique_ptr<Lines_GL> draw_surface_outline(CMap_3& cm, GraphType* g, Neighbo
 
 
 //自定义的 write_ply 函数
-bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
+bool write_ply_pss(std::ostream& os, IC::Surface_Mesh& sm)
 {
-	typedef Surface_Mesh SMesh;
+	typedef IC::Surface_Mesh SMesh;
 	typedef typename SMesh::Vertex_index VIndex;
 	typedef typename SMesh::Edge_index EIndex;
 
@@ -531,7 +557,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 
 
 // //将表面保存成ply文件格式
-// std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params)
+// std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > Extract_Surface(const KPolygons_SET& polygons_set, ExtractSurface_Params& ES_params)
 // {
 
 // 	std::cout << "Extract Surface Begin" << std::endl;
@@ -564,7 +590,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 // 	//合并后的表面
 // 	Surface_Mesh m1 = get_surface(cm, g, N);
 // 	for (vertex_descriptor vd : vertices(m1)) {
-// 		m1.point(vd) = in_Point{
+// 		m1.point(vd) = IC::Point_3{
 // 			m1.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 // 			m1.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 // 			m1.point(vd).z()*ES_params.scale - ES_params.translate.z()};
@@ -579,7 +605,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 // 	//未合并的表面
 // 	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
 // 	for (vertex_descriptor vd : vertices(m2)) {
-// 		m2.point(vd) = in_Point{
+// 		m2.point(vd) = IC::Point_3{
 // 			m2.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 // 			m2.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 // 			m2.point(vd).z()*ES_params.scale - ES_params.translate.z() };
@@ -594,7 +620,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 // 	//合并后的表面边界
 // 	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
 // 	for (vertex_descriptor vd : vertices(m_outline)) {
-// 		m_outline.point(vd) = in_Point{
+// 		m_outline.point(vd) = IC::Point_3{
 // 			m_outline.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 // 			m_outline.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 // 			m_outline.point(vd).z()*ES_params.scale - ES_params.translate.z() };
@@ -608,8 +634,8 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 
 
 // 	/****************** draw surface mesh *************************/
-// 	std::unique_ptr<Polygon_Mesh> surface = draw_surface(cm, N, g);
-// 	std::unique_ptr<Lines_GL> surface_outline = draw_surface_outline(cm, g, N);
+// 	std::unique_ptr<GL::Polygon_Mesh> surface = draw_surface(cm, N, g);
+// 	std::unique_ptr<GL::Lines> surface_outline = draw_surface_outline(cm, g, N);
 	
 // 	delete g;
 
@@ -618,7 +644,7 @@ bool write_ply_pss(std::ostream& os, Surface_Mesh& sm)
 
 
 //将表面保存成ply文件格式
-std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extract_Surface(BSP::LCC_3& cm, ExtractSurface_Params& ES_params)
+std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > Extract_Surface(BSP::LCC_3& cm, ExtractSurface_Params& ES_params)
 {
 
 	std::cout << "Extract Surface Begin" << std::endl;
@@ -644,9 +670,9 @@ std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extra
 
 	/****************** write surface mesh *************************/
 	//合并后的表面
-	Surface_Mesh m1 = get_surface(cm, g, N);
-	for (vertex_descriptor vd : vertices(m1)) {
-		m1.point(vd) = in_Point{
+	auto m1 = get_surface(cm, g, N);
+	for (auto vd : vertices(m1)) {
+		m1.point(vd) = IC::Point_3{
 			m1.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 			m1.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 			m1.point(vd).z()*ES_params.scale - ES_params.translate.z()};
@@ -659,9 +685,9 @@ std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extra
 	f.close();
 
 	//未合并的表面
-	Surface_Mesh m2 = get_surface_without_merge(cm, g, N);
-	for (vertex_descriptor vd : vertices(m2)) {
-		m2.point(vd) = in_Point{
+	auto m2 = get_surface_without_merge(cm, g, N);
+	for (auto vd : vertices(m2)) {
+		m2.point(vd) = IC::Point_3{
 			m2.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 			m2.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 			m2.point(vd).z()*ES_params.scale - ES_params.translate.z() };
@@ -674,9 +700,9 @@ std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extra
 	f2.close();
 
 	//合并后的表面边界
-	Surface_Mesh m_outline = get_surface_outline(cm, g, N);
-	for (vertex_descriptor vd : vertices(m_outline)) {
-		m_outline.point(vd) = in_Point{
+	auto m_outline = get_surface_outline(cm, g, N);
+	for (auto vd : vertices(m_outline)) {
+		m_outline.point(vd) = IC::Point_3{
 			m_outline.point(vd).x()*ES_params.scale - ES_params.translate.x(),
 			m_outline.point(vd).y()*ES_params.scale - ES_params.translate.y(),
 			m_outline.point(vd).z()*ES_params.scale - ES_params.translate.z() };
@@ -690,12 +716,12 @@ std::tuple<std::unique_ptr<Polygon_Mesh>, std::unique_ptr<Lines_GL>, int > Extra
 
 
 	/****************** draw surface mesh *************************/
-	std::unique_ptr<Polygon_Mesh> surface = draw_surface(cm, N, g);
-	std::unique_ptr<Lines_GL> surface_outline = draw_surface_outline(cm, g, N);
+	std::unique_ptr<GL::Polygon_Mesh> surface = draw_surface(cm, N, g);
+	std::unique_ptr<GL::Lines> surface_outline = draw_surface_outline(cm, g, N);
 	
 	delete g;
 
-	return {std::move(surface), std::move(surface_outline), m1.number_of_faces()};
+	return { std::move(surface), std::move(surface_outline), m1.number_of_faces() };
 }
 
 

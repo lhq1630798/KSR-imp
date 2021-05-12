@@ -4,6 +4,26 @@
 #include <list>
 #include <array>
 
+namespace Kinetic{
+    using EC::FT;
+    using EC::Vector_2;
+    using EC::Vector_3;
+    using EC::Point_2;
+    using EC::Points_2;
+    using EC::Point_3;
+    using EC::Segment_2;
+    using EC::Segment_3;
+    using EC::Line_2;
+    using EC::Line_3;
+    using EC::Ray_2;
+    using EC::Polygon_2;
+    using EC::Polygon_3;
+    using EC::Polygons_3;
+    using EC::Plane_3;
+    using EC::PWN;
+    using EC::PWN_vector;
+    // using namespace EC;
+
 static const auto INF = FT{99999};
 
 size_t next_id();
@@ -50,7 +70,7 @@ public:
         assert((_speed == CGAL::NULL_VECTOR) != (_status != Mode::Frozen));
     }
 
-    Point_2 move_dt(::FT dt)
+    Point_2 move_dt(EC::FT dt)
     {
         return *this + dt * _speed;
     }
@@ -66,9 +86,9 @@ public:
         return *this;
     }
 
-    void set_sliding_speed(const Vector_2& speed, ::FT t);
+    void set_sliding_speed(const Vector_2& speed, EC::FT t);
 
-    void frozen(::FT t)
+    void frozen(EC::FT t)
     {
         if (_status == Mode::Sliding)
             set_sliding_speed(CGAL::NULL_VECTOR, t);
@@ -133,7 +153,10 @@ public:
     {
         _seg = Segment_2{ *vert1->kp, *vert2->kp };
         _line = _seg.supporting_line();
-        _moved_line = Line_2{ vert1->kp->move_dt(1), vert2->kp->move_dt(1) };
+        if (vert1->kp->_status == Mode::Frozen && vert2->kp->_status == Mode::Frozen)
+            frozen = true;
+        else
+            _moved_line = Line_2{ vert1->kp->move_dt(1), vert2->kp->move_dt(1) };
     }
     Vert_Circ vert1, vert2;
     Segment_2 seg() const { return _seg; }
@@ -142,7 +165,11 @@ public:
     friend bool operator==(const Edge& a, const Edge& b) { return a.id == b.id; }
 
 private:
-    Line_2 moved_line() const { return _moved_line; }
+    const Line_2 &moved_line() const { 
+        if (frozen) return _line;
+        return _moved_line;
+    }
+    bool frozen = false;
     Segment_2 _seg;
     Line_2 _line;
     Line_2 _moved_line;
@@ -488,7 +515,7 @@ public:
     KPolygons_SET(Polygons_3 polygons_3, size_t K);
 
     size_t size() const { return _kpolygons_set.size() - 6; }
-	void set_inliner_points(const EPIC::Pwn_vector &points);
+	void set_inliner_points(const IC::PWN_vector &points);
 
     void move_dt(FT dt)
     {
@@ -502,7 +529,7 @@ public:
             kpolys.move_dt(dt);
     }
 
-    std::unique_ptr<Polygon_Mesh> Get_mesh()
+    std::unique_ptr<GL::Polygon_Mesh> Get_mesh()
     {
         Polygons_3 polys_3;
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -510,10 +537,10 @@ public:
             auto tmp = kpolys->polygons_3();
             polys_3.insert(polys_3.end(), tmp.begin(), tmp.end());
         }
-        return std::make_unique<Polygon_Mesh>(std::vector<Polygon_GL>(polys_3.begin(), polys_3.end()));
+        return std::make_unique<GL::Polygon_Mesh>(std::vector<GL::Polygon>(polys_3.begin(), polys_3.end()));
     }
 
-    std::unique_ptr<Lines_GL> Get_Segments()
+    std::unique_ptr<GL::Lines> Get_Segments()
     {
         std::vector<Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -529,10 +556,10 @@ public:
                                             (float)CGAL::to_double(point2.y()),
                                             (float)CGAL::to_double(point2.z()));
                 }
-        return std::make_unique<Lines_GL>(end_points);
+        return std::make_unique<GL::Lines>(end_points);
     }
 
-    std::unique_ptr<Lines_GL> Get_Edges()
+    std::unique_ptr<GL::Lines> Get_Edges()
     {
         std::vector<Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -550,10 +577,10 @@ public:
                             (float)CGAL::to_double(point2.z()));
                     }
                 }
-        return std::make_unique<Lines_GL>( end_points );
+        return std::make_unique<GL::Lines>( end_points );
     }
 
-    std::unique_ptr<Point_cloud_GL> Get_Point_cloud()
+    std::unique_ptr<GL::Point_cloud> Get_Point_cloud()
     {
         std::vector<Vec3> points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
@@ -562,13 +589,14 @@ public:
                     points.emplace_back((float)CGAL::to_double(inline_point.x()),
                                         (float)CGAL::to_double(inline_point.y()),
                                         (float)CGAL::to_double(inline_point.z()));
-        return std::make_unique<Point_cloud_GL>(std::move(points));
+        return std::make_unique<GL::Point_cloud>(std::move(points));
     }
 
 private:
     void add_bounding_box(const Polygons_3 &polygons_3);
     void decompose();
     void bbox_clip();
+    void bbox_clip_firstN(size_t);
 };
 
 class Event
@@ -612,7 +640,7 @@ public:
     void finalize();
 	bool is_done() { return queue.empty(); }
     size_t size() { return queue.size(); }
-    Update_Point get_update_point()
+    GL::Update_Point get_update_point()
     {
         std::vector<Vec3> points;
         for (auto kp : need_update)
@@ -623,7 +651,7 @@ public:
                                 (float)CGAL::to_double(point.z()));
         }
 
-        return Update_Point{std::move(points)};
+        return GL::Update_Point{std::move(points)};
     }
 
 private:
@@ -710,4 +738,6 @@ private:
 
 inline bool operator<(KPoly_Ref f1, KPoly_Ref f2) {
     return f1->id < f2->id;
+}
+
 }

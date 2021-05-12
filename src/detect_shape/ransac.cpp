@@ -5,13 +5,13 @@
 #include <CGAL/Shape_detection/Efficient_RANSAC.h>
 #include <CGAL/Regularization/regularize_planes.h>
 
-using namespace EPIC;
-using Traits = CGAL::Shape_detection::Efficient_RANSAC_traits<EPIC_K, Pwn_vector, Point_map, Normal_map>;
+// using namespace IC;
+using Traits = CGAL::Shape_detection::Efficient_RANSAC_traits<IC::K, IC::PWN_vector, IC::Point_map, IC::Normal_map>;
 using Efficient_ransac = CGAL::Shape_detection::Efficient_RANSAC<Traits>;
 using Plane_Shape = CGAL::Shape_detection::Plane<Traits>;
 
 
-std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Params& params)
+std::vector<EC::Detected_shape> ransac(IC::PWN_vector points, const DetectShape_Params& params)
 {
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
@@ -51,7 +51,7 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Pa
 	auto shapes = ransac.shapes();
 
 	// Compute coverage, i.e. ratio of the points assigned to a shape.
-	FT coverage = FT(points.size() - ransac.number_of_unassigned_points()) / FT(points.size());
+	IC::FT coverage = IC::FT(points.size() - ransac.number_of_unassigned_points()) / IC::FT(points.size());
 	std::cout << "time: " << time.time() * 1000 << "ms" << std::endl;
 	std::cout << shapes.end() - shapes.begin() << " primitives, " << coverage << " coverage" << std::endl;
 
@@ -70,7 +70,7 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Pa
 	 // Regularize detected planes.
 	auto planes = ransac.planes();
 	 CGAL::regularize_planes(points,
-	 	Point_map(),
+	 	IC::Point_map(),
 	 	planes,
 	 	CGAL::Shape_detection::Plane_map<Traits>(),
 	 	CGAL::Shape_detection::Point_to_shape_index_map<Traits>(points, planes),
@@ -96,7 +96,7 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Pa
 	//********get planes and points on each plane********
 
 	it = shapes.begin();
-	std::vector<Detected_shape> detected_shape;
+	std::vector<EC::Detected_shape> detected_shape;
 
 	int i = 0;
 	while (it != shapes.end()) {
@@ -111,11 +111,11 @@ std::vector<Detected_shape> ransac(EPIC::Pwn_vector points, const DetectShape_Pa
 		auto plane_3 = to_exact(plane->operator CGAL::Plane_3<CGAL::Epick>());
 
 		//out: get convex point index
-		std::vector<PWN> v;
+		std::vector<EC::PWN> v;
 
 		while (index_it != (*it)->indices_of_assigned_points().end()) {
 			// Retrieve point.
-			const Point_with_normal& p = *(points.begin() + (*index_it));
+			const IC::PWN& p = *(points.begin() + (*index_it));
 			v.emplace_back(to_exact(p.first), to_exact(p.second));
 
 			// Proceed with the next point.

@@ -19,9 +19,9 @@ class Platform;
 
 class App {
 public:
-	App(Platform& plt, Shader shader);
+	App(Platform& plt, GL::Shader shader);
 	Manager manager;
-	Shader shader;
+	GL::Shader shader;
 	void render();
 	Camera camera = Camera{ glm::vec3(0.0f, 0.0f, 3.0f) };
 

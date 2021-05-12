@@ -1,7 +1,7 @@
 #include "gui/app.h"
 #include "gui/platform.h"
 
-App::App(Platform& plt, Shader shader)
+App::App(Platform& plt, GL::Shader shader)
 	: plt(plt), shader(shader) {}
 
 void App::render()
