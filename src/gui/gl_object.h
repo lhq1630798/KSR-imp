@@ -335,7 +335,7 @@ public:
     void render_boundary(Shader &shader) const
     {
         shader.use();
-        glLineWidth(5.0f);
+        glLineWidth(2.0f);
         glPolygonOffset(1.0f, 1.0f);
         glEnable(GL_POLYGON_OFFSET_LINE);
         for (const auto &poly : _polygons)

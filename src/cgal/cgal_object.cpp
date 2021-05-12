@@ -2,6 +2,9 @@
 #include "cgal/cgal_object.h"
 #include "util/convex.h"
 
+#include "util/log.h"
+#undef assert
+#define assert(expr) R_assert(expr)
 
 Polygons_3 generate_rand_polys_3(size_t num)
 {
@@ -172,4 +175,12 @@ void Polygon_3::update_points_3()
     _points_3.reserve(size());
     for (const auto& p : points_2())
         _points_3.push_back(_plane.to_3d(p));
+
+    // center
+    Vector_2 center_V = CGAL::NULL_VECTOR;
+    for (const auto& point_2 : _polygon_2.container())
+        center_V += point_2 - CGAL::ORIGIN;
+    center_V = center_V / _polygon_2.size();
+    auto center_P = CGAL::ORIGIN + center_V;
+    _center = plane().to_3d(center_P);
 }

@@ -277,10 +277,10 @@ void Manager::init_Kqueue(size_t K)// 0 means exhausted
 	k_queue = std::make_unique<Kinetic_queue>(*kpolys_set);
 }
 
-void Manager::init_BSP()
+void Manager::init_BSP(float expand_scale)
 {
 	if (convex_shape.empty()) return;
-	bsp = std::make_unique<BSP::BSP_Partition>(convex_shape);
+	bsp = std::make_unique<BSP::BSP_Partition>(convex_shape, expand_scale);
 	mesh = bsp->Get_mesh();
 }
 

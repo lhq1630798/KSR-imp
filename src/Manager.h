@@ -16,7 +16,7 @@ public:
 	void load_mesh();
 	void detect_shape(DetectShape_Params params, int DetectShape_option);//convex shape + alpha shape
 	void init_Kqueue(size_t K = 1);
-	void init_BSP();
+	void init_BSP(float);
 	void partition();
 	void extract_surface(double lamda, int GC_term);
 	int run_offline(fs::path file);

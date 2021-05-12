@@ -45,7 +45,7 @@ using Dart_handle = LCC_3::Dart_handle;
 class BSP_Partition
 {
 public:
-	BSP_Partition(Polygons_3 _polygons_3);
+	BSP_Partition(Polygons_3 _polygons_3, float expand_scale = 0.1);
 	void partition();
 	void partition_next();
 
@@ -55,6 +55,7 @@ public:
 private:
 	std::vector< LCC_3::Dart_handle > volumes;
 	Polygons_3 polygons_3;
+	int count = 0;
 };
 
 template<typename Range>

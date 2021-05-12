@@ -91,6 +91,7 @@ public:
     }
     std::optional<std::pair<Polygon_3, Polygon_3>> split_by_plane(Plane_3) const;
     size_t size() const { return points_2().size(); };
+    Point_3 center() const { return _center; };
     const Points_2 &points_2() const { return _polygon_2.container(); }
     Points_2 &points_2() { return _polygon_2.container(); }
     const Plane_3 &plane() const { return _plane; }
@@ -109,6 +110,7 @@ private:
     Plane_3 _plane;
     Polygon_2 _polygon_2;
     Points_3 _points_3;
+    Point_3 _center;
 };
 
 Polygons_3 generate_rand_polys_3(size_t num);

@@ -71,8 +71,9 @@ void App::render_imgui()
 	ImGui::Checkbox("alpha shape", &show_alpha_shape);
 
 	ImGui::Separator();
+	ImGui::SliderFloat("expand_scale", &expand_scale, 0, 1);
 	if (ImGui::Button("init BSP")) {
-		manager.init_BSP();
+		manager.init_BSP(expand_scale);
 	}
 	if (manager.bsp) {
 		if (ImGui::Button("split once")) {

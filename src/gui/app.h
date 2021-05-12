@@ -48,7 +48,8 @@ private:
 	float grow_speed = -1;
 	float lamda = 1;
 	int K = 2;
-	int GC_term = 3;
+	float expand_scale = 0.1;
+	int GC_term = 2;
 	int DetectShape_option = 2;
 
 	DetectShape_Params params;

@@ -1,4 +1,5 @@
 #include "BSP.h"
+#include <fmt/core.h>
 
 #include "util/log.h"
 #undef assert
@@ -73,7 +74,9 @@ private:
 	LCC_3& lcc;
 };
 
-BSP_Partition::BSP_Partition(Polygons_3 _polygons_3) : polygons_3(_polygons_3) {
+BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
+	: polygons_3(_polygons_3) 
+{
 	lcc.onsplit_functor<3>() = Polyhedra_Split_functor(lcc);
 	lcc.onsplit_functor<2>() = Face_Split_functor(lcc);
 
@@ -81,28 +84,33 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3) : polygons_3(_polygons_3) {
 	std::sort(polygons_3.begin(), polygons_3.end(), [](Polygon_3& poly_3_a, Polygon_3& poly_3_b) {
 		return poly_3_a.inline_points.size() < poly_3_b.inline_points.size();
 	});
-	//// large first
+	// large first
 	//std::sort(polygons_3.begin(), polygons_3.end(), [](Polygon_3& poly_3_a, Polygon_3& poly_3_b) {
 	//	return poly_3_a.inline_points.size() > poly_3_b.inline_points.size();
 	//});
 
-	//expand polygon
-	for (auto& poly : polygons_3) {
-		auto& polygon_2 = poly.polygon_2();
-		// center
-		Vector_2 center_V = CGAL::NULL_VECTOR;
-		for (const auto& point_2 : polygon_2.container())
-			center_V += point_2 - CGAL::ORIGIN;
-		center_V = center_V / polygon_2.size();
-		auto center_P = CGAL::ORIGIN + center_V;
-		//expand
-		for (auto& point_2 : polygon_2.container()) {
-			point_2 += 0.1*(point_2 - center_P);
+	// calculate bbox before expand polygon
+	auto box = CGAL::Bbox_3{};
+	for (const auto& poly_3 : polygons_3)
+		box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
+	box.dilate(1e3);
+
+	assert(expand_scale >= 0);
+	bool expand = expand_scale > 0;
+	if (expand) {
+		//expand polygon
+		for (auto& poly : polygons_3) {
+			auto center_2 = poly.plane().to_2d(poly.center());
+			for (auto& point_2 : poly.polygon_2().container()) {
+				point_2 += expand_scale * (point_2 - center_2);
+			}
+			poly.update_points_3();
 		}
-		poly.update_points_3();
+
 	}
 
-	// bounding box
+
+	// add bounding box
 	/*
 	*       4----7
 	*      /|   /|
@@ -119,10 +127,7 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3) : polygons_3(_polygons_3) {
 	*   /z
 	*  v
 	*/
-	auto box = CGAL::Bbox_3{};
-	for (const auto& poly_3 : polygons_3)
-		box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
-	box.dilate(1e3);
+
 
 	Point_3 p0 = { box.xmin(), box.ymin(), box.zmax() };
 	Point_3 p1 = { box.xmax(), box.ymin(), box.zmax() };
@@ -145,6 +150,39 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3) : polygons_3(_polygons_3) {
 		lcc.info<2>(fdh).plane = plane;
 	}
 
+	if (expand) {
+		auto center = lcc.info<3>(dh).center;
+		//clip expanded polygons by bbox
+		for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
+			auto plane = lcc.info<2>(fdh).plane;
+			assert(plane.has_on_positive_side(center));
+			auto polys = std::move(lcc.info<3>(dh).polygons_3);
+
+			for (auto poly : polys) {
+				if (auto res = poly.split_by_plane(plane)) {
+					auto [new_poly1, new_poly2] = *res;
+					assert(!plane.has_on(new_poly1.center()));
+					if (plane.has_on_positive_side(new_poly1.center())) {
+						lcc.info<3>(fdh).polygons_3.push_back(new_poly1);
+					}
+					else {
+						lcc.info<3>(fdh).polygons_3.push_back(new_poly2);
+					}
+				}
+				else {
+					assert(!plane.has_on(poly.center()));
+					if (plane.has_on_positive_side(poly.center())) {
+						lcc.info<3>(fdh).polygons_3.push_back(poly);
+					}
+					else {
+						assert(false);
+					}
+				}
+			}
+
+		}
+	}
+
 	volumes.push_back(dh);
 
 	auto ghost = lcc.make_combinatorial_hexahedron();
@@ -161,10 +199,7 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3) : polygons_3(_polygons_3) {
 
 void BSP_Partition::partition()
 {
-	int count = 0;
 	while (!volumes.empty()) {
-		std::cout << "\rsplit volume " << count;
-		count++;
 		partition_next();
 	}
 	lcc.display_characteristics(std::cout) << ",valid=" << lcc.is_valid() << std::endl;
@@ -208,7 +243,7 @@ void BSP_Partition::partition()
 	for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
 		inliner_num += lcc.info<2>(fdh).inline_points.size();
 	}
-	std::cout << "inliner_num = " << inliner_num << std::endl;
+	fmt::print("inliner_num = {}\n", inliner_num);
 
 
 }
@@ -220,6 +255,12 @@ void BSP_Partition::partition_next()
 {
 	if (volumes.empty())
 		return;
+	fmt::print("split volume:{} ...\n", count);
+	//if (count == 16) {
+	//	DEBUG_BREAK;
+	//}
+	count++;
+
 	auto dh = volumes.back();
 	volumes.pop_back();
 
@@ -317,8 +358,8 @@ void BSP_Partition::partition_next()
 
 		if (auto res = poly.split_by_plane(largest_poly.plane())) {
 			auto [new_poly1, new_poly2] = *res;
-			assert(!largest_poly.plane().has_on(new_poly1.points_3()[0]));
-			if (largest_poly.plane().has_on_positive_side(new_poly1.points_3()[0])) {
+			assert(!largest_poly.plane().has_on(new_poly1.center()));
+			if (largest_poly.plane().has_on_positive_side(new_poly1.center())) {
 				lcc.info<3>(new_volume).polygons_3.push_back(new_poly1);
 				lcc.info<3>(lcc.beta<3>(new_volume)).polygons_3.push_back(new_poly2);
 			}
@@ -328,8 +369,8 @@ void BSP_Partition::partition_next()
 			}
 		}
 		else {
-			assert(!largest_poly.plane().has_on(poly.points_3()[0]));
-			if (largest_poly.plane().has_on_positive_side(poly.points_3()[0])) {
+			assert(!largest_poly.plane().has_on(poly.center()));
+			if (largest_poly.plane().has_on_positive_side(poly.center())) {
 				lcc.info<3>(new_volume).polygons_3.push_back(poly);
 			}
 			else {
