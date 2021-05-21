@@ -19,6 +19,7 @@ struct face_attributes {
 struct polyhedra_attributes {
 	EC::Polygons_3 polygons_3;
 	EC::Point_3 center;
+	EC::FT volume = 0;
 	int number = -1;
 	bool is_ghost = false;
 };

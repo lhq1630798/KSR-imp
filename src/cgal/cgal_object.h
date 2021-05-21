@@ -72,7 +72,8 @@ namespace IC
 	using Polygon_2 = CGAL::Polygon_2<K>;
 	using Surface_Mesh = CGAL::Surface_mesh<Point_3>;
 	using vertex_descriptor = Surface_Mesh::Vertex_index;
-	using face_descriptor = Surface_Mesh::Face_index;
+    using face_descriptor = Surface_Mesh::Face_index;
+    using edge_descriptor = Surface_Mesh::Edge_index;
 	using Vertex_index = CGAL::SM_Vertex_index;
 
 }

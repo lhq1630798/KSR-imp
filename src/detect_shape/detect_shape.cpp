@@ -33,11 +33,11 @@ EC::Polygons_3 detect_convexShape(std::vector<EC::Detected_shape>& detected_shap
 		//for (const auto& p : projected_points)
 		//	assert(!polygon2.has_on_unbounded_side(p));
 
-		polygon2 = simplify_convex(polygon2);
-		if (polygon2.size() <= 2) { //discard degenerate polygon after simplification
-			fmt::print("discard {}-edge polygon\n", polygon2.size());
-			continue;
-		}
+		//polygon2 = simplify_convex(polygon2);
+		//if (polygon2.size() <= 2) { //discard degenerate polygon after simplification
+		//	fmt::print("discard {}-edge polygon\n", polygon2.size());
+		//	continue;
+		//}
 		auto poly3 = Polygon_3{ plane_3, std::move(polygon2) };
 		poly3.set_inline_points(pwn);
 		results.push_back(std::move(poly3));
@@ -89,7 +89,7 @@ void CDTriangulation(CDT& cdt, std::map<IC::Point_2, CDT::Vertex_handle>& p_inde
 	
 }
 
-std::list<IC::Triangle_3> Triangles_of_alphaShape(const std::vector<EC::Detected_shape>& detected_shape, double alpha_value) {
+std::list<IC::Triangle_3> Triangles_of_alphaShape(const std::vector<EC::Detected_shape>& detected_shape, float scale) {
 	std::list<IC::Triangle_3> triangles;
 
 	
@@ -110,7 +110,8 @@ std::list<IC::Triangle_3> Triangles_of_alphaShape(const std::vector<EC::Detected
 		//std::cout << *as.find_optimal_alpha(1) << std::endl;
 
 		/******** Todo:use average sense as alpha value**********/
-		as.set_alpha(*as.find_optimal_alpha(1));
+		//as.set_alpha(*as.find_optimal_alpha(1));
+		as.set_alpha(*as.find_optimal_alpha(1) * scale); //scale optimal alpha value
 		//as.set_alpha(alpha_value);
 
 		CDT cdt;

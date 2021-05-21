@@ -40,7 +40,7 @@ public:
 	std::unique_ptr<GL::Polygon_Mesh> mesh;//extracted surface mesh
 	std::unique_ptr<GL::Lines> lines;//extracted surface mesh boundary
 
-	double alpha_value=0.5;
+	float alpha_scale = 1;
 	int Number_of_Facets;
 
 	ExtractSurface_Params ES_params;

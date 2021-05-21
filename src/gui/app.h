@@ -43,6 +43,7 @@ private:
 	bool show_inited_mesh = true;
 	bool show_alpha_shape = false;
 
+	bool back_cull = false;
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;

@@ -43,6 +43,12 @@ void App::render_imgui()
 	ImGui::SameLine();
 	ImGui::Checkbox("boundary", &show_boundary);
 	//ImGui::SliderFloat("depth", &depth, -1, 1);
+	if(ImGui::Checkbox("back culling", &back_cull)) {
+		if(back_cull) 
+			glEnable(GL_CULL_FACE);
+		else
+			glDisable(GL_CULL_FACE);
+	}
 
 	ImGui::Separator();
 	ImGui::BulletText("Start by loading point cloud with oriented normal");
@@ -68,6 +74,7 @@ void App::render_imgui()
 	}
 	ImGui::Text("Number_of_planar_shapes = %d", manager.convex_shape.size());
 
+	ImGui::DragFloat("scale alpha value", &manager.alpha_scale, 0.1, 1, 10);
 	ImGui::Checkbox("alpha shape", &show_alpha_shape);
 
 	ImGui::Separator();

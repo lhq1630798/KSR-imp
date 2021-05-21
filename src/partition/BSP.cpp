@@ -5,13 +5,25 @@
 #undef assert
 #define assert(expr) R_assert(expr)
 
-//#include <CGAL/Combinatorial_map.h>
-//using CMap_3 = CGAL::Combinatorial_map<3>;
-//#include <CGAL/Polygonal_surface_reconstruction.h>
-
+//TODO: geometric center
 using namespace EC;
 namespace BSP{
 
+	EC::FT volume(LCC_3& lcc, Dart_handle dh) {
+		auto fdhs = collect(lcc.one_dart_per_incident_cell<2, 3>(dh));
+		EC::FT volume = 0;
+		for (auto fdh : fdhs) {
+			auto pdhs = collect(lcc.one_dart_per_incident_cell<0, 2>(fdh));
+			auto size = pdhs.size();
+			auto p0 = lcc.point(pdhs[0]);
+			for (int i = 1; i < size-1; i++) {
+				auto p1 = lcc.point(pdhs[i]);
+				auto p2 = lcc.point(pdhs[i+1]);
+				volume += CGAL::volume(p0, p1, p2, lcc.info<3>(dh).center);
+			}
+		}
+		return volume;
+	}
 
 // Functor called when one polyhedra is split in two.
 struct Polyhedra_Split_functor
@@ -150,6 +162,9 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
 		lcc.info<2>(fdh).plane = plane;
 	}
 
+	auto bbox_volume = (box.xmax() - box.xmin()) * (box.ymax() - box.ymin()) * (box.zmax() - box.zmin());
+	std::cout << "bbox volume: " << bbox_volume << std::endl;
+
 	if (expand) {
 		auto center = lcc.info<3>(dh).center;
 		//clip expanded polygons by bbox
@@ -185,6 +200,7 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
 
 	volumes.push_back(dh);
 
+	//add a virtual volume
 	auto ghost = lcc.make_combinatorial_hexahedron();
 	lcc.set_attribute<3>(ghost, lcc.create_attribute<3>());
 	lcc.info<3>(ghost).center = CGAL::ORIGIN;
@@ -205,6 +221,9 @@ void BSP_Partition::partition()
 	lcc.display_characteristics(std::cout) << ",valid=" << lcc.is_valid() << std::endl;
 
 	// set attribute 
+	for (auto vdh : collect(lcc.one_dart_per_cell<3>()))
+		if (!lcc.info<3>(vdh).is_ghost)
+			lcc.info<3>(vdh).volume = volume(lcc, vdh);
 	for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
 		Polygon_2 poly{ };
 		auto plane = lcc.info<2>(fdh).plane;
@@ -244,6 +263,12 @@ void BSP_Partition::partition()
 		inliner_num += lcc.info<2>(fdh).inline_points.size();
 	}
 	fmt::print("inliner_num = {}\n", inliner_num);
+
+	// EC::FT lcc_volume;
+	// for(auto vdh : collect(lcc.one_dart_per_cell<3>()))
+	// 	if (!lcc.info<3>(vdh).is_ghost) 
+	// 		lcc_volume += volume(lcc, vdh);
+	// std::cout << "lcc volume: " << lcc_volume << std::endl;
 
 
 }
@@ -369,7 +394,9 @@ void BSP_Partition::partition_next()
 			}
 		}
 		else {
-			assert(!largest_poly.plane().has_on(poly.center()));
+			//assert(!largest_poly.plane().has_on(poly.center()));
+			if (largest_poly.plane().has_on(poly.center())) //coplaner
+				continue;
 			if (largest_poly.plane().has_on_positive_side(poly.center())) {
 				lcc.info<3>(new_volume).polygons_3.push_back(poly);
 			}

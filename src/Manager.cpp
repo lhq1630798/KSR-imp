@@ -206,9 +206,35 @@ void Manager::init_mesh() {
 			count++;
 		}
 	}
+	// add a face at bottom for visualization
+	verts.push_back(Vec3{ -1,-1,-1 });
+	verts.push_back(Vec3{ 1,-1,-1 });
+	verts.push_back(Vec3{ 1, 1,-1 });
+	idxs.push_back(count++);
+	idxs.push_back(count++);
+	idxs.push_back(count++);
+
 
 	auto m = GL::Mesh{verts,idxs};
 	inited_mesh = std::make_unique<GL::Mesh>(m);
+
+	//ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
+	//TODO:
+	// for now we use input mesh instead of alpha shape
+	//ES_params.alpha_triangles.clear();
+	//for (auto fd : faces(input_mesh))
+	//{
+	//	std::vector<IC::Point_3> points;
+	//	for (auto vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
+	//		auto p = IC::Point_3{
+	//			input_mesh.point(vd).x(),
+	//			input_mesh.point(vd).y(),
+	//			input_mesh.point(vd).z() };
+	//		points.push_back(p);
+	//	}
+	//	assert(points.size() == 3);
+	//	ES_params.alpha_triangles.push_back(IC::Triangle_3{ points[0], points[1] ,points[2] });
+	//}
 }
 
 void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
@@ -226,7 +252,7 @@ void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 
 		}
 		convex_shape = detect_convexShape(ES_params.detected_shape);
-		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
+		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_scale);
 	}
 	else if (!points.empty()) {
 		if (DetectShape_option == 1) {
@@ -241,7 +267,7 @@ void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 
 		}
 		convex_shape = detect_convexShape(ES_params.detected_shape);
-		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
+		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_scale);
 	}
 	else {
 		return;

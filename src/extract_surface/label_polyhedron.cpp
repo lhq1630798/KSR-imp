@@ -5,6 +5,9 @@
 #include <math.h>
 //#include "detect_shape/detect_shape.h"
 
+#include <execution>
+#include <mutex>
+
 typedef std::list<IC::Triangle_3>::iterator Iterator;
 typedef CGAL::AABB_triangle_primitive<IC::K, Iterator> Primitive;
 typedef CGAL::AABB_traits<IC::K, Primitive> AABB_triangle_traits;
@@ -74,25 +77,38 @@ float Dp(std::vector<std::pair<EC::Direction_3, EC::PWN_vector> > faces_with_poi
 }
 
 /****** Data term 3 ray_intersection *******/
-float Dray(IC::Point_3 center, std::list<IC::Triangle_3>& triangles, std::vector<IC::Vector_3>& rays, int status) {
+float Dray(std::vector <IC::Point_3> centers, Tree& tree, std::vector<IC::Vector_3>& rays, int status) {
 	float c = 0;
 	float r = 0;
-	Tree tree(triangles.begin(), triangles.end());
+	int valid_ray_count = 0;
+	//Tree tree(triangles.begin(), triangles.end());
 	for (int i = 0; i < rays.size(); i++) {
-		IC::Ray_3 ray_query(center, center + rays[i]);
-		int num_of_intersection = tree.number_of_intersected_primitives(ray_query);
-		if (num_of_intersection % 2 == 0) {
-			r++;
+		for (auto &center : centers) {
+			IC::Ray_3 ray_query(center, center + rays[i]);
+			//int num_of_intersection = tree.number_of_intersected_primitives(ray_query);
+
+			if (auto res = tree.first_intersected_primitive(ray_query)) {
+				valid_ray_count++;
+				Iterator triangle = *res;
+
+				if (triangle->supporting_plane().has_on_negative_side(center)) {
+					if (status == 0) r++;
+				}
+				else {
+					if (status == 1) r++;
+				}
+			}
+			else if (rays[i].z() > 0) {
+				//due to ground missing, if ray point to ground, we dont count it effective
+				valid_ray_count++;
+				if (status == 1) r++;
+			}
 		}
 	}
-	r = r / rays.size();
-	c = ((2 * r - 1)*(2 * r - 1)*(2 * r - 1) + 1) / 2;
-	if (status == 0) {
-		return 1 - c;
-	}
-	if (status == 1) {
-		return c;
-	}
+	r = r / valid_ray_count;
+	r = ((2 * r - 1)*(2 * r - 1)*(2 * r - 1) + 1) / 2;
+	return r;
+
 }
 
 /*********** Todo: Data term 4 ************/
@@ -117,6 +133,24 @@ std::vector<IC::Vector_3> get_rays() {
 	return rays;
 }
 
+// bool inside_polyhedron(CMap_3& cm, Dart_handle dh, IC::Point_3 p) {
+// 	EK_to_IK to_inexact;
+// 	auto frange = cm.one_dart_per_incident_cell<2, 3>(dh);
+
+// 	for (auto fdh = frange.begin(); fdh != frange.end(); fdh++) {
+// 		auto pdhs = BSP::collect(cm.darts_of_cell<2, 2>(fdh));
+// 		auto plane = IC::Plane_3{
+// 			to_inexact(cm.point(pdhs[2])),
+// 			to_inexact(cm.point(pdhs[1])),
+// 			to_inexact(cm.point(pdhs[0]))
+// 		};
+// 		if (plane.has_on_positive_side(to_inexact(cm.info<3>(dh).center)))
+// 			plane = plane.opposite();
+// 		if (plane.has_on_positive_side(p))
+// 			return false;
+// 	}
+// 	return true;
+// }
 
 GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
@@ -148,19 +182,74 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
 
 	//{i,S,T}
-	//std::list<IC::Triangle_3> triangles = ES_params.alpha_triangles;
-	std::vector<IC::Vector_3> rays = get_rays();
-	for (int i = 0; i < C_num; i++) {
-		
-		//Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
-		EK_to_IK to_inexact;
-		auto center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
-		IC::Point_3 in_center = to_inexact(center);
-		
-		float d_out, d_in;
+	EK_to_IK to_inexact;
+	if (ES_params.GC_term == 3) {
+		/******* Data term 3 ***********/
 
-		//compute d_out, d_in
-		if (ES_params.GC_term == 1 || ES_params.GC_term == 2) {
+		auto rand = CGAL::Random(0);
+		//std::list<IC::Triangle_3> triangles = ES_params.alpha_triangles;
+		Tree tree(ES_params.alpha_triangles.begin(), ES_params.alpha_triangles.end());
+
+		std::vector<IC::Vector_3> rays = get_rays();
+		std::vector<int> ids;
+		std::vector<std::vector<IC::Point_3>> all_centers;
+		std::vector<float> d_outs(C_num), d_ins(C_num);
+		for (int i = 0; i < C_num; i++)
+		{
+			ids.push_back(i);
+
+			std::vector<IC::Point_3> centers;
+			//std::vector<IC::Point_3> vertices;
+			//auto prange = cm.one_dart_per_incident_cell<0, 3>(C[i]);
+			//for (auto dh = prange.begin(); dh != prange.end(); dh++)
+			//	vertices.push_back(to_inexact(cm.point(dh)));
+			//auto box = CGAL::bbox_3(vertices.begin(), vertices.end());
+
+			//int resolution = 3;
+			//auto step_x = (box.xmax() - box.xmin()) / resolution;
+			//auto step_y = (box.ymax() - box.ymin()) / resolution;
+			//auto step_z = (box.zmax() - box.zmin()) / resolution;
+			//while (centers.size() < 27)
+			//for (int x_ind = 0; x_ind < resolution; x_ind++)
+			//	for (int y_ind = 0; y_ind < resolution; y_ind++)
+			//		for (int z_ind = 0; z_ind < resolution; z_ind++) {
+			//			auto x = box.xmin() + step_x * x_ind + rand.get_double(0, step_x);
+			//			auto y = box.ymin() + step_y * y_ind + rand.get_double(0, step_y);
+			//			auto z = box.zmin() + step_z * z_ind + rand.get_double(0, step_z);
+			//			IC::Point_3 center{ x,y,z };
+			//			if (inside_polyhedron(cm, C[i], center))
+			//				centers.push_back(center);
+			//		}
+			centers.push_back(to_inexact(cm.info<3>(C[i]).center));
+			all_centers.push_back(centers);
+		}
+		std::for_each(std::execution::par, ids.begin(), ids.end(),
+			[&](int i) {
+			d_outs[i] = Dray(all_centers[i], tree, rays, 0);
+			d_ins[i] = Dray(all_centers[i], tree, rays, 1);
+		}
+		);
+		for (int i = 0; i < C_num; i++)
+		{
+			if (cm.info<3>(C[i]).is_ghost)
+				g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, 999 * sum_area);
+			else {
+				float volume = CGAL::to_double(cm.info<3>(C[i]).volume);
+				g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_outs[i] * volume * sum_area, d_ins[i] * volume * sum_area);
+			}
+		}
+	}
+	else {
+		for (int i = 0; i < C_num; i++) {
+
+			//Point_3 center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
+			auto center = cm.info_of_attribute<3>(cm.attribute<3>(C[i])).center;
+			IC::Point_3 in_center = to_inexact(center);
+
+			float d_out, d_in;
+
+			//compute d_out, d_in
+
 			std::vector<Dart_handle> face_darts;
 			for (auto it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
 				face_darts.push_back(it);
@@ -189,32 +278,28 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 					faces_with_points.push_back(std::make_pair(normal, face_points));
 
 				}
-				d_out = Dp(faces_with_points,0);
-				d_in = Dp(faces_with_points,1);
+				d_out = Dp(faces_with_points, 0);
+				d_in = Dp(faces_with_points, 1);
 			}
+
+
+			//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
+			//if (i == C_num - 1) {
+			//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, sum_area);
+			//}
+			//else {
+			//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
+			//	//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
+			//}
+
+			if (cm.info<3>(C[i]).is_ghost)
+				g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, points_count * sum_area);
+			else
+				g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
+
 		}
-		else if (ES_params.GC_term == 3) {
-			/******* Data term 3 ***********/
-			d_out = Dray(in_center, ES_params.alpha_triangles, rays, 0);
-			d_in = Dray(in_center, ES_params.alpha_triangles, rays, 1);
-		}
-
-
-		//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
-		//if (i == C_num - 1) {
-		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, sum_area);
-		//}
-		//else {
-		//	g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
-		//	//std::cout << d_out * sum_area << " " << d_in * sum_area << std::endl;
-		//}
-
-		if (cm.info<3>(C[i]).is_ghost)
-			g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, 0, points_count * sum_area);
-		else
-			g->add_tweights(cm.info_of_attribute<3>(cm.attribute<3>(C[i])).number, d_out * sum_area, d_in * sum_area);
-
 	}
+
 
 	//{i,j}
 	Neighbor::iterator ite = N.begin();
