@@ -80,6 +80,8 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, 
 		// its normal being perpendicular to the plane.
 		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
+		if (plane.orthogonal_vector() * points[region[0]].second < 0) //todo::better way to determine orientation
+			plane = plane.opposite();
 		detected_plane.push_back(plane);
 	}
 
@@ -102,26 +104,26 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, 
 			true,  // regularize orthogonality
 			true, // regularize coplanarity
 			false,  // regularize Z-symmetry 
-			10,  // 10 degrees of tolerance for parallelism / orthogonality
+			1,  // 1 degrees of tolerance for parallelism / orthogonality
 			0.01 // tolerance coplanarity
 		);
 		//merge co-plane points
-		auto it = regions.begin();
-		while (it != regions.end()) {
-			auto plane = detected_plane[point_shape_index_map[(*it)[0]]];
+		//auto it = regions.begin();
+		//while (it != regions.end()) {
+		//	auto plane = detected_plane[point_shape_index_map[(*it)[0]]];
 
-			auto other_it = it + 1;
-			while (other_it != regions.end()) {
-				auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
-				if (other_plane == plane || other_plane.opposite() == plane) {
-					it->insert(it->end(), other_it->begin(), other_it->end());
-					other_it = regions.erase(other_it);
-				}
-				else other_it++;
-			}
-			it++;
-		}
-		fmt::print("{} planes after regularization\n", regions.size());
+		//	auto other_it = it + 1;
+		//	while (other_it != regions.end()) {
+		//		auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
+		//		if (other_plane == plane || other_plane.opposite() == plane) {
+		//			it->insert(it->end(), other_it->begin(), other_it->end());
+		//			other_it = regions.erase(other_it);
+		//		}
+		//		else other_it++;
+		//	}
+		//	it++;
+		//}
+		//fmt::print("{} planes after regularization\n", regions.size());
 	}
 
 	//build adjacency graph
@@ -231,6 +233,14 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 		" regions have been found"
 		<< std::endl;
 
+	auto num = std::accumulate(
+		regions.begin(),
+		regions.end(),
+		0.0,
+		[](auto sum, const Region& r) {return sum + r.size(); }
+	);
+	fmt::print("{:.3} coverage\n", num / face_range.size());
+
 	using size_type = typename Surface_Mesh::size_type;
 	std::vector<IC::Plane_3> detected_plane;
 	IC::PWN_vector points;
@@ -256,6 +266,9 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 		// its normal being perpendicular to the plane.
 		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
+	
+		if (plane.orthogonal_vector() * points.back().second < 0) //todo::better way to determine orientation
+			plane = plane.opposite();
 		detected_plane.push_back(plane);
 	}
 
@@ -290,26 +303,26 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 			true,  // regularize orthogonality
 			true, // regularize coplanarity
 			false,  // regularize Z-symmetry 
-			10,  // 10 degrees of tolerance for parallelism / orthogonality
+			1,  // 1 degrees of tolerance for parallelism / orthogonality
 			0.01 // tolerance coplanarity
 		);
 		//merge co-plane points
-		auto it = regions.begin();
-		while (it != regions.end()) {
-			auto plane = detected_plane[tmesh_shape_index_map[(*it)[0]]];
+		//auto it = regions.begin();
+		//while (it != regions.end()) {
+		//	auto plane = detected_plane[tmesh_shape_index_map[(*it)[0]]];
 
-			auto other_it = it + 1;
-			while (other_it != regions.end()) {
-				auto other_plane = detected_plane[tmesh_shape_index_map[(*other_it)[0]]];
-				if (other_plane == plane || other_plane.opposite() == plane) {
-					it->insert(it->end(), other_it->begin(), other_it->end());
-					other_it = regions.erase(other_it);
-				}
-				else other_it++;
-			}
-			it++;
-		}
-		fmt::print("{} planes after regularization\n", regions.size());
+		//	auto other_it = it + 1;
+		//	while (other_it != regions.end()) {
+		//		auto other_plane = detected_plane[tmesh_shape_index_map[(*other_it)[0]]];
+		//		if (other_plane == plane || other_plane.opposite() == plane) {
+		//			it->insert(it->end(), other_it->begin(), other_it->end());
+		//			other_it = regions.erase(other_it);
+		//		}
+		//		else other_it++;
+		//	}
+		//	it++;
+		//}
+		//fmt::print("{} planes after regularization\n", regions.size());
 	}
 
 	// convert to exact kernel type

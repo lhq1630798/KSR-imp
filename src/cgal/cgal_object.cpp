@@ -127,6 +127,8 @@ Segments_3 Polygon_3::edges_3() const
 
 std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3 cutting_plane) const
 {
+    if (plane() == cutting_plane || plane().opposite() == cutting_plane)
+        return {};
     auto edges = edges_3();
     std::vector<Point_2> poly1, poly2;
     auto *new_poly = &poly1;
