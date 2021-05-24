@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.17)
 project(KSR_imp LANGUAGES CXX)
 
 find_package(CGAL CONFIG REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
 add_subdirectory("deps/imgui/")
 add_subdirectory("deps/nfd/")
 add_subdirectory("deps/fmt-7.1.3/")
@@ -14,6 +15,8 @@ set(KSR_SOURCES
         "src/util/convex.h"
         "src/util/convex.cpp"
         "src/util/log.h"
+        "src/util/config.h"
+        "src/util/config.cpp"
 
         "src/gui/camera.h"
         "src/gui/app.h"
@@ -65,7 +68,7 @@ else()
     set_target_properties(KSR_imp PROPERTIES LINK_FLAGS -Wl,--stack, 100000000)
 endif()
 target_link_libraries(KSR_imp 
-    PRIVATE CGAL::CGAL imgui nfd fmt::fmt
+    PRIVATE CGAL::CGAL imgui nfd fmt::fmt tomlplusplus::tomlplusplus
 )
 target_include_directories(KSR_imp 
     PRIVATE "deps/"

@@ -234,11 +234,11 @@ public:
 	{
 		shader.use();
 		shader.setVec3("ourColor", Vec3{ 1, 0.5, 0.5 });
-		glLineWidth(5.0f);
+		glLineWidth(1.5f);
 		glBindVertexArray(vao);
-		for (int i = 0; i < _verts.size(); i=i+3) {
-			glDrawArrays(GL_LINE_LOOP, (GLint)i, 3);
-		}
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawElements(GL_TRIANGLES, (GLuint)_idxs.size(), GL_UNSIGNED_INT, nullptr);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glBindVertexArray(0);
 	}
 

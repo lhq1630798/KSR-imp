@@ -14,11 +14,11 @@ class Manager
 public:
 	void load_point_cloud();
 	void load_mesh();
-	void detect_shape(DetectShape_Params params, int DetectShape_option);//convex shape + alpha shape
-	void init_Kqueue(size_t K = 1);
-	void init_BSP(float);
+	void detect_shape();//convex shape + alpha shape
+	void init_Kqueue();
+	void init_BSP();
 	void partition();
-	void extract_surface(double lamda, int GC_term);
+	void extract_surface();
 	int run_offline(fs::path file);
 
 	IC::PWN_vector points;//input points
@@ -40,7 +40,6 @@ public:
 	std::unique_ptr<GL::Polygon_Mesh> mesh;//extracted surface mesh
 	std::unique_ptr<GL::Lines> lines;//extracted surface mesh boundary
 
-	float alpha_scale = 1;
 	int Number_of_Facets;
 
 	ExtractSurface_Params ES_params;

@@ -11,10 +11,14 @@
 #include <fmt/core.h>
 #include <algorithm>
 
+#include "util/config.h"
+
 using namespace IC;
 namespace PMP = CGAL::Polygon_mesh_processing;
 
-std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, const DetectShape_Params& params) {
+// TODO : adaptive regularization?
+
+std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points) {
 	using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<IC::K, IC::PWN_vector, Point_map>;
 	using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<IC::K, IC::PWN_vector, Point_map, Normal_map>;
 	using Sorting = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_sorting<IC::K, IC::PWN_vector, Neighbor_query, Point_map>;
@@ -25,6 +29,7 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, 
 	EK_to_IK to_inexact;
 	IK_to_EK to_exact;
 
+	const auto& params = Config::Detection::get();
 	// Default parameter values for the data file point_set_3.xyz.
 	const std::size_t k = params.neigbor_K;
 	const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
@@ -94,36 +99,41 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, 
 		}
 		idx++;
 	}
-	if (params.regularize) {
+	if (params.use_regularization) {
+		const auto& params = Config::Regularization::get();
+
 		CGAL::regularize_planes(points,
 			Point_map(),
 			detected_plane,
 			CGAL::Identity_property_map<IC::Plane_3>(),
 			CGAL::make_property_map(point_shape_index_map),
-			true,  // regularize parallelism
-			true,  // regularize orthogonality
-			true, // regularize coplanarity
-			false,  // regularize Z-symmetry 
-			1,  // 1 degrees of tolerance for parallelism / orthogonality
-			0.01 // tolerance coplanarity
+			params.parallelism,  // regularize parallelism
+			params.orthogonality,  // regularize orthogonality
+			params.coplanarity, // regularize coplanarity
+			params.Z_symmetry,  // regularize Z-symmetry 
+			params.paral_degree,  // 1 degrees of tolerance for parallelism / orthogonality
+			params.coplane_dist // tolerance coplanarity
 		);
-		//merge co-plane points
-		//auto it = regions.begin();
-		//while (it != regions.end()) {
-		//	auto plane = detected_plane[point_shape_index_map[(*it)[0]]];
+		if (params.merge_coplane) {
+			//merge co-plane points
+			auto it = regions.begin();
+			while (it != regions.end()) {
+				auto plane = detected_plane[point_shape_index_map[(*it)[0]]];
 
-		//	auto other_it = it + 1;
-		//	while (other_it != regions.end()) {
-		//		auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
-		//		if (other_plane == plane || other_plane.opposite() == plane) {
-		//			it->insert(it->end(), other_it->begin(), other_it->end());
-		//			other_it = regions.erase(other_it);
-		//		}
-		//		else other_it++;
-		//	}
-		//	it++;
-		//}
-		//fmt::print("{} planes after regularization\n", regions.size());
+				auto other_it = it + 1;
+				while (other_it != regions.end()) {
+					auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
+					if (other_plane == plane || other_plane.opposite() == plane) {
+						it->insert(it->end(), other_it->begin(), other_it->end());
+						other_it = regions.erase(other_it);
+					}
+					else other_it++;
+				}
+				it++;
+			}
+			fmt::print("{} planes after regularization\n", regions.size());
+		}
+
 	}
 
 	//build adjacency graph
@@ -169,7 +179,7 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points, 
 	return detected_shape;
 }
 
-std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh, const DetectShape_Params& params) {
+std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh) {
 	//campute vertices normal
 	auto vnormals = polygon_mesh.add_property_map<vertex_descriptor, IC::Vector_3>("v:normals", CGAL::NULL_VECTOR).first;
 	auto fnormals = polygon_mesh.add_property_map<face_descriptor, IC::Vector_3>("f:normals", CGAL::NULL_VECTOR).first;
@@ -195,6 +205,7 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 	
 	const Face_range face_range = faces(polygon_mesh);
 	
+	const auto& params = Config::Detection::get();
 	// Default parameter values for the data file polygon_mesh.off.
 	const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
 	const IC::FT  max_accepted_angle = params.max_accepted_angle;
@@ -293,36 +304,41 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 		idx++;
 	}
 
-	if (params.regularize) {
+	if (params.use_regularization) {
+		const auto& params = Config::Regularization::get();
+
 		CGAL::regularize_planes(points,
 			Point_map(),
 			detected_plane,
 			CGAL::Identity_property_map<IC::Plane_3>(),
 			CGAL::make_property_map(point_shape_index_map),
-			true,  // regularize parallelism
-			true,  // regularize orthogonality
-			true, // regularize coplanarity
-			false,  // regularize Z-symmetry 
-			1,  // 1 degrees of tolerance for parallelism / orthogonality
-			0.01 // tolerance coplanarity
+			params.parallelism,  // regularize parallelism
+			params.orthogonality,  // regularize orthogonality
+			params.coplanarity, // regularize coplanarity
+			params.Z_symmetry,  // regularize Z-symmetry 
+			params.paral_degree,  // 1 degrees of tolerance for parallelism / orthogonality
+			params.coplane_dist // tolerance coplanarity
 		);
-		//merge co-plane points
-		//auto it = regions.begin();
-		//while (it != regions.end()) {
-		//	auto plane = detected_plane[tmesh_shape_index_map[(*it)[0]]];
+		if (params.merge_coplane) {
+			//merge co-plane points
+			auto it = regions.begin();
+			while (it != regions.end()) {
+				auto plane = detected_plane[tmesh_shape_index_map[(*it)[0]]];
 
-		//	auto other_it = it + 1;
-		//	while (other_it != regions.end()) {
-		//		auto other_plane = detected_plane[tmesh_shape_index_map[(*other_it)[0]]];
-		//		if (other_plane == plane || other_plane.opposite() == plane) {
-		//			it->insert(it->end(), other_it->begin(), other_it->end());
-		//			other_it = regions.erase(other_it);
-		//		}
-		//		else other_it++;
-		//	}
-		//	it++;
-		//}
-		//fmt::print("{} planes after regularization\n", regions.size());
+				auto other_it = it + 1;
+				while (other_it != regions.end()) {
+					auto other_plane = detected_plane[tmesh_shape_index_map[(*other_it)[0]]];
+					if (other_plane == plane || other_plane.opposite() == plane) {
+						it->insert(it->end(), other_it->begin(), other_it->end());
+						other_it = regions.erase(other_it);
+					}
+					else other_it++;
+				}
+				it++;
+			}
+			fmt::print("{} planes after regularization\n", regions.size());
+		}
+
 	}
 
 	// convert to exact kernel type
@@ -346,6 +362,28 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 				to_exact(fnormals[fd]));
 		}
 		detected_shape.emplace_back(plane, region_points);
+	}
+
+	if (params.save_result) {
+		//save region growing result
+		using Color = CGAL::Color;
+		auto face_color = polygon_mesh.add_property_map<Surface_Mesh::Face_index, Color>("f:color", Color(0, 0, 0)).first;
+		// Iterate through all regions.
+		for (const auto& region : regions) {
+			// Generate a random color.
+			const Color color(
+				static_cast<unsigned char>(rand() % 256),
+				static_cast<unsigned char>(rand() % 256),
+				static_cast<unsigned char>(rand() % 256));
+			// Iterate through all region items.
+			using size_type = typename Surface_Mesh::size_type;
+			for (const auto index : region)
+				face_color[Surface_Mesh::Face_index(static_cast<size_type>(index))] = color;
+		}
+		std::string path = "output/region_growing.off";
+		std::ofstream file(path, std::ios::binary);
+		file << polygon_mesh;
+		file.close();
 	}
 
 	return detected_shape;

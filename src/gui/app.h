@@ -47,13 +47,11 @@ private:
 	bool grow = false;
 	bool dirty = false;
 	float grow_speed = -1;
-	float lamda = 1;
-	int K = 2;
-	float expand_scale = 0.1;
-	int GC_term = 2;
-	int DetectShape_option = 2;
 
-	DetectShape_Params params;
+
+	const std::vector<const char*> DetectShape_choices = { "ransac", "region_growing" };
+	const std::vector<const char*> GC_term = { "center_points", "face_points", "alphaShape_rays" };
+
 
 	Platform& plt;
 };

@@ -4,6 +4,7 @@
 #include <CGAL/AABB_triangle_primitive.h>
 #include <math.h>
 //#include "detect_shape/detect_shape.h"
+#include "util/config.h"
 
 #include <execution>
 #include <mutex>
@@ -154,6 +155,10 @@ std::vector<IC::Vector_3> get_rays() {
 
 GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
+	auto& params = Config::Extraction::get();
+	auto lambda = params.lambda;
+	auto method = params.method;
+
 	auto C = BSP::collect(cm.one_dart_per_cell<3>());
 	auto F = BSP::collect(cm.one_dart_per_cell<2>());
 	auto N = get_N(cm, F);
@@ -183,7 +188,7 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
 	//{i,S,T}
 	EK_to_IK to_inexact;
-	if (ES_params.GC_term == 3) {
+	if (method == "alphaShape_rays") {
 		/******* Data term 3 ***********/
 
 		auto rand = CGAL::Random(0);
@@ -254,8 +259,8 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 			for (auto it(cm.one_dart_per_incident_cell<2, 3>(C[i]).begin()), itend(cm.one_dart_per_incident_cell<2, 3>(C[i]).end()); it != itend; it++) {
 				face_darts.push_back(it);
 			}
-			if (ES_params.GC_term == 1) {
-				/***** Data term 1 ******/
+			if (method == "center_points") {
+				/***** Data center_points 1 ******/
 				EC::PWN_vector polyhedra_points;
 				for (auto dart : face_darts) {
 					for (auto p : cm.info_of_attribute<2>(cm.attribute<2>(dart)).inline_points) {
@@ -266,7 +271,7 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 				d_out = D(polyhedra_points, center, 0);
 				d_in = D(polyhedra_points, center, 1);
 			}
-			else if (ES_params.GC_term == 2) {
+			else if (method == "face_points") {
 				/******** Data term 2 *********/
 				std::vector<std::pair<EC::Direction_3, EC::PWN_vector> > faces_with_points;
 				for (auto dart : face_darts) {
@@ -311,12 +316,12 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 			area += CGAL::to_double(cm.info_of_attribute<2>(cm.attribute<2>(pair_dart.first)).area);
 		}
 		
-		if (ES_params.GC_term == 1 || ES_params.GC_term == 2) {
-			g->add_edge(ite->first.neighbors.first, ite->first.neighbors.second, ES_params.lamda * area * points_count, ES_params.lamda * area * points_count);
+		if (method == "center_points" || method == "face_points") {
+			g->add_edge(ite->first.neighbors.first, ite->first.neighbors.second, lambda * area * points_count, lambda* area * points_count);
 			//std::cout << "node " << ite->first.neighbors.first << " -->node " << ite->first.neighbors.second << ": " << lamda * area * points_count << std::endl;
 		}
-		else if (ES_params.GC_term == 3) {
-			g->add_edge(ite->first.neighbors.first, ite->first.neighbors.second, ES_params.lamda * area, ES_params.lamda * area);
+		else if (method == "alphaShape_rays") {
+			g->add_edge(ite->first.neighbors.first, ite->first.neighbors.second, lambda * area, lambda* area);
 			//std::cout << "node " << ite->first.neighbors.first << " -->node " << ite->first.neighbors.second << ": " << lamda * area << std::endl;
 		}
 
@@ -327,13 +332,15 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 	int flow = g->maxflow();
 
 	printf("Flow = %d\n", flow);
-	printf("Minimum cut:\n");
-	for (int i = 0; i < C_num; i++) {
-		if (g->what_segment(i) == GraphType::SOURCE) {
-			printf("node%d is in the INSIDE set\n", i);
-		}
-		else {
-			printf("node%d is in the OUTSIDE set\n", i);
+	if (Config::read<bool>("debug")) {
+		printf("Minimum cut:\n");
+		for (int i = 0; i < C_num; i++) {
+			if (g->what_segment(i) == GraphType::SOURCE) {
+				printf("node%d is in the INSIDE set\n", i);
+			}
+			else {
+				printf("node%d is in the OUTSIDE set\n", i);
+			}
 		}
 	}
 	return g;

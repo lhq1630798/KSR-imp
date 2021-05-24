@@ -218,6 +218,8 @@ void BSP_Partition::partition()
 	while (!volumes.empty()) {
 		partition_next();
 	}
+	fmt::print("split done:{} \n", count);
+
 	lcc.display_characteristics(std::cout) << ",valid=" << lcc.is_valid() << std::endl;
 
 	// set attribute 
@@ -280,7 +282,7 @@ void BSP_Partition::partition_next()
 {
 	if (volumes.empty())
 		return;
-	fmt::print("split volume:{} ...\n", count);
+	fmt::print("\rsplit volume:{} ...", count);
 	//if (count == 16) {
 	//	DEBUG_BREAK;
 	//}

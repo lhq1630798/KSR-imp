@@ -5,6 +5,7 @@
 #include "extract_surface/label_polyhedron.h"
 #include "detect_shape/detect_shape.h"
 #include "cgal/cgal_object.h"
+#include "util/config.h"
 
 #include <fmt/core.h>
 #include "util/log.h"
@@ -405,7 +406,7 @@ bool is_crease_edge(IC::Surface_Mesh& mesh, IC::edge_descriptor e) {
 	auto p2 = mesh.point(mesh.source(mesh.next(h1)));
 	auto p3 = mesh.point(mesh.source(mesh.next(mesh.next(h1))));
 	auto n1 = CGAL::cross_product(p2 - p1, p3 - p2);
-
+	
 	auto h2 = mesh.opposite(h1);
 	p1 = mesh.point(mesh.source(h2));
 	p2 = mesh.point(mesh.source(mesh.next(h2)));
@@ -611,8 +612,9 @@ std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > 
 	
 
 	/****************** write surface mesh *************************/
+	auto save_path = Config::read<std::string>("save_path");
 	to_origin(m2, ES_params);
-	std::string file2 = "output/" + ES_params.filename + "_surface_without_merge.ply";
+	std::string file2 = save_path + ES_params.filename + "_surface_without_merge.ply";
 	std::ofstream f2(file2, std::ios::binary);
 	if (!CGAL::write_ply(f2, m2)) {
 		std::cout << "write wrong" << std::endl;
@@ -620,7 +622,7 @@ std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > 
 	f2.close();
 
 	to_origin(tri_surface, ES_params);
-	std::string tri_file_name = "output/" + ES_params.filename + "_surface_tri.ply";
+	std::string tri_file_name = save_path + ES_params.filename + "_surface_tri.ply";
 	std::ofstream tri_file(tri_file_name, std::ios::binary);
 	if (!CGAL::write_ply(tri_file, tri_surface)) {
 		std::cout << "write wrong" << std::endl;
@@ -628,7 +630,7 @@ std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > 
 	tri_file.close();
 
 	to_origin(m_outline, ES_params);
-	std::string file3 = "output/" + ES_params.filename + "_surface_outline.ply";
+	std::string file3 = save_path + ES_params.filename + "_surface_outline.ply";
 	std::ofstream f3(file3, std::ios::binary);
 	if (!write_ply_pss(f3, m_outline)) {
 		std::cout << "write wrong" << std::endl;

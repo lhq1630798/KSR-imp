@@ -8,6 +8,7 @@
 #include "detect_shape/region_growing.h"
 #include "detect_shape/ransac.h"
 #include "detect_shape/detect_shape.h"
+#include "util/config.h"
 
 void Manager::load_point_cloud()
 {
@@ -75,15 +76,22 @@ void Manager::load_mesh()
 	}
 }
 
-//no binary
 bool Manager::read_mesh(fs::path path)
 {
 	reset();
 	std::ifstream stream(path);
-	
+
 	if (stream) {
 		if (path.extension() == ".ply") {
 			if (CGAL::read_ply(stream, input_mesh)) {
+				fmt::print("* loaded {} points\n", vertices(input_mesh).size());
+				fmt::print("* loaded {} faces\n", faces(input_mesh).size());
+				return true;
+			}
+			// try binary
+			std::ifstream stream(path, std::ios::binary);
+			if (CGAL::read_ply(stream, input_mesh))
+			{
 				fmt::print("* loaded {} points\n", vertices(input_mesh).size());
 				fmt::print("* loaded {} faces\n", faces(input_mesh).size());
 				return true;
@@ -108,10 +116,10 @@ void Manager::reset()
 	//detected_shape.clear();
 	convex_shape.clear();
 	//alpha_triangles.clear();
-	
+
 	kpolys_set.reset();
 	k_queue.reset();
-	
+
 	point_cloud.reset();
 	inited_mesh.reset();
 
@@ -154,13 +162,14 @@ void Manager::init_point_cloud() {
 	std::vector<Vec3> point_GL;
 	for (const auto&[p, n] : points)
 		point_GL.emplace_back((float)CGAL::to_double(p.x()),
-		(float)CGAL::to_double(p.y()),
+			(float)CGAL::to_double(p.y()),
 			(float)CGAL::to_double(p.z()));
-	point_cloud = std::make_unique<GL::Point_cloud>(std::move(point_GL));
+	if (!Config::read<bool>("headless"))
+		point_cloud = std::make_unique<GL::Point_cloud>(std::move(point_GL));
 }
 
 void Manager::init_mesh() {
-	
+
 	// centralize and scale mesh
 	std::vector<IC::Point_3> points_coord;
 	for (IC::vertex_descriptor vd : vertices(input_mesh)) {
@@ -190,6 +199,27 @@ void Manager::init_mesh() {
 
 	}
 
+	//ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
+	//TODO:
+	// for now we use input mesh instead of alpha shape
+	//ES_params.alpha_triangles.clear();
+	//for (auto fd : faces(input_mesh))
+	//{
+	//	std::vector<IC::Point_3> points;
+	//	for (auto vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
+	//		auto p = IC::Point_3{
+	//			input_mesh.point(vd).x(),
+	//			input_mesh.point(vd).y(),
+	//			input_mesh.point(vd).z() };
+	//		points.push_back(p);
+	//	}
+	//	assert(points.size() == 3);
+	//	ES_params.alpha_triangles.push_back(IC::Triangle_3{ points[0], points[1] ,points[2] });
+	//}
+
+	if (Config::read<bool>("headless"))
+		return;
+
 	// visualization
 	std::vector<Vec3> verts;
 	std::vector<GL::Mesh::Index> idxs;
@@ -217,61 +247,52 @@ void Manager::init_mesh() {
 
 	auto m = GL::Mesh{verts,idxs};
 	inited_mesh = std::make_unique<GL::Mesh>(m);
-
-	//ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_value);
-	//TODO:
-	// for now we use input mesh instead of alpha shape
-	//ES_params.alpha_triangles.clear();
-	//for (auto fd : faces(input_mesh))
-	//{
-	//	std::vector<IC::Point_3> points;
-	//	for (auto vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
-	//		auto p = IC::Point_3{
-	//			input_mesh.point(vd).x(),
-	//			input_mesh.point(vd).y(),
-	//			input_mesh.point(vd).z() };
-	//		points.push_back(p);
-	//	}
-	//	assert(points.size() == 3);
-	//	ES_params.alpha_triangles.push_back(IC::Triangle_3{ points[0], points[1] ,points[2] });
-	//}
 }
 
-void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
+void Manager::detect_shape()
 {
 	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
 	//detected_shape = timer("generate_polys_3", generate_polys_3);
-	if (!input_mesh.is_empty()) {
-		if (DetectShape_option == 1) {
+	auto& parms = Config::Detection::get();
+	auto method = parms.method;
+	if (!input_mesh.is_empty())
+	{
+		if (method == "ransac")
+		{
 			//Todo: ES_params.detected_shape = ransac(input_mesh, params);
 			/********** Todo:shape merge **********/
 		}
-		else if (DetectShape_option == 2) {
-			ES_params.detected_shape = region_growing_on_mesh(input_mesh, params);
+		else if (method == "region_growing")
+		{
+			ES_params.detected_shape = region_growing_on_mesh(input_mesh);
 			/********** Todo:shape merge **********/
 
 		}
-		convex_shape = detect_convexShape(ES_params.detected_shape);
-		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_scale);
 	}
 	else if (!points.empty()) {
-		if (DetectShape_option == 1) {
-			ES_params.detected_shape = ransac(points, params);
+		if (method == "ransac")
+		{
+			//ES_params.detected_shape = ransac(points, params);
 			/********** Todo:shape merge **********/
 		}
-		else if (DetectShape_option == 2) {
-			ES_params.detected_shape = region_growing_on_points(points, params);
+		else if (method == "region_growing")
+		{
+			ES_params.detected_shape = region_growing_on_points(points);
 			/********** Todo:shape merge **********/
 
 
 
 		}
-		convex_shape = detect_convexShape(ES_params.detected_shape);
-		ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, alpha_scale);
 	}
 	else {
 		return;
 	}
+
+	convex_shape = detect_convexShape(ES_params.detected_shape);
+	ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, parms.alpha_scale);
+
+	if (Config::read<bool>("headless"))
+		return;
 
 	//visualize convex_shape
 	mesh = std::make_unique<GL::Polygon_Mesh>(convex_shape);
@@ -292,80 +313,43 @@ void Manager::detect_shape(DetectShape_Params params, int DetectShape_option)
 	}
 	auto m = GL::Mesh{ verts,idxs };
 	alpha_mesh = std::make_unique<GL::Mesh>(m);
-
 }
 
-void Manager::init_Kqueue(size_t K)// 0 means exhausted
+void Manager::init_BSP()
 {
-	if (convex_shape.empty()) return;
-	kpolys_set = std::make_unique<Kinetic::KPolygons_SET>(convex_shape, K);
-	mesh = kpolys_set->Get_mesh();
-	k_queue = std::make_unique<Kinetic::Kinetic_queue>(*kpolys_set);
-}
+	auto& params = Config::Partition::get();
 
-void Manager::init_BSP(float expand_scale)
-{
-	if (convex_shape.empty()) return;
-	bsp = std::make_unique<BSP::BSP_Partition>(convex_shape, expand_scale);
-	mesh = bsp->Get_mesh();
+	if (convex_shape.empty())
+		return;
+	bsp = std::make_unique<BSP::BSP_Partition>(convex_shape, params.expand_scale);
+	if (!Config::read<bool>("headless"))
+		mesh = bsp->Get_mesh();
 }
 
 void Manager::partition()
 {
-	if (!k_queue) return;
-	timer("kinetic partition", &Kinetic::Kinetic_queue::Kpartition, *k_queue);
-	mesh = kpolys_set->Get_mesh();
+	if (!bsp)
+		return;
+	timer("partition", &BSP::BSP_Partition::partition, *bsp);
+	if (!Config::read<bool>("headless"))
+		mesh = bsp->Get_mesh();
 }
 
-//void Manager::extract_surface(double lamda, int GC_term)
-//{
-//	if (!k_queue || !k_queue->is_done()) return;
-//	assert(k_queue->is_done());
-//	//timer("set in-liners", &KPolygons_SET::set_inliner_points, *kpolys_set, points);
-//	
-//	ES_params.lamda = lamda;
-//	ES_params.GC_term = GC_term;
-//
-//	// save centralized result
-//	auto param = ES_params;
-//	param.translate = IC::Vector_3{0,0,0};
-//	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
-//
-//	// auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, *kpolys_set, ES_params/*filename, lamda, translate, scale, detected_shape, GC_term*/);
-//	lines = std::move(surface_lines);
-//	mesh = std::move(surface);
-//	Number_of_Facets = F_Number;
-//	
-//}
-void Manager::extract_surface(double lamda, int GC_term)
+void Manager::extract_surface()
 {
-	if (!bsp || !bsp->is_done()) return;
+	if (!bsp || !bsp->is_done())
+		return;
+	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, bsp->lcc, ES_params /*filename, lamda, translate, scale, detected_shape, GC_term*/);
 
-	ES_params.lamda = lamda;
-	ES_params.GC_term = GC_term;
-
-	// save centralized result
-	auto param = ES_params;
-	param.translate = IC::Vector_3{ 0,0,0 };
-	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, bsp->lcc, param/*filename, lamda, translate, scale, detected_shape, GC_term*/);
-
-	lines = std::move(surface_lines);
-	mesh = std::move(surface);
+	if (!Config::read<bool>("headless"))
+	{
+		lines = std::move(surface_lines);
+		mesh = std::move(surface);
+	}
 	Number_of_Facets = F_Number;
-
 }
 int Manager::run_offline(fs::path file)
 {
-	auto lamda = getarg(1, "-l", "--lambda");
-	auto K = getarg(2, "-K", "-k");
-	auto GC_term = getarg(3, "-g", "--gc");
-	auto DetectShape_option = getarg(2, "-d", "--ds");
-	auto param = DetectShape_Params{};
-	param.max_accepted_angle = getarg(param.max_accepted_angle, "--angle");
-	param.min_region_size = getarg(param.min_region_size, "--size");
-	param.max_distance_to_plane = getarg(param.max_distance_to_plane, "--dist", "--distance");
-	fmt::print("lambda {}, K {}, max_accepted_angle {}, min_region_size {}, max_distance_to_plane {}\n",
-		lamda, K, param.max_accepted_angle, param.min_region_size, param.max_distance_to_plane);
 
 	//if (!read_PWN(file)) {
 	if (!read_mesh(file)) {
@@ -377,9 +361,9 @@ int Manager::run_offline(fs::path file)
 	init_mesh();
 	ES_params.filename = fs::path{ file }.stem().string();
 
-	detect_shape(param, DetectShape_option);
-	init_Kqueue(K);
+	detect_shape();
+	init_BSP();
 	partition();
-	extract_surface(lamda,GC_term);
+	extract_surface();
 	return 0;
 }
