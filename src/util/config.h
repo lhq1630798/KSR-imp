@@ -32,11 +32,11 @@ namespace Config {
 		}																			
 
 
+// init config value from the [toml] config file
 #define DECLA(TYPE, NAME)			\
 	TYPE NAME = read<TYPE>(#NAME)		
 
 
-	// init config value from the [toml] config file
 	class Detection{
 		PARAM_GROUP(Detection, "primitive_detection");
 	public:
@@ -74,6 +74,9 @@ namespace Config {
 	public:
 		DECLA(std::string, method);
 		DECLA(float, lambda);
+		DECLA(bool, missing_ground);
+		DECLA(bool, use_area_weight);
+		DECLA(float, alpha_scale);
 	};
 
 #undef PARAM_GROUP

@@ -96,7 +96,8 @@ std::list<IC::Triangle_3> Triangles_of_alphaShape(const std::vector<EC::Detected
 	EK_to_IK to_inexact;
 	for (const auto&[plane_3, pwn] : detected_shape)
 	{
-		
+		if (pwn.size() < 10) //TODO : find_optimal_alpha() reports an error, why?
+			continue;
 		IC::Plane_3 plane = to_inexact(plane_3);
 		std::list<IC::Point_2> projected_points;
 		for (const auto &[point_3, normal] : pwn)

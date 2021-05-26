@@ -2,8 +2,8 @@
 #include <fmt/core.h>
 
 #include "util/log.h"
-#undef assert
-#define assert(expr) R_assert(expr)
+#include "util/config.h"
+
 
 //TODO: geometric center
 using namespace EC;
@@ -75,8 +75,9 @@ struct Face_Split_functor
 				assert(!poly2.has_on_bounded_side(point_2));
 				ca1.info().inline_points.emplace_back(point_3, normal);
 			}
-			else if (poly2.has_on_bounded_side(point_2))
+			else
 			{
+				assert(poly2.has_on_bounded_side(point_2));
 				ca2.info().inline_points.emplace_back(point_3, normal);
 			}
 		}

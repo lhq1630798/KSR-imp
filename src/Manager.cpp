@@ -356,10 +356,10 @@ int Manager::run_offline(fs::path file)
 		fmt::print(stderr, "Error: cannot read file {}\n", file.string());
 		return 1;
 	}
-	//fmt::print("* loaded {} points with normals\n", points.size());
 	//init_point_cloud();
 	init_mesh();
 	ES_params.filename = fs::path{ file }.stem().string();
+
 
 	detect_shape();
 	init_BSP();

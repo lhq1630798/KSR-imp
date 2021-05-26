@@ -8,6 +8,8 @@ add_subdirectory("deps/nfd/")
 add_subdirectory("deps/fmt-7.1.3/")
 
 set(KSR_SOURCES 
+        "config.toml"
+
         "src/main.cpp"
         "src/Manager.h"
         "src/Manager.cpp"
@@ -28,8 +30,8 @@ set(KSR_SOURCES
         "src/cgal/cgal_object.h"
         "src/cgal/cgal_object.cpp"
 
-        "src/partition/kinetic.cpp"
-        "src/partition/kinetic.h"
+        # "src/partition/kinetic.cpp"
+        # "src/partition/kinetic.h"
         "src/partition/BSP.cpp"
         "src/partition/BSP.h"
 

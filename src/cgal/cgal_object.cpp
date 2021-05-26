@@ -3,8 +3,6 @@
 #include "util/convex.h"
 
 #include "util/log.h"
-#undef assert
-#define assert(expr) R_assert(expr)
 
 namespace EC {
 
@@ -164,8 +162,9 @@ std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3
             assert(!new_poly2.polygon_2().has_on_bounded_side(point_2));
             new_poly1.inline_points.emplace_back(point_3, normal);
         }
-        else if (new_poly2.polygon_2().has_on_bounded_side(point_2))
+        else
         {
+            assert(new_poly2.polygon_2().has_on_bounded_side(point_2));
             new_poly2.inline_points.emplace_back(point_3, normal);
         }
     }

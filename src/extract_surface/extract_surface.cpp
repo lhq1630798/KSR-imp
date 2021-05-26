@@ -8,9 +8,7 @@
 #include "util/config.h"
 
 #include <fmt/core.h>
-#include "util/log.h"
-#undef assert
-#define assert(expr) R_assert(expr)
+// #include "util/log.h"
 
 #include <iostream>
 #include <cstdlib>

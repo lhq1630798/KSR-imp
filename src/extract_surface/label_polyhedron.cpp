@@ -3,8 +3,11 @@
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_triangle_primitive.h>
 #include <math.h>
-//#include "detect_shape/detect_shape.h"
+#include <algorithm>
+#include "detect_shape/detect_shape.h"
 #include "util/config.h"
+#include "util/log.h"
+#include <fmt/core.h>
 
 #include <execution>
 #include <mutex>
@@ -93,16 +96,18 @@ float Dray(std::vector <IC::Point_3> centers, Tree& tree, std::vector<IC::Vector
 				Iterator triangle = *res;
 
 				if (triangle->supporting_plane().has_on_negative_side(center)) {
-					if (status == 0) r++;
+					if (status == 0) r++; //inside
 				}
 				else {
-					if (status == 1) r++;
+					if (status == 1) r++; //outside
 				}
 			}
-			else if (rays[i].z() > 0) {
+			else {
 				//due to ground missing, if ray point to ground, we dont count it effective
+				if (Config::Extraction::get().missing_ground && rays[i].z() < 0)
+					continue;
 				valid_ray_count++;
-				if (status == 1) r++;
+				if (status == 1) r++; //outside
 			}
 		}
 	}
@@ -315,6 +320,33 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 		for (auto pair_dart : darts) {
 			area += CGAL::to_double(cm.info_of_attribute<2>(cm.attribute<2>(pair_dart.first)).area);
 		}
+
+		if (params.use_area_weight) {
+			float weight = 1;
+			if (darts.size() == 1) {
+				float alpha_area{};
+				auto dh = darts[0].first;
+				const auto& inliners = cm.info<2>(dh).inline_points;
+				auto plane = cm.info<2>(dh).plane;
+				auto alphashape = Triangles_of_alphaShape({ {plane,inliners} }, params.alpha_scale);
+				for (const auto& tri : alphashape) {
+					alpha_area += CGAL::sqrt(CGAL::to_double(tri.squared_area()));
+				}
+				weight = 1 - alpha_area / area;
+				//fmt::print("area weight {}\n", weight);
+				weight = std::clamp(weight, 0.0f, 1.0f);
+
+			}
+			else {
+				// BSP partition should guarantee that
+				for (auto pair_dart : darts) {
+					assert(cm.info<3>(pair_dart.first).is_ghost || cm.info<3>(pair_dart.second).is_ghost);
+				}
+			}
+
+			area *= weight;
+		}
+
 		
 		if (method == "center_points" || method == "face_points") {
 			g->add_edge(ite->first.neighbors.first, ite->first.neighbors.second, lambda * area * points_count, lambda* area * points_count);

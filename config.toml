@@ -10,10 +10,10 @@ max_accepted_angle = 50
 min_region_size = 50
 neigbor_K = 12
 save_result = false
-alpha_scale = 1.2
+alpha_scale = 1.2 #use by ray shooting
 
 [regularization]
-merge_coplane = false
+merge_coplane = false #todo:need to adjust alpha shape
 parallelism = true
 orthogonality = true
 coplanarity = true
@@ -29,3 +29,6 @@ expand_scale = 0.3 #make it more robust to missing primitive
 [surface_extraction]
 method = "alphaShape_rays"
 lambda = 0.1
+missing_ground = false #assume there is the ground at -Z_plane
+use_area_weight = true
+alpha_scale = 1.2 #use by area_weight
