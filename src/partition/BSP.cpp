@@ -397,9 +397,14 @@ void BSP_Partition::partition_next()
 		}
 		else {
 			//assert(!largest_poly.plane().has_on(poly.center()));
-			if (largest_poly.plane().has_on(poly.center())) //coplaner
-				continue;
-			if (largest_poly.plane().has_on_positive_side(poly.center())) {
+			if (largest_poly.plane().has_on(poly.center())) { //coplaner, merge inliners
+				lcc.info<2>(new_volume).inline_points.insert(
+					lcc.info<2>(new_volume).inline_points.end(),
+					poly.inline_points.begin(),
+					poly.inline_points.end()
+				);
+			}
+			else if (largest_poly.plane().has_on_positive_side(poly.center())) {
 				lcc.info<3>(new_volume).polygons_3.push_back(poly);
 			}
 			else {

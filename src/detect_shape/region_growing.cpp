@@ -17,6 +17,7 @@ using namespace IC;
 namespace PMP = CGAL::Polygon_mesh_processing;
 
 // TODO : adaptive regularization?
+// TODO : min_region_size : use area instead of points num
 
 std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points) {
 	using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<IC::K, IC::PWN_vector, Point_map>;
@@ -69,23 +70,26 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points) 
 		0.0,
 		[](auto sum, const Region &r) {return sum + r.size(); }
 	);
-	fmt::print("{:.3} coverage\n", num / points.size());
+	fmt::print("{} inliners, {:.3} coverage\n", num, num / points.size());
 
 	// fit plane
 	std::vector<IC::Plane_3> detected_plane;
 	for (const auto& region : regions) {
 		std::vector<IC::Point_3> points_coord;
+		IC::Vector_3 average_normal = CGAL::NULL_VECTOR;
 		// Iterate through all region items.
 		for (const auto index : region) {
 			const IC::PWN& point = *(points.begin() + index);
 			points_coord.push_back(point.first);
+			average_normal += point.second;
 		}
+		average_normal /= region.size();
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
 		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
-		if (plane.orthogonal_vector() * points[region[0]].second < 0) //todo::better way to determine orientation
+		if (plane.orthogonal_vector() * average_normal < 0)
 			plane = plane.opposite();
 		detected_plane.push_back(plane);
 	}
@@ -123,7 +127,9 @@ std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points) 
 				auto other_it = it + 1;
 				while (other_it != regions.end()) {
 					auto other_plane = detected_plane[point_shape_index_map[(*other_it)[0]]];
-					if (other_plane == plane || other_plane.opposite() == plane) {
+					//if (other_plane == plane || other_plane.opposite() == plane) { 
+					if (other_plane == plane) {
+						//dont merge opposite plane
 						it->insert(it->end(), other_it->begin(), other_it->end());
 						other_it = regions.erase(other_it);
 					}
@@ -250,7 +256,7 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 		0.0,
 		[](auto sum, const Region& r) {return sum + r.size(); }
 	);
-	fmt::print("{:.3} coverage\n", num / face_range.size());
+	fmt::print("{} inliners, {:.3} coverage\n", num, num / face_range.size());
 
 	using size_type = typename Surface_Mesh::size_type;
 	std::vector<IC::Plane_3> detected_plane;
@@ -258,6 +264,7 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 	for (const auto& region : regions) {
 		// Iterate through all region items.
 		std::vector<IC::Point_3> points_coord;
+		IC::Vector_3 average_normal = CGAL::NULL_VECTOR;
 		for (const auto index : region){
 			/*for (vertex_descriptor vd : vertices_around_face(polygon_mesh.halfedge(face_descriptor(static_cast<size_type>(index))), polygon_mesh)) {
 				points_coord.push_back(polygon_mesh.point(vd));
@@ -271,14 +278,16 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 			center /= 3;
 			points_coord.emplace_back(IC::Point_3(center.x, center.y, center.z));
 			points.emplace_back(IC::Point_3(center.x, center.y, center.z), fnormals[fd]);
+			average_normal += fnormals[fd];
 		}
+		average_normal /= region.size();
 
 		// The best fit plane will be a plane fitted to all region points with
 		// its normal being perpendicular to the plane.
 		IC::Plane_3 plane;
 		linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
 	
-		if (plane.orthogonal_vector() * points.back().second < 0) //todo::better way to determine orientation
+		if (plane.orthogonal_vector() * average_normal < 0)
 			plane = plane.opposite();
 		detected_plane.push_back(plane);
 	}
@@ -328,7 +337,9 @@ std::vector<EC::Detected_shape> region_growing_on_mesh(Surface_Mesh polygon_mesh
 				auto other_it = it + 1;
 				while (other_it != regions.end()) {
 					auto other_plane = detected_plane[tmesh_shape_index_map[(*other_it)[0]]];
-					if (other_plane == plane || other_plane.opposite() == plane) {
+					//if (other_plane == plane || other_plane.opposite() == plane) { 
+					if (other_plane == plane) {
+						//dont merge opposite plane
 						it->insert(it->end(), other_it->begin(), other_it->end());
 						other_it = regions.erase(other_it);
 					}
