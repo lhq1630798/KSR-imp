@@ -158,6 +158,8 @@ std::vector<IC::Vector_3> get_rays() {
 // 	return true;
 // }
 
+// It seems likely that there is something wrong about ghost cell in graph-cut...
+// Test it with large lambda
 GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 
 	auto& params = Config::Extraction::get();
@@ -318,7 +320,7 @@ GraphType* label_polyhedron(CMap_3& cm, ExtractSurface_Params& ES_params) {
 		NeighborDarts darts = ite->second;
 		double area = 0;
 		for (auto pair_dart : darts) {
-			area += CGAL::to_double(cm.info_of_attribute<2>(cm.attribute<2>(pair_dart.first)).area);
+			area += CGAL::to_double(cm.info_of_attribute<2>(cm.attribute<2>(pair_dart.first)).area); // must be positive?
 		}
 
 		if (params.use_area_weight) {

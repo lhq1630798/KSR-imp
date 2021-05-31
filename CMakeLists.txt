@@ -35,12 +35,16 @@ set(KSR_SOURCES
         "src/partition/BSP.cpp"
         "src/partition/BSP.h"
 
-        "src/detect_shape/ransac.h"
-        "src/detect_shape/ransac.cpp"
+        # "src/detect_shape/ransac.h"
+        # "src/detect_shape/ransac.cpp"
         "src/detect_shape/region_growing.h"
         "src/detect_shape/region_growing.cpp"
         "src/detect_shape/detect_shape.cpp"
         "src/detect_shape/detect_shape.h"
+        "src/detect_shape/plane_merge.h"
+        "src/detect_shape/plane_merge.cpp"
+        "src/detect_shape/shape_diameter.cpp"
+        "src/detect_shape/shape_diameter.h"
 
         "src/extract_surface/face_graph.cpp"
         "src/extract_surface/face_graph.h"

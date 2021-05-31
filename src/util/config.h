@@ -4,6 +4,7 @@
 #include <toml++/toml.h>
 #include <string>
 #include <iostream>
+#include <fmt/core.h>
 
 namespace Config {
 	extern toml::table tbl;
@@ -48,6 +49,12 @@ namespace Config {
 		DECLA(int, min_region_size);
 		DECLA(int, neigbor_K);
 		DECLA(float, alpha_scale);
+		DECLA(float, merge_cost);
+		DECLA(bool, shape_diameter);
+		DECLA(float, sdf_rate);
+		DECLA(float, smallest_sdf);
+		DECLA(int, level);
+		DECLA(float, smooth);
 	};
 
 	class Regularization{

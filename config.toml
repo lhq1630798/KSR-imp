@@ -3,14 +3,21 @@ headless = false
 save_path = "output/"
 
 [primitive_detection]
-method = "region_growing"
+ method = "region_growing"
+# method = "plane_merge"
 use_regularization = true
 max_distance_to_plane = 0.01
 max_accepted_angle = 50
-min_region_size = 50
+min_region_size = 20
 neigbor_K = 12
 save_result = false
 alpha_scale = 1.2 #use by ray shooting
+merge_cost = 0.05
+shape_diameter = true
+sdf_rate = 0.1
+smallest_sdf = 0.001
+level = 5
+smooth = 0.1
 
 [regularization]
 merge_coplane = false #todo:need to adjust alpha shape
@@ -29,6 +36,6 @@ expand_scale = 0.3 #make it more robust to missing primitive
 [surface_extraction]
 method = "alphaShape_rays"
 lambda = 0.1
-missing_ground = false #assume there is the ground at -Z_plane
+missing_ground = true #assume there is the ground at -Z_plane
 use_area_weight = true
 alpha_scale = 1.2 #use by area_weight

@@ -1,6 +1,4 @@
 #include "cgal/cgal_object.h"
-#include "region_growing.h"
-#include "ransac.h"
 //#include "util/log.h"
 #include "util/convex.h"
 #include <fmt/core.h>

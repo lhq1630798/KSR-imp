@@ -32,6 +32,8 @@ void App::render_imgui()
 
 
 	ImGui::Begin("BSP");
+	bool debug = Config::read<bool>("debug");
+
 	//ImGui::Checkbox("Imgui Demo Window", &show_demo_window);
 	ImGui::Checkbox("rotate", &rotate); // Edit bools storing our window open/close state
 	ImGui::Checkbox("plane", &show_plane);
@@ -51,21 +53,23 @@ void App::render_imgui()
 			glDisable(GL_CULL_FACE);
 	}
 
+	ImGui::Separator();
+	if (ImGui::Button("Open Point Cloud"))
+		manager.load_point_cloud();
+	if (ImGui::Button("Open Mesh"))
+		manager.load_mesh();
+
 	{
 		ImGui::Separator();
 		auto& params = Config::Detection::get();
-
-		if (ImGui::Button("Open Point Cloud"))
-			manager.load_point_cloud();
-
-		if (ImGui::Button("Open Mesh"))
-			manager.load_mesh();
-
 		ImGui::Checkbox("Regularize after detect shape", &params.use_regularization);
 		ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0, 1);
-		ImGui::DragFloat("max accepted angle", &params.max_accepted_angle);
-		ImGui::DragInt("min region size", &params.min_region_size);
-		ImGui::DragInt("neigbor K", &params.neigbor_K);
+		ImGui::DragFloat("max accepted angle", &params.max_accepted_angle, 1, 1, 90);
+		ImGui::DragInt("min region size", &params.min_region_size, 1, 1, 1000);
+		//ImGui::DragInt("neigbor K", &params.neigbor_K);
+		ImGui::Checkbox("shape_diameter", &params.shape_diameter);
+		ImGui::DragFloat("sdf_rate", &params.sdf_rate, 0.001, 0, 1);
+		ImGui::DragFloat("smallest_sdf", &params.smallest_sdf, 0.001, 0, 0.1);
 		ImGui::Text("DetectShape_option : %s", params.method.c_str());
 		static int DetectShape_option = -1;
 		if (ImGui::ListBox("DetectShape", &DetectShape_option, DetectShape_choices.data(), DetectShape_choices.size())) {
@@ -84,14 +88,33 @@ void App::render_imgui()
 	}
 
 	{
+		if (manager.plane_merger) {
+			auto& params = Config::Detection::get();
+			if (ImGui::Button("merge once")) {
+				manager.plane_merger->merge_once();
+				manager.alpha_mesh = manager.plane_merger->get_mesh();
+			}
+			ImGui::DragFloat("merge_cost", &params.merge_cost, 0.001, 0, 0.2);
+			if (ImGui::Button("finish merge")) {
+				manager.plane_merger->merge_until(params.merge_cost);
+				manager.alpha_mesh = manager.plane_merger->get_mesh();
+			}
+			if (ImGui::Button("get shape")) {
+				manager.process_detected_shape(manager.plane_merger->detected_shape());
+			}
+		}
+	}
+
+
+	{
 		ImGui::Separator();
 		auto& params = Config::Partition::get();
 		ImGui::SliderFloat("expand_scale", &params.expand_scale, 0, 1);
-		if (ImGui::Button("init BSP")) {
-			manager.init_BSP();
-		}
-		if (manager.bsp) {
-			if (ImGui::Button("split once")) {
+		if (debug) {
+			if (ImGui::Button("init BSP")) {
+				manager.init_BSP();
+			}
+			if (manager.bsp && ImGui::Button("split once")) {
 				manager.bsp->partition_next();
 				manager.mesh = manager.bsp->Get_mesh();
 			}
@@ -99,6 +122,13 @@ void App::render_imgui()
 				manager.partition();
 			}
 		}
+		else if (ImGui::Button("Partition")) {
+			manager.init_BSP();
+			manager.partition();
+		}
+
+
+
 	}
 
 	//ImGui::Separator();
@@ -136,6 +166,7 @@ void App::render_imgui()
 		if (ImGui::ListBox("GC", &GC_option, GC_term.data(), GC_term.size())) {
 			params.method = GC_term[GC_option];
 		}
+		ImGui::Checkbox("assume missing ground", &params.missing_ground);
 
 		if (ImGui::Button("extract surface")) {
 			manager.extract_surface();

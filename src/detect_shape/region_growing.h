@@ -1,6 +1,14 @@
 #pragma once
 #include "detect_shape/detect_shape.h"
 
-std::vector<EC::Detected_shape> region_growing_on_points(IC::PWN_vector points);
 
-std::vector<EC::Detected_shape> region_growing_on_mesh(IC::Surface_Mesh polygon_mesh);
+namespace Region_Growing {
+	using Region = std::vector<std::size_t>;
+	using Regions = std::vector<Region>;
+	Regions region_growing_on_points(const IC::PWN_vector&);
+	std::vector<EC::Detected_shape> detectshape_on_points(IC::PWN_vector);
+
+	Regions region_growing_on_mesh(const IC::Surface_Mesh&);
+	std::vector<EC::Detected_shape> detectshape_on_mesh(IC::Surface_Mesh);
+}
+
