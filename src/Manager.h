@@ -2,6 +2,7 @@
 #include <string>
 #include <filesystem>
 #include "cgal/cgal_object.h"
+#include "detect_shape/plane_merge.h"
 #include "partition/BSP.h"
 #include "partition/kinetic.h"
 #include "extract_surface/extract_surface.h"
@@ -26,12 +27,12 @@ public:
 
 	EC::Polygons_3 convex_shape;
 
+	std::unique_ptr<Plane_Merge::Plane_Merger> plane_merger;
+	// 
 	std::unique_ptr<Kinetic::KPolygons_SET> kpolys_set;
 	std::unique_ptr<Kinetic::Kinetic_queue> k_queue;
-
 	std::unique_ptr<BSP::BSP_Partition> bsp;
-
-	//std::unique_ptr<GL::Polygon_Mesh> inited_mesh;
+	
 	std::unique_ptr<GL::Mesh> inited_mesh;//Normalized input mesh
 	std::unique_ptr<GL::Point_cloud> point_cloud;//Normalized input points
 
@@ -44,6 +45,7 @@ public:
 
 	ExtractSurface_Params ES_params;
 
+	void process_detected_shape(std::vector<EC::Detected_shape>);
 private:
 	bool read_PWN(fs::path path);
 	bool read_mesh(fs::path path);

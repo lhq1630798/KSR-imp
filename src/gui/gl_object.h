@@ -9,9 +9,23 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <CGAL/Random.h>
 #include "cgal/cgal_object.h"
 
+
 namespace GL{
+
+    struct Vert {
+        Vert(Vec3 p, Vec3 _color = default_color) : pos(p), color(_color) {}
+        Vert(IC::Point_3 p, Vec3 _color = default_color)
+            : Vert(Vec3{ p.x(), p.y(), p.z() }, _color) {}
+        Vert(EC::Point_3 p, Vec3 _color = default_color)
+            : Vert(EK_to_IK()(p), _color) {}
+
+        Vec3 pos;
+        Vec3 color;
+    };
+
 class Shader
 {
 public:
@@ -173,10 +187,21 @@ class Mesh
 {
 public:
     using Index = GLuint;
-    Mesh(std::vector<Vec3> verts, std::vector<Index> idxs)
+    Mesh(std::vector<Vert> verts, std::vector<Index> idxs)
     {
         _verts = std::move(verts);
         _idxs = std::move(idxs);
+        init();
+    }
+
+    Mesh(const Mesh &other)
+    {
+        _verts = other._verts;
+        _idxs = other._idxs;
+        init();
+    }
+
+    void init(){
         glGenVertexArrays(1, &vao);
         glGenBuffers(1, &vbo);
         glGenBuffers(1, &ebo);
@@ -184,37 +209,18 @@ public:
         glBindVertexArray(vao);
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * _verts.size(), _verts.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * _verts.size(), _verts.data(), GL_DYNAMIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Index) * _idxs.size(), _idxs.data(), GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), nullptr);
         glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (GLvoid*)sizeof(Vec3));
+        glEnableVertexAttribArray(1); //face color
 
         glBindVertexArray(0);
     }
-
-	Mesh(const Mesh &other)
-	{
-		_verts = other._verts;
-		_idxs = other._idxs;
-		glGenVertexArrays(1, &vao);
-		glGenBuffers(1, &vbo);
-		glGenBuffers(1, &ebo);
-
-		glBindVertexArray(vao);
-
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Vec3) * _verts.size(), _verts.data(), GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Index) * _idxs.size(), _idxs.data(), GL_DYNAMIC_DRAW);
-
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vec3), nullptr);
-		glEnableVertexAttribArray(0);
-
-		glBindVertexArray(0);
-	}
-
     ~Mesh()
     {
         glDeleteVertexArrays(1, &vao);
@@ -223,26 +229,27 @@ public:
     }
     void render(Shader &shader) const
     {
-		shader.use();
-		shader.setVec3("ourColor", Vec3{ 0.53, 0.8, 0.98 });
+        shader.use();
         glBindVertexArray(vao);
         glDrawElements(GL_TRIANGLES, (GLuint)_idxs.size(), GL_UNSIGNED_INT, nullptr);
         glBindVertexArray(0);
     }
 
-	void render_boundary(Shader &shader) const
-	{
-		shader.use();
-		shader.setVec3("ourColor", Vec3{ 1, 0.5, 0.5 });
-		glLineWidth(1.5f);
-		glBindVertexArray(vao);
+    void render_boundary(Shader &shader) const
+    {
+        shader.use();
+        shader.setBool("use_uniform_color", true);
+        shader.setVec3("ourColor", Vec3{ 1, 0.5, 0.5 });
+        glLineWidth(1.5f);
+        glBindVertexArray(vao);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         glDrawElements(GL_TRIANGLES, (GLuint)_idxs.size(), GL_UNSIGNED_INT, nullptr);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glBindVertexArray(0);
-	}
+        glBindVertexArray(0);
+        shader.setBool("use_uniform_color", false);
+    }
 
-    std::vector<Vec3> _verts;
+    std::vector<Vert> _verts;
     std::vector<Index> _idxs;
 
 private:
@@ -268,11 +275,11 @@ public:
         init();
     }
 
-	Polygon(const Polygon &other) {
-		_verts = other._verts;
-		_color = other._color;
-		init();
-	}
+    Polygon(const Polygon &other) {
+        _verts = other._verts;
+        _color = other._color;
+        init();
+    }
 
     ~Polygon()
     {
@@ -325,25 +332,28 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+        shader.setBool("use_uniform_color", true);
 
         for (const auto &poly : _polygons)
         {
             shader.setVec3("ourColor", poly._color);
             poly.render();
         }
+        shader.setBool("use_uniform_color", false);
     }
     void render_boundary(Shader &shader) const
     {
         shader.use();
+        shader.setBool("use_uniform_color", true);
+        shader.setVec3("ourColor", Vec3{ 1, 0.5, 0.5 });
         glLineWidth(2.0f);
         glPolygonOffset(1.0f, 1.0f);
         glEnable(GL_POLYGON_OFFSET_LINE);
         for (const auto &poly : _polygons)
         {
-
-            shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
             poly.render_boundary();
         }
+        shader.setBool("use_uniform_color", false);
     }
     auto &polygons_GL() const { return _polygons; }
 };
@@ -361,12 +371,14 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+        shader.setBool("use_uniform_color", true);
         shader.setVec3("ourColor", Vec3{1, 0.5, 0.5});
         glLineWidth(6.0f);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_LINES, 0, (GLuint)end_points.size());
         glBindVertexArray(0);
+        shader.setBool("use_uniform_color", false);
     }
 
 private:
@@ -400,12 +412,14 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+        shader.setBool("use_uniform_color", true);
         shader.setVec3("ourColor", Vec3{1, 1, 1});
         glPointSize(1);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
         glBindVertexArray(0);
+        shader.setBool("use_uniform_color", false);
     }
 
 private:
@@ -439,12 +453,14 @@ public:
     void render(Shader &shader) const
     {
         shader.use();
+        shader.setBool("use_uniform_color", true);
         shader.setVec3("ourColor", Vec3{1, 0.2, 0.8});
         glPointSize(20);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
         glBindVertexArray(0);
+        shader.setBool("use_uniform_color", false);
     }
 
 private:

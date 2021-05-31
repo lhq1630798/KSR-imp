@@ -442,18 +442,18 @@ std::unique_ptr<GL::Polygon_Mesh> BSP_Partition::Get_mesh()
 	auto faces = lcc.one_dart_per_cell<2>();
 	for (auto f = faces.begin(); f != faces.end(); f++) {
 
-		std::vector<Vec3> verts;
+		std::vector<GL::Vec3> verts;
 		auto f_darts = lcc.darts_of_cell<2, 2>(f); //one side
 		for (auto p = f_darts.begin(); p != f_darts.end(); p++) {
 			auto point = lcc.point(p);
-			verts.push_back(Vec3{
+			verts.push_back(GL::Vec3{
 				(float)CGAL::to_double(point.x()),
 				(float)CGAL::to_double(point.y()),
 				(float)CGAL::to_double(point.z())
 				});
 		}
 
-		polys.push_back(GL::Polygon{ std::move(verts), rand_color() });
+		polys.push_back(GL::Polygon{ std::move(verts), GL::rand_color() });
 	}
 	return std::make_unique<GL::Polygon_Mesh>(std::move(polys));
 }

@@ -4,18 +4,24 @@
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/property_map.h>
 #include <CGAL/Polygon_2.h>
-#include <CGAL/Random.h>
 #include <vector>
-
 #include "glm/vec3.hpp"
-using Vec3 = glm::vec3;
 
-inline Vec3 rand_color()
-{
-    static auto color_rand = CGAL::Random{ 0 };
-    return Vec3{ (float)color_rand.get_double(0, 0.8),
-                (float)color_rand.get_double(0.2, 1),
-                (float)color_rand.get_double(0.2, 1) };
+namespace GL {
+
+    using Vec3 = glm::vec3;
+    inline Vec3 default_color{ 0.53, 0.8, 0.98 };
+
+    inline Vec3 rand_color()
+    {
+        static auto color_rand = CGAL::Random{ 0 };
+        return Vec3{ (float)color_rand.get_double(0, 0.8),
+                    (float)color_rand.get_double(0.2, 1),
+                    (float)color_rand.get_double(0.2, 1) };
+    }
+
+    struct Vert;
+
 }
 
 namespace EC {
@@ -37,6 +43,7 @@ namespace EC {
     using Vector_2 = CGAL::Vector_2<K>;
     using Vector_3 = CGAL::Vector_3<K>;
     using Polygon_2 = CGAL::Polygon_2<K>;
+    using Triangle_2 = CGAL::Triangle_2<K>;
     using Triangle_3 = CGAL::Triangle_3<K>;
     class Polygon_3;
     using Polygons_3 = std::vector<Polygon_3>;
@@ -68,7 +75,8 @@ namespace IC
 	using Normal_map = CGAL::Second_of_pair_property_map<PWN>;
 
 	using Ray_3 = K::Ray_3;
-	using Triangle_3 = K::Triangle_3;
+    using Triangle_2 = CGAL::Triangle_2<K>;
+    using Triangle_3 = K::Triangle_3;
 	using Polygon_2 = CGAL::Polygon_2<K>;
 	using Surface_Mesh = CGAL::Surface_mesh<Point_3>;
 	using vertex_descriptor = Surface_Mesh::Vertex_index;
@@ -88,8 +96,8 @@ namespace EC {
     {
         //Plane_3 + Polygon_2
     public:
-        Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color = rand_color());
-        Polygon_3(Plane_3 plane, const Points_2 &points, Vec3 color = rand_color())
+        Polygon_3(Plane_3 plane, Polygon_2 polygon, GL::Vec3 color = GL::rand_color());
+        Polygon_3(Plane_3 plane, const Points_2 &points, GL::Vec3 color = GL::rand_color())
             : Polygon_3(plane, Polygon_2{points.begin(), points.end()}, color) {}
 
         void set_inline_points(PWN_vector points)
@@ -107,7 +115,7 @@ namespace EC {
         const Points_3 &points_3() const { return _points_3; }
         void update_points_3(); //todo : auto update
 
-        Vec3 _color;
+        GL::Vec3 _color;
     	PWN_vector inline_points;
 
     private:

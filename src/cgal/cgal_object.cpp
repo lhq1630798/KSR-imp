@@ -1,7 +1,7 @@
 #include <CGAL/random_convex_hull_in_disc_2.h>
 #include "cgal/cgal_object.h"
 #include "util/convex.h"
-
+#include <CGAL/centroid.h>
 #include "util/log.h"
 
 namespace EC {
@@ -103,7 +103,7 @@ Polygons_3 generate_polys_3()
 //         }
 // }
 
-Polygon_3::Polygon_3(Plane_3 plane, Polygon_2 polygon, Vec3 color)
+Polygon_3::Polygon_3(Plane_3 plane, Polygon_2 polygon, GL::Vec3 color)
     : _plane(plane), _polygon_2(std::move(polygon)), _color(color)
 {
     update_points_3();
@@ -179,13 +179,27 @@ void Polygon_3::update_points_3()
     for (const auto& p : points_2())
         _points_3.push_back(_plane.to_3d(p));
 
-    // center
+    //center
     Vector_2 center_V = CGAL::NULL_VECTOR;
     for (const auto& point_2 : _polygon_2.container())
         center_V += point_2 - CGAL::ORIGIN;
     center_V = center_V / _polygon_2.size();
     auto center_P = CGAL::ORIGIN + center_V;
     _center = plane().to_3d(center_P);
+
+    // TODO: select centriod calculation method
+    //auto to_IK = EK_to_IK{};
+    //auto to_EK = IK_to_EK{};
+    //std::vector<IC::Triangle_2> triangles;
+    //for (int i = 1; i < points_2().size() - 1; i++) {
+    //    triangles.push_back(IC::Triangle_2{ 
+    //        to_IK(points_2()[0]), 
+    //        to_IK(points_2()[i]),
+    //        to_IK(points_2()[i + 1])
+    //        });
+    //}
+    //auto center_2 = CGAL::centroid(triangles.begin(), triangles.end(), CGAL::Dimension_tag<2>());
+    //_center = plane().to_3d(to_EK(center_2));
 }
 
 }// namaspace EC

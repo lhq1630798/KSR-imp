@@ -479,11 +479,11 @@ std::unique_ptr<GL::Polygon_Mesh> draw_surface(IC::Surface_Mesh& surface) {
 	std::vector<GL::Polygon> polys_3;
 	for (auto f : surface.faces())
 	{
-		std::vector<Vec3> verts;
+		std::vector<GL::Vec3> verts;
 		auto vs = surface.vertices_around_face(surface.halfedge(f));
 		for (auto v : vs) {
 			auto p3 = surface.point(v);
-			Vec3 p = Vec3{
+			GL::Vec3 p = GL::Vec3{
 				CGAL::to_double(p3.x()),
 				CGAL::to_double(p3.y()),
 				CGAL::to_double(p3.z()) };
@@ -497,13 +497,13 @@ std::unique_ptr<GL::Polygon_Mesh> draw_surface(IC::Surface_Mesh& surface) {
 
 //传参给GUI（合并后的面的边界）
 std::unique_ptr<GL::Lines> draw_surface_outline(IC::Surface_Mesh& outline) {
-	std::vector<Vec3> GL_edges;
+	std::vector<GL::Vec3> GL_edges;
 	for (auto e : outline.edges()) {
 		auto h = e.halfedge();
 		auto p0 = outline.point(outline.source(h));
 		auto p1 = outline.point(outline.target(h));
-		GL_edges.push_back(Vec3{ p0.x(), p0.y(), p0.z() });
-		GL_edges.push_back(Vec3{ p1.x(), p1.y(), p1.z() });
+		GL_edges.push_back(GL::Vec3{ p0.x(), p0.y(), p0.z() });
+		GL_edges.push_back(GL::Vec3{ p1.x(), p1.y(), p1.z() });
 	}
 	return std::make_unique<GL::Lines>(GL_edges);
 }

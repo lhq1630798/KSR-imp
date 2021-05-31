@@ -4,9 +4,10 @@
 #include <CGAL/IO/read_ply_points.h>
 #include <fmt/core.h>
 #include "gui/platform.h"
+#include "gui/gl_object.h"
 #include <getopt/getopt.hpp>
 #include "detect_shape/region_growing.h"
-#include "detect_shape/ransac.h"
+// #include "detect_shape/ransac.h"
 #include "detect_shape/detect_shape.h"
 #include "util/config.h"
 
@@ -159,7 +160,7 @@ void Manager::init_point_cloud() {
 	}
 
 	// visualization
-	std::vector<Vec3> point_GL;
+	std::vector<GL::Vec3> point_GL;
 	for (const auto&[p, n] : points)
 		point_GL.emplace_back((float)CGAL::to_double(p.x()),
 			(float)CGAL::to_double(p.y()),
@@ -221,29 +222,30 @@ void Manager::init_mesh() {
 		return;
 
 	// visualization
-	std::vector<Vec3> verts;
+	std::vector<GL::Vert> verts;
 	std::vector<GL::Mesh::Index> idxs;
 	int count = 0;
 	for (IC::face_descriptor fd : faces(input_mesh))
 	{
 		for (IC::vertex_descriptor vd : vertices_around_face(input_mesh.halfedge(fd), input_mesh)) {
-			Vec3 p = Vec3{
-				input_mesh.point(vd).x(),
-				input_mesh.point(vd).y(),
-				input_mesh.point(vd).z() };
-			verts.push_back(p);
+			verts.push_back(input_mesh.point(vd));
 			idxs.push_back(count);
 			count++;
 		}
 	}
 	// add a face at bottom for visualization
-	verts.push_back(Vec3{ -1,-1,-1 });
-	verts.push_back(Vec3{ 1,-1,-1 });
-	verts.push_back(Vec3{ 1, 1,-1 });
+	verts.push_back(GL::Vec3{ -1,-1,-1 });
+	verts.push_back(GL::Vec3{ 1,-1,-1 });
+	verts.push_back(GL::Vec3{ 1, 1,-1 });
 	idxs.push_back(count++);
 	idxs.push_back(count++);
 	idxs.push_back(count++);
-
+	verts.push_back(GL::Vec3{ -1,-1,-1 });
+	verts.push_back(GL::Vec3{ 1, 1,-1 });
+	verts.push_back(GL::Vec3{ -1, 1,-1 });
+	idxs.push_back(count++);
+	idxs.push_back(count++);
+	idxs.push_back(count++);
 
 	auto m = GL::Mesh{verts,idxs};
 	inited_mesh = std::make_unique<GL::Mesh>(m);
@@ -251,43 +253,55 @@ void Manager::init_mesh() {
 
 void Manager::detect_shape()
 {
+	//TODO: smooth?
+
 	//detected_shape = timer("generate_rand_polys_3", generate_rand_polys_3, 3);
 	//detected_shape = timer("generate_polys_3", generate_polys_3);
 	auto& parms = Config::Detection::get();
 	auto method = parms.method;
+	std::vector<EC::Detected_shape> detected_shape;
 	if (!input_mesh.is_empty())
 	{
 		if (method == "ransac")
 		{
-			//Todo: ES_params.detected_shape = ransac(input_mesh, params);
+			//Todo: detected_shape = ransac(input_mesh, params);
 			/********** Todo:shape merge **********/
 		}
 		else if (method == "region_growing")
 		{
-			ES_params.detected_shape = region_growing_on_mesh(input_mesh);
+			detected_shape = Region_Growing::detectshape_on_mesh(input_mesh);
 			/********** Todo:shape merge **********/
 
+		}
+		else if (method == "plane_merge") {
+			plane_merger = Plane_Merge::init_plane_merge(input_mesh);
+			alpha_mesh = plane_merger->get_mesh();
+			return;
 		}
 	}
 	else if (!points.empty()) {
 		if (method == "ransac")
 		{
-			//ES_params.detected_shape = ransac(points, params);
+			//detected_shape = ransac(points, params);
 			/********** Todo:shape merge **********/
 		}
 		else if (method == "region_growing")
 		{
-			ES_params.detected_shape = region_growing_on_points(points);
+			detected_shape = Region_Growing::detectshape_on_points(points);
 			/********** Todo:shape merge **********/
-
-
-
 		}
 	}
 	else {
 		return;
 	}
 
+	process_detected_shape(std::move(detected_shape));
+}
+
+void Manager::process_detected_shape(std::vector<EC::Detected_shape> detected_shape){
+	ES_params.detected_shape = std::move(detected_shape);
+
+	auto& parms = Config::Detection::get();
 	convex_shape = detect_convexShape(ES_params.detected_shape);
 	ES_params.alpha_triangles = Triangles_of_alphaShape(ES_params.detected_shape, parms.alpha_scale);
 
@@ -298,14 +312,14 @@ void Manager::detect_shape()
 	mesh = std::make_unique<GL::Polygon_Mesh>(convex_shape);
 
 	//visualize alpha_shape
-	std::vector<Vec3> verts;
+	std::vector<GL::Vert> verts;
 	std::vector<GL::Mesh::Index> idxs;
 	int count = 0;
 	for (auto triangle : ES_params.alpha_triangles)
 	{
-		verts.push_back(Vec3{ triangle.vertex(0).x(), triangle.vertex(0).y(), triangle.vertex(0).z() });
-		verts.push_back(Vec3{ triangle.vertex(1).x(), triangle.vertex(1).y(), triangle.vertex(1).z() });
-		verts.push_back(Vec3{ triangle.vertex(2).x(), triangle.vertex(2).y(), triangle.vertex(2).z() });
+		verts.push_back(triangle.vertex(0));
+		verts.push_back(triangle.vertex(1));
+		verts.push_back(triangle.vertex(2));
 		idxs.push_back(count);
 		idxs.push_back(count+1);
 		idxs.push_back(count+2);

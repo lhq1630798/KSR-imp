@@ -247,7 +247,7 @@ public:
 
     size_t K = 1;
     Point_2 center_P = CGAL::ORIGIN;
-    Vec3 _color = rand_color();
+    GL::Vec3 _color = GL::rand_color();
     KPolygons_2 *parent = nullptr;
 
     PWN_vector inline_points;
@@ -395,7 +395,7 @@ public:
     bool is_bbox = false;
     size_t plane_id = next_plane_id++;
     inline static size_t next_plane_id = 0;
-    Vec3 _color = rand_color();
+    GL::Vec3 _color = GL::rand_color();
 
     KPolygons_2 &operator=(const KPolygons_2 &) = delete;
 
@@ -542,7 +542,7 @@ public:
 
     std::unique_ptr<GL::Lines> Get_Segments()
     {
-        std::vector<Vec3> end_points{};
+        std::vector<GL::Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
             for (auto &kline : kpolys->_klines)
                 for (auto &kseg : kline._ksegments)
@@ -561,7 +561,7 @@ public:
 
     std::unique_ptr<GL::Lines> Get_Edges()
     {
-        std::vector<Vec3> end_points{};
+        std::vector<GL::Vec3> end_points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
             for (auto& kpoly2 : kpolys->_kpolygons_2)
                 for (const auto& vert : kpoly2.vertices)
@@ -582,7 +582,7 @@ public:
 
     std::unique_ptr<GL::Point_cloud> Get_Point_cloud()
     {
-        std::vector<Vec3> points{};
+        std::vector<GL::Vec3> points{};
         for (auto kpolys = _kpolygons_set.begin(); kpolys != std::prev(_kpolygons_set.end(), 6); kpolys++)
             for (auto &kpoly2 : kpolys->_kpolygons_2)
                 for (auto &[inline_point, normal] : kpoly2.inline_points)
@@ -642,7 +642,7 @@ public:
     size_t size() { return queue.size(); }
     GL::Update_Point get_update_point()
     {
-        std::vector<Vec3> points;
+        std::vector<GL::Vec3> points;
         for (auto kp : need_update)
         {
             auto point = kp->vertex->face->parent->plane().to_3d(*kp);
