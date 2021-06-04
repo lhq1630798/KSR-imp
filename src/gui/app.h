@@ -49,7 +49,7 @@ private:
 	float grow_speed = -1;
 
 
-	const std::vector<const char*> DetectShape_choices = { "ransac", "region_growing" };
+	const std::vector<const char*> DetectShape_choices = { "hierarchical", "region_growing" };
 	const std::vector<const char*> GC_term = { "center_points", "face_points", "alphaShape_rays" };
 
 

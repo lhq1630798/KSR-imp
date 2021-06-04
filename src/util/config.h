@@ -49,7 +49,10 @@ namespace Config {
 		DECLA(int, min_region_size);
 		DECLA(int, neigbor_K);
 		DECLA(float, alpha_scale);
-		DECLA(float, merge_cost);
+		DECLA(float, qem_a1);
+		DECLA(float, qem_a2);
+		DECLA(float, qem_cost);
+		DECLA(int, qem_num);
 		DECLA(bool, shape_diameter);
 		DECLA(float, sdf_rate);
 		DECLA(float, smallest_sdf);

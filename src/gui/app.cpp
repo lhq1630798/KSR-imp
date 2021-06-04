@@ -63,17 +63,23 @@ void App::render_imgui()
 		ImGui::Separator();
 		auto& params = Config::Detection::get();
 		ImGui::Checkbox("Regularize after detect shape", &params.use_regularization);
-		ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0, 1);
+		ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0.001, 1);
 		ImGui::DragFloat("max accepted angle", &params.max_accepted_angle, 1, 1, 90);
 		ImGui::DragInt("min region size", &params.min_region_size, 1, 1, 1000);
 		//ImGui::DragInt("neigbor K", &params.neigbor_K);
 		ImGui::Checkbox("shape_diameter", &params.shape_diameter);
-		ImGui::DragFloat("sdf_rate", &params.sdf_rate, 0.001, 0, 1);
-		ImGui::DragFloat("smallest_sdf", &params.smallest_sdf, 0.001, 0, 0.1);
+		if(params.shape_diameter) {
+			ImGui::DragFloat("sdf_rate", &params.sdf_rate, 0.001, 0, 1);
+			ImGui::DragFloat("seg_smooth", &params.smooth, 0.01, 0, 1);
+		}
 		ImGui::Text("DetectShape_option : %s", params.method.c_str());
 		static int DetectShape_option = -1;
 		if (ImGui::ListBox("DetectShape", &DetectShape_option, DetectShape_choices.data(), DetectShape_choices.size())) {
 			params.method = DetectShape_choices[DetectShape_option];
+		}
+		if (params.method == "hierarchical") {
+			ImGui::DragFloat("qem_a1", &params.qem_a1, 0.01, 0, 1);
+			ImGui::DragFloat("qem_a2", &params.qem_a2, 0.01, 0, 1);
 		}
 
 		if (ImGui::Button("Detect shape")) {
@@ -88,19 +94,29 @@ void App::render_imgui()
 	}
 
 	{
-		if (manager.plane_merger) {
+		if (manager.face_qem) {
+			ImGui::Separator();
 			auto& params = Config::Detection::get();
 			if (ImGui::Button("merge once")) {
-				manager.plane_merger->merge_once();
-				manager.alpha_mesh = manager.plane_merger->get_mesh();
+				manager.face_qem->merge_once();
+				manager.alpha_mesh = manager.face_qem->get_mesh();
 			}
-			ImGui::DragFloat("merge_cost", &params.merge_cost, 0.001, 0, 0.2);
-			if (ImGui::Button("finish merge")) {
-				manager.plane_merger->merge_until(params.merge_cost);
-				manager.alpha_mesh = manager.plane_merger->get_mesh();
+			//ImGui::DragFloat("qem_cost", &params.qem_cost, 1, 0, 500);
+			//if (ImGui::Button("merge unitl cost")) {
+			//	manager.face_qem->merge_until(params.qem_cost);
+			//	manager.alpha_mesh = manager.face_qem->get_mesh();
+			//}
+			ImGui::DragInt("face_num", &params.qem_num, 10, 10, 5000);
+			if (ImGui::Button("merge unitl num")) {
+				manager.face_qem->merge_until(std::size_t(params.qem_num));
+				manager.alpha_mesh = manager.face_qem->get_mesh();
+			}
+			if (ImGui::Button("refine")) {
+				manager.face_qem->refine();
+				manager.alpha_mesh = manager.face_qem->get_mesh();
 			}
 			if (ImGui::Button("get shape")) {
-				manager.process_detected_shape(manager.plane_merger->detected_shape());
+				manager.process_detected_shape(manager.face_qem->detected_shape());
 			}
 		}
 	}

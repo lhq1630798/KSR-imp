@@ -273,9 +273,9 @@ void Manager::detect_shape()
 			/********** Todo:shape merge **********/
 
 		}
-		else if (method == "plane_merge") {
-			plane_merger = Plane_Merge::init_plane_merge(input_mesh);
-			alpha_mesh = plane_merger->get_mesh();
+		else if (method == "hierarchical") {
+			face_qem = Hierarchical::bootstrap_face_qem(input_mesh);
+			alpha_mesh = face_qem->get_mesh();
 			return;
 		}
 	}

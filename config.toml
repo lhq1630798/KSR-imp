@@ -3,17 +3,20 @@ headless = false
 save_path = "output/"
 
 [primitive_detection]
- method = "region_growing"
-# method = "plane_merge"
+#method = "region_growing"
+method = "hierarchical"
 use_regularization = true
 max_distance_to_plane = 0.01
 max_accepted_angle = 50
 min_region_size = 20
 neigbor_K = 12
-save_result = false
+save_result = true
 alpha_scale = 1.2 #use by ray shooting
-merge_cost = 0.05
-shape_diameter = true
+qem_cost = 0.05
+qem_num = 1000
+qem_a1 = 1
+qem_a2 = 0.01
+shape_diameter = false
 sdf_rate = 0.1
 smallest_sdf = 0.001
 level = 5

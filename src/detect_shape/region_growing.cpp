@@ -13,7 +13,6 @@
 
 #include "util/config.h"
 #include "shape_diameter.h"
-#include "plane_merge.h"
 
 using namespace IC;
 namespace PMP = CGAL::Polygon_mesh_processing;
@@ -184,7 +183,17 @@ namespace Region_Growing {
 			// The best fit plane will be a plane fitted to all region points with
 			// its normal being perpendicular to the plane.
 			IC::Plane_3 plane;
-			linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
+			//linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
+			IC::Point_3 centroid;
+			linear_least_squares_fitting_3(
+				points_coord.begin(),
+				points_coord.end(),
+				plane,
+				centroid,
+				CGAL::Dimension_tag<0>(),
+				IC::K(),
+				CGAL::Eigen_diagonalize_traits<IC::FT>()
+			);
 			if (plane.orthogonal_vector() * average_normal < 0)
 				plane = plane.opposite();
 			planes.push_back(plane);

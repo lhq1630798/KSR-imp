@@ -2,7 +2,7 @@
 #include <string>
 #include <filesystem>
 #include "cgal/cgal_object.h"
-#include "detect_shape/plane_merge.h"
+#include "detect_shape/hierarchical.h"
 #include "partition/BSP.h"
 #include "partition/kinetic.h"
 #include "extract_surface/extract_surface.h"
@@ -27,7 +27,7 @@ public:
 
 	EC::Polygons_3 convex_shape;
 
-	std::unique_ptr<Plane_Merge::Plane_Merger> plane_merger;
+	std::unique_ptr<Hierarchical::FaceQEM> face_qem;
 	// 
 	std::unique_ptr<Kinetic::KPolygons_SET> kpolys_set;
 	std::unique_ptr<Kinetic::Kinetic_queue> k_queue;

@@ -41,11 +41,11 @@ set(KSR_SOURCES
         "src/detect_shape/region_growing.cpp"
         "src/detect_shape/detect_shape.cpp"
         "src/detect_shape/detect_shape.h"
-        "src/detect_shape/plane_merge.h"
-        "src/detect_shape/plane_merge.cpp"
+        "src/detect_shape/hierarchical.h"
+        "src/detect_shape/hierarchical.cpp"
         "src/detect_shape/shape_diameter.cpp"
         "src/detect_shape/shape_diameter.h"
-
+        
         "src/extract_surface/face_graph.cpp"
         "src/extract_surface/face_graph.h"
         "src/extract_surface/extract_surface.cpp"

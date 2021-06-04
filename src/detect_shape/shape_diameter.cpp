@@ -13,8 +13,27 @@ namespace Region_Growing {
     std::vector<IC::Plane_3> fit_planes(Regions, const IC::PWN_vector&);
     std::vector<EC::Detected_shape> create_detect_shape(std::vector<IC::Plane_3>, Regions, const IC::PWN_vector&);
 
+    void save_sdf_mesh(IC::Surface_Mesh mesh, IC::Surface_Mesh::Property_map< IC::face_descriptor, double> sdf_map) {
+        using Color = CGAL::Color;
+        auto face_color = mesh.add_property_map<IC::face_descriptor, Color>("f:color", Color(0, 0, 0)).first;
+
+        for (auto f : faces(mesh)) {
+            //unsigned char value = (sdf_property_map[f] - min_max.first) / (min_max.second - min_max.first) * 255;
+            unsigned char value = sdf_map[f] * 255;
+            Color color(value, value, value);
+            face_color[f] = color;
+            //std::cout << sdf_property_map[f] << " ";
+        }
+        std::string path = Config::read<std::string>("save_path") + "sdf.off";
+        std::ofstream file(path, std::ios::binary);
+        file << mesh;
+        file.close();
+
+    }
+
+
     class SDF_Region_type {
-        bool m_is_valid = false;
+        using size_type = typename IC::Surface_Mesh::size_type;
     public:
         SDF_Region_type(IC::Surface_Mesh _mesh) : mesh(_mesh)
         {
@@ -28,6 +47,10 @@ namespace Region_Growing {
             auto [min, max] = CGAL::sdf_values(mesh, sdf_map, 2.0 / 3.0 * CGAL_PI, 25, true);
             sdf_min = min;
             sdf_max = max;
+
+            if (Config::Detection::get().save_result) {
+                save_sdf_mesh(mesh, sdf_map);
+            }
 
             segment_map = mesh.add_property_map<IC::face_descriptor, std::size_t>("f:sid").first;
             int level = param.level;
@@ -100,17 +123,17 @@ namespace Region_Growing {
             return sdf;
         }
         double get_sdf(std::size_t index) const {
-            auto fd = IC::face_descriptor(static_cast<IC::Surface_Mesh::size_type>(index));
+            auto fd = IC::face_descriptor(static_cast<size_type>(index));
             return get_sdf(fd);
         }
         double get_segment_sdf(std::size_t index) const {
-            auto fd = IC::face_descriptor(static_cast<IC::Surface_Mesh::size_type>(index));
+            auto fd = IC::face_descriptor(static_cast<size_type>(index));
             auto segment_id = segment_map[fd];
             return average_sdfs[segment_id];
         }
     private:
         IC::Point_3 face_centroid(std::size_t index) const {
-            auto fd = IC::face_descriptor(static_cast<IC::Surface_Mesh::size_type>(index));
+            auto fd = IC::face_descriptor(static_cast<size_type>(index));
             std::vector<IC::Point_3> points;
             for (auto vd : mesh.vertices_around_face(mesh.halfedge(fd))) {
                 points.push_back(mesh.point(vd));
@@ -120,11 +143,11 @@ namespace Region_Growing {
             return center;
         }
         IC::Vector_3 face_normal(std::size_t index) const {
-            auto fd = IC::face_descriptor(static_cast<IC::Surface_Mesh::size_type>(index));
+            auto fd = IC::face_descriptor(static_cast<size_type>(index));
             return fnormals[fd];
         }
         double max_face_distance(std::size_t index) const {
-            auto fd = IC::face_descriptor(static_cast<IC::Surface_Mesh::size_type>(index));
+            auto fd = IC::face_descriptor(static_cast<size_type>(index));
             double max_dist = 0;
             for (auto vd : mesh.vertices_around_face(mesh.halfedge(fd))) {
                 double dist = CGAL::squared_distance(m_plane_of_best_fit, mesh.point(vd));
