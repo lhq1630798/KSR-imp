@@ -21,7 +21,7 @@ namespace PMP = CGAL::Polygon_mesh_processing;
 // TODO : min_region_size : use area instead of points num
 namespace Region_Growing {
 
-	Regions region_growing_on_points(IC::PWN_vector &points) {
+	Regions region_growing_on_points(const IC::PWN_vector &points) {
 		using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<IC::K, IC::PWN_vector, Point_map>;
 		using Region_type = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<IC::K, IC::PWN_vector, Point_map, Normal_map>;
 		using Sorting = CGAL::Shape_detection::Point_set::Least_squares_plane_fit_sorting<IC::K, IC::PWN_vector, Neighbor_query, Point_map>;
@@ -275,6 +275,5 @@ namespace Region_Growing {
 
 		return detected_shape;
 	}
-
 
 }

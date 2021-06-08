@@ -574,6 +574,197 @@ namespace Hierarchical {
 		queue.insert(event);
 		edge_event.insert({ edge,event });
 	}
+
+
+	std::unique_ptr<PointQEM> bootstrap_points_qem(IC::PWN_vector& points) {
+
+		Region_Growing::Regions regions;
+		regions = Region_Growing::region_growing_on_points(points);
+		return std::make_unique<PointQEM>(points, regions);
+	}
+
+	PointQEM::PointQEM(const Points& _points, const RG_Regions& detected_regions)
+		: points(_points)
+	{
+		
+		for (const auto& region : detected_regions) {
+
+			Point_region* new_point_region = new Point_region;
+			point_regions.insert(new_point_region);
+			for (const auto index : region) {
+				new_point_region->vds.push_back(index);
+			}
+		}
+		init();
+	}
+
+	void PointQEM::init() {
+		
+		for (Point_region* point_region : point_regions) 
+		{
+			std::vector<IC::Point_3> points_coord;
+			IC::Vector_3 average_normal = CGAL::NULL_VECTOR;
+			// Iterate through all region items.
+			for (auto index : point_region->vds) {
+				const IC::PWN& point = *(points.begin() + index);
+				points_coord.push_back(point.first);
+				average_normal += point.second;
+			}
+			average_normal /= point_region->vds.size();
+
+			// The best fit plane will be a plane fitted to all region points with
+			// its normal being perpendicular to the plane.
+			IC::Plane_3 plane;
+			//linear_least_squares_fitting_3(points_coord.begin(), points_coord.end(), plane, CGAL::Dimension_tag<0>());
+			IC::Point_3 centroid;
+			linear_least_squares_fitting_3(
+				points_coord.begin(),
+				points_coord.end(),
+				plane,
+				centroid,
+				CGAL::Dimension_tag<0>(),
+				IC::K(),
+				CGAL::Eigen_diagonalize_traits<IC::FT>()
+			);
+			if (plane.orthogonal_vector() * average_normal < 0)
+				plane = plane.opposite();
+
+			point_region->plane = plane;
+		}
+	}
+
+	PointQEM::~PointQEM()
+	{
+		for (Point_region* point_region : point_regions) {
+			free(point_region);
+		}
+	}
+
+	double fitting_cost(const IC::PWN_vector& points, size_t vd, const IC::Plane_3& plane) {
+		const auto& param = Config::Detection::get();
+		auto center = points[vd].first;
+		auto normal = points[vd].second;
+		auto cost = param.qem_a1 * dist_cost(center, plane) +
+			param.qem_a2 * normal_cost(normal, plane);
+		return cost;
+	}
+
+	void PointQEM::refine()
+	{
+		const auto& params = Config::Detection::get();
+		const std::size_t k = params.neigbor_K;
+		Neighbor_query neighbor_query(
+			points,
+			k,
+			IC::Point_map());
+
+		//multi-sources region growing
+		std::vector<bool> visited(points.size(), false);
+		struct RG_Event {
+			size_t vd;
+			Point_region* region;
+			double cost;
+		};
+		auto cmp = [](const RG_Event& left, const RG_Event& right) {
+			return left.cost > right.cost;
+		};
+		std::priority_queue<RG_Event, std::vector<RG_Event>, decltype(cmp)> RG_queue(cmp);
+
+		// init queue
+		for (Point_region* point_region : point_regions) {
+			size_t seed = point_region->vds[0];
+			double seed_cost = 1e100;
+			auto plane = point_region->plane;
+			for (auto vd : point_region->vds) {
+				auto cost = fitting_cost(points, vd, plane);
+				if (cost < seed_cost) {
+					seed = vd;
+					seed_cost = cost;
+				}
+			}
+			std::cout << "seed" << seed << std::endl;
+			visited[seed] = true;
+
+			std::vector<std::size_t> neighbors;
+			neighbor_query(seed, neighbors);
+
+			for (auto vd : neighbors) {
+				
+				auto cost = fitting_cost(points, vd, plane);
+				RG_queue.push(RG_Event{ vd,point_region,cost });
+			}
+			auto color = point_region->color;
+			*point_region = Point_region{}; //clear
+			point_region->vds.push_back(seed);
+			point_region->plane = plane;//keep plane for region growing
+			point_region->color = color;
+		}
+
+		//growing
+		while (!RG_queue.empty()) {
+			auto event = RG_queue.top();
+			RG_queue.pop();
+			if (visited[event.vd])
+				continue;
+			visited[event.vd] = true;
+			event.region->vds.push_back(event.vd);
+
+			std::vector<std::size_t> neighbors;
+			neighbor_query(event.vd, neighbors);
+
+			for (auto vd : neighbors) {
+				if (visited[vd])
+					continue;
+				auto cost = fitting_cost(points, vd, event.region->plane);
+				RG_queue.push(RG_Event{ vd, event.region, cost });
+			}
+		}
+
+		init();
+
+	}
+
+	std::unique_ptr<GL::Points> PointQEM::get_points()
+	{
+		// assert is triangle mesh
+		std::vector<GL::Vert> verts;
+		for (Point_region* point_region : point_regions) {
+			auto color = point_region->color;
+			for (auto& vd : point_region->vds)
+			{
+				verts.push_back({ points[vd].first,color });
+			}
+		}
+		return std::make_unique<GL::Points>(std::move(verts));
+	}
+
+	std::vector<EC::Detected_shape> PointQEM::detected_shape()
+	{
+		//TODO: regularize
+		IK_to_EK to_EK;
+		std::vector<EC::Detected_shape> detected_shapes;
+		for (Point_region* point_region : point_regions) {
+			auto plane = point_region->plane;
+			std::vector<EC::PWN> pwns;
+			IC::Vector_3 average_normal = CGAL::NULL_VECTOR;
+
+			for (auto& vd : point_region->vds)
+			{
+				auto center = points[vd].first;
+				auto normal = points[vd].second;
+				average_normal += normal;
+				pwns.push_back({ to_EK(center), to_EK(normal) });
+			}
+			average_normal /= point_region->vds.size();
+			if (plane.orthogonal_vector() * average_normal < 0) {
+				plane = plane.opposite();
+			}
+
+			detected_shapes.push_back({ to_EK(plane) , pwns });
+		}
+		return detected_shapes;
+	}
+
 }
 
 

@@ -118,13 +118,19 @@ void Manager::reset()
 	convex_shape.clear();
 	//alpha_triangles.clear();
 
+	face_qem.reset();
+	points_qem.reset();
+
 	kpolys_set.reset();
 	k_queue.reset();
+	bsp.reset();
 
 	point_cloud.reset();
 	inited_mesh.reset();
 
 	alpha_mesh.reset();
+	qem_points.reset();
+	qem_mesh.reset();
 
 	mesh.reset();
 	lines.reset();
@@ -275,7 +281,7 @@ void Manager::detect_shape()
 		}
 		else if (method == "hierarchical") {
 			face_qem = Hierarchical::bootstrap_face_qem(input_mesh);
-			alpha_mesh = face_qem->get_mesh();
+			qem_mesh = face_qem->get_mesh();
 			return;
 		}
 	}
@@ -289,6 +295,11 @@ void Manager::detect_shape()
 		{
 			detected_shape = Region_Growing::detectshape_on_points(points);
 			/********** Todo:shape merge **********/
+		}
+		else if (method == "hierarchical") {
+			points_qem = Hierarchical::bootstrap_points_qem(points);
+			qem_points = points_qem->get_points();
+			return;
 		}
 	}
 	else {

@@ -1,5 +1,7 @@
 #pragma once
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <CGAL/Shape_detection/Region_growing/Region_growing.h>
+#include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
 #include <set>
 #include <utility>
 #include "gui/gl_object.h"
@@ -90,4 +92,31 @@ namespace Hierarchical {
 
 	std::unique_ptr<Hierarchical::FaceQEM> bootstrap_face_qem(IC::Surface_Mesh&);
 
+
+	struct Point_region {
+		IC::Plane_3 plane{};
+		std::vector<size_t> vds{};
+		GL::Vec3 color = GL::rand_color();
+	};
+
+	using Neighbor_query = CGAL::Shape_detection::Point_set::K_neighbor_query<IC::K, IC::PWN_vector, IC::Point_map>;
+
+	class PointQEM {
+	public:
+		using RG_Regions = std::vector<std::vector<std::size_t>>;
+		using Points = IC::PWN_vector;
+		PointQEM(const Points&, const RG_Regions&);
+		~PointQEM();
+		void refine();
+		std::unique_ptr<GL::Points> get_points();
+		std::vector<EC::Detected_shape> detected_shape();
+
+	private:
+		const Points& points;
+		std::set<Point_region*> point_regions; //TODO: use list
+
+		void init();
+	};
+
+	std::unique_ptr<Hierarchical::PointQEM> bootstrap_points_qem(IC::PWN_vector&);
 }

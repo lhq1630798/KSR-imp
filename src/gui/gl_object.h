@@ -481,4 +481,44 @@ private:
     GLuint vao = 0, vbo = 0;
 };
 
+class Points
+{
+public:
+	Points(std::vector<Vert> points) : points(std::move(points)) { init(); };
+	~Points()
+	{
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(1, &vbo);
+	}
+	std::vector<Vert> points;
+	void render(Shader &shader) const
+	{
+		shader.use();
+		glPointSize(1);
+		glBindVertexArray(vao);
+		glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
+		glBindVertexArray(0);
+	}
+
+private:
+	void init()
+	{
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vbo);
+		glBindVertexArray(vao);
+
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vert) * points.size(), points.data(), GL_DYNAMIC_DRAW);
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), nullptr);
+		glEnableVertexAttribArray(0);
+
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), (GLvoid*)sizeof(Vec3));
+		glEnableVertexAttribArray(1);
+
+		glBindVertexArray(0);
+	}
+	GLuint vao = 0, vbo = 0;
+};
+
 }
