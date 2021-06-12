@@ -608,7 +608,7 @@ namespace Hierarchical {
 			for (auto index : point_region->vds) {
 				const IC::PWN& point = *(points.begin() + index);
 				points_coord.push_back(point.first);
-				average_normal += point.second;
+				average_normal += point.second / point.second.squared_length();
 			}
 			average_normal /= point_region->vds.size();
 
@@ -643,9 +643,19 @@ namespace Hierarchical {
 	double fitting_cost(const IC::PWN_vector& points, size_t vd, const IC::Plane_3& plane) {
 		const auto& param = Config::Detection::get();
 		auto center = points[vd].first;
-		auto normal = points[vd].second;
-		auto cost = param.qem_a1 * dist_cost(center, plane) +
-			param.qem_a2 * normal_cost(normal, plane);
+		auto normal = points[vd].second / points[vd].second.squared_length();
+		double cost = 0;
+		
+		//normal和distance的限制
+		double angle_threshold = std::cos(CGAL::to_double((param.max_accepted_angle * static_cast<IC::FT>(CGAL_PI)) / IC::FT(180)));
+		double distance_threshold = param.max_distance_to_plane * param.max_distance_to_plane;
+
+		if ((CGAL::abs(normal * plane.orthogonal_vector()) < angle_threshold) || (dist_cost(center, plane) > distance_threshold)) {
+			cost = 1e100;
+		}
+		else {
+			cost = param.qem_a1 * dist_cost(center, plane) + param.qem_a2 * normal_cost(normal, plane);
+		}
 		return cost;
 	}
 
@@ -682,7 +692,7 @@ namespace Hierarchical {
 					seed_cost = cost;
 				}
 			}
-			std::cout << "seed" << seed << std::endl;
+			//std::cout << "seed" << seed << std::endl;
 			visited[seed] = true;
 
 			std::vector<std::size_t> neighbors;
@@ -706,6 +716,13 @@ namespace Hierarchical {
 			RG_queue.pop();
 			if (visited[event.vd])
 				continue;
+
+			//normal和distance的限制
+			if (event.cost == 1e100) {
+				visited[event.vd] = true;
+				continue;
+			}
+			
 			visited[event.vd] = true;
 			event.region->vds.push_back(event.vd);
 
@@ -751,7 +768,7 @@ namespace Hierarchical {
 			for (auto& vd : point_region->vds)
 			{
 				auto center = points[vd].first;
-				auto normal = points[vd].second;
+				auto normal = points[vd].second / points[vd].second.squared_length();
 				average_normal += normal;
 				pwns.push_back({ to_EK(center), to_EK(normal) });
 			}

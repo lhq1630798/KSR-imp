@@ -355,7 +355,12 @@ void Manager::partition()
 {
 	if (!bsp)
 		return;
+
+	double start_time = glfwGetTime();
 	timer("partition", &BSP::BSP_Partition::partition, *bsp);
+	Partition_Time = glfwGetTime() - start_time;
+	Number_of_Polyhedra = BSP::collect(bsp->lcc.one_dart_per_cell<3>()).size();
+
 	if (!Config::read<bool>("headless"))
 		mesh = bsp->Get_mesh();
 }
@@ -364,31 +369,64 @@ void Manager::extract_surface()
 {
 	if (!bsp || !bsp->is_done())
 		return;
+
+	double start_time = glfwGetTime();
 	auto [surface, surface_lines, F_Number] = timer("extract surface", Extract_Surface, bsp->lcc, ES_params /*filename, lamda, translate, scale, detected_shape, GC_term*/);
+	Extract_Time = glfwGetTime() - start_time;
 
 	if (!Config::read<bool>("headless"))
 	{
 		lines = std::move(surface_lines);
 		mesh = std::move(surface);
 	}
-	Number_of_Facets = F_Number;
+	Number_of_Output_Facets = F_Number;
 }
+
+void Manager::save_results()
+{
+	auto save_path = Config::read<std::string>("save_path");
+	std::string results_file = save_path + ES_params.filename + ".txt";
+	std::ofstream OutFile(results_file);
+
+	//detect shapes
+	OutFile << "Number_of_Shapes: " << ES_params.detected_shape.size() << std::endl;
+
+	//partition
+	OutFile << "Number_of_Polyhedra: " << Number_of_Polyhedra << std::endl;
+	//OutFile << "Number_of_Partition_Faces: " << ES_params.Number_of_Partition_Faces << std::endl;
+	OutFile << "Partition_Time: " << Partition_Time << std::endl;
+
+	//extract surface
+	OutFile << "Number_of_Output_Facets: " << Number_of_Output_Facets << std::endl;
+	OutFile << "Extract_Time: " << Extract_Time << std::endl;
+
+	OutFile.close();
+	std::cout << "Save Successful !" << std::endl;
+}
+
 int Manager::run_offline(fs::path file)
 {
 
-	//if (!read_PWN(file)) {
-	if (!read_mesh(file)) {
+	if (!read_PWN(file)) {
+	//if (!read_mesh(file)) {
 		fmt::print(stderr, "Error: cannot read file {}\n", file.string());
 		return 1;
 	}
-	//init_point_cloud();
-	init_mesh();
+	init_point_cloud();
+	//init_mesh();
 	ES_params.filename = fs::path{ file }.stem().string();
 
 
 	detect_shape();
+	for (int i = 0; i < 3; i++) {
+		points_qem->refine();
+		//face_qem->refine();
+	}
+	process_detected_shape(points_qem->detected_shape());
+	//process_detected_shape(face_qem->detected_shape());
 	init_BSP();
 	partition();
 	extract_surface();
+	save_results();
 	return 0;
 }

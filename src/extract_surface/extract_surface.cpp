@@ -367,7 +367,7 @@ IC::Surface_Mesh get_surface(CMap_3& cm,GraphType* g,Neighbor N) {
 }
 
 //得到最复杂版本的Surface_mesh，不进行合并
-IC::Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g, Neighbor N) {
+IC::Surface_Mesh get_surface_without_merge(CMap_3& cm, GraphType* g/*, Neighbor N*/) {
 	EK_to_IK to_inexact;
 	std::vector<IC::Point_3> points;
 	std::vector<std::vector<size_t>> polygons;
@@ -573,16 +573,16 @@ std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > 
 
 	std::cout << "Extract Surface Begin" << std::endl;
 	//C:保存每个polyhedra的一个dart
-	auto C = BSP::collect(cm.one_dart_per_cell<3>());
-	std::cout << "Polyhedron number: " << C.size() << std::endl;
+	//auto C = BSP::collect(cm.one_dart_per_cell<3>());
+	//std::cout << "Polyhedron number: " << C.size() << std::endl;
 
 	//F:保存每个face的一个dart
-	auto F = BSP::collect(cm.one_dart_per_cell<2>());
-	std::cout << "F number: " << F.size() << std::endl;
+	//auto F = BSP::collect(cm.one_dart_per_cell<2>());
+	//std::cout << "F number: " << F.size() << std::endl;
 
 	//N:保存相邻的两个polyhedra的dart
-	Neighbor N = get_N(cm, F);
-	std::cout << "N number: " << N.size() << std::endl;
+	//Neighbor N = get_N(cm, F);
+	//std::cout << "N number: " << N.size() << std::endl;
 
 	//打印所有相邻的polyhedron
 	/*for (auto n : N) {
@@ -592,11 +592,10 @@ std::tuple<std::unique_ptr<GL::Polygon_Mesh>, std::unique_ptr<GL::Lines>, int > 
 	GraphType *g = label_polyhedron(cm, ES_params);
 
 
-	//合并后的表面
+	
 	//auto m1 = get_surface(cm, g, N);
 
-	//未合并的表面
-	auto m2 = get_surface_without_merge(cm, g, N);
+	auto m2 = get_surface_without_merge(cm, g/*, N*/);
 
 	auto tri_surface = triangle_surface(m2);
 

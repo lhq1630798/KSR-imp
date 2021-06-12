@@ -20,6 +20,7 @@ public:
 	void init_BSP();
 	void partition();
 	void extract_surface();
+	void save_results();
 	int run_offline(fs::path file);
 
 	IC::PWN_vector points;//input points
@@ -44,7 +45,10 @@ public:
 	std::unique_ptr<GL::Polygon_Mesh> mesh;//extracted surface mesh
 	std::unique_ptr<GL::Lines> lines;//extracted surface mesh boundary
 
-	int Number_of_Facets;
+	int Number_of_Output_Facets;
+	int Number_of_Polyhedra;
+	double Partition_Time;
+	double Extract_Time;
 
 	ExtractSurface_Params ES_params;
 

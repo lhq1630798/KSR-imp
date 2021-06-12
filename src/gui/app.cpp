@@ -157,7 +157,7 @@ void App::render_imgui()
 			manager.partition();
 		}
 
-
+		ImGui::Text("Number of Polyhedra = %d", manager.Number_of_Polyhedra);
 
 	}
 
@@ -207,7 +207,7 @@ void App::render_imgui()
 			show_alpha_shape = false;
 		}
 
-		ImGui::Text("Number of Facets = %d", manager.Number_of_Facets);
+		ImGui::Text("Number of Output Facets = %d", manager.Number_of_Output_Facets);
 	}
 
 	ImGui::Separator();
