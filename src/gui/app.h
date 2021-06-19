@@ -42,6 +42,7 @@ private:
 	bool show_point_cloud = true;
 	bool show_inited_mesh = true;
 	bool show_alpha_shape = false;
+	bool show_qem_shape = false;
 
 	bool back_cull = false;
 	bool grow = false;

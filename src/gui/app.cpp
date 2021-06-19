@@ -98,6 +98,8 @@ void App::render_imgui()
 			show_point_cloud = false;
 		}
 		ImGui::Text("Number_of_planar_shapes = %d", manager.convex_shape.size());
+		
+		ImGui::Checkbox("qem shape", &show_qem_shape);
 
 		ImGui::DragFloat("scale alpha value", &params.alpha_scale, 0.1, 1, 10);
 		ImGui::Checkbox("alpha shape", &show_alpha_shape);
@@ -109,7 +111,7 @@ void App::render_imgui()
 			auto& params = Config::Detection::get();
 			if (ImGui::Button("merge once")) {
 				manager.face_qem->merge_once();
-				manager.alpha_mesh = manager.face_qem->get_mesh();
+				manager.qem_mesh = manager.face_qem->get_mesh();
 			}
 			ImGui::DragFloat("qem_cost", &params.qem_cost, 0.01, 0, 1);
 			if (ImGui::Button("merge unitl cost")) {
@@ -119,14 +121,26 @@ void App::render_imgui()
 			ImGui::DragInt("face_num", &params.qem_num, 10, 10, 5000);
 			if (ImGui::Button("merge unitl num")) {
 				manager.face_qem->merge_until(std::size_t(params.qem_num));
-				manager.alpha_mesh = manager.face_qem->get_mesh();
+				manager.qem_mesh = manager.face_qem->get_mesh();
 			}
 			if (ImGui::Button("refine")) {
 				manager.face_qem->refine();
-				manager.alpha_mesh = manager.face_qem->get_mesh();
+				manager.qem_mesh = manager.face_qem->get_mesh();
 			}
 			if (ImGui::Button("get shape")) {
+				show_qem_shape = false;
 				manager.process_detected_shape(manager.face_qem->detected_shape());
+			}
+		}
+		if (manager.points_qem) {
+			ImGui::Separator();
+			if (ImGui::Button("refine")) {
+				manager.points_qem->refine();
+				manager.qem_points = manager.points_qem->get_points();
+			}
+			if (ImGui::Button("get shape")) {
+				show_qem_shape = false;
+				manager.process_detected_shape(manager.points_qem->detected_shape());
 			}
 		}
 	}
@@ -153,7 +167,7 @@ void App::render_imgui()
 			manager.partition();
 		}
 
-
+		ImGui::Text("Number of Polyhedra = %d", manager.Number_of_Polyhedra);
 
 	}
 
@@ -203,7 +217,7 @@ void App::render_imgui()
 			show_alpha_shape = false;
 		}
 
-		ImGui::Text("Number of Facets = %d", manager.Number_of_Facets);
+		ImGui::Text("Number of Output Facets = %d", manager.Number_of_Output_Facets);
 	}
 
 	ImGui::Separator();
@@ -259,6 +273,15 @@ void App::render_3d()
 	if (show_seg_line && manager.lines && !show_alpha_shape)
 	{
 		manager.lines->render(shader);
+	}
+
+	if (manager.qem_mesh && show_qem_shape) {
+		auto& mesh = manager.qem_mesh;
+		if (show_plane)
+			mesh->render(shader);
+	}
+	if (manager.qem_points && show_qem_shape) {
+		manager.qem_points->render(shader);
 	}
 
 	if (manager.alpha_mesh && show_alpha_shape) {
