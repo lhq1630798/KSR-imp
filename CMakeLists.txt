@@ -45,6 +45,8 @@ set(KSR_SOURCES
         "src/detect_shape/hierarchical.cpp"
         "src/detect_shape/shape_diameter.cpp"
         "src/detect_shape/shape_diameter.h"
+        "src/detect_shape/structure_detect.cpp"
+        "src/detect_shape/structure_detect.h"
         
         "src/extract_surface/face_graph.cpp"
         "src/extract_surface/face_graph.h"
