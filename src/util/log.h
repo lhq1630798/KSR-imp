@@ -52,9 +52,9 @@ inline std::string last_file(std::string path) {
            std::exit(__LINE__), 0)
 
 #include "config.h"
-#undef assert
-#define assert(expr)                                                                               \
-    (void)((!!(Config::read<bool>("debug") && (expr))) || (Config::read<bool>("debug") && (fail_assert(#expr, last_file(__FILE__).c_str(), __LINE__), 0)))
 
-//#undef assert
-//#define assert(expr) R_assert(expr)
+#ifdef NDEBUG
+    #undef assert
+    #define assert(expr)                                                                               \
+        (void)((!!(Config::read<bool>("debug") && (expr))) || (Config::read<bool>("debug") && (fail_assert(#expr, last_file(__FILE__).c_str(), __LINE__), 0)))
+#endif

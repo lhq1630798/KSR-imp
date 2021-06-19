@@ -428,7 +428,7 @@ IC::Surface_Mesh triangle_surface(IC::Surface_Mesh mesh) {
 	}
 	PMP::isotropic_remeshing(
 		CGAL::faces(mesh),
-		1e5, //a value larger than bbox
+		1e100, //a value larger than bbox
 		mesh,
 		PMP::parameters::edge_is_constrained_map(constrained_edge)
 	);

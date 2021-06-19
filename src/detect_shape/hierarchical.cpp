@@ -1,5 +1,6 @@
 #define CGAL_EIGEN3_ENABLED
 #include <CGAL/linear_least_squares_fitting_3.h>
+#include <CGAL/Polygon_mesh_processing/shape_predicates.h>
 #include <fmt/core.h>
 #include <execution>
 #include <mutex>
@@ -98,8 +99,8 @@ namespace Hierarchical {
 
 		auto n = plane.orthogonal_vector(); // {a,b,c}
 		// correct normal oritation before calculate normal cost!
-		//if (n * -E < 0)
-		//	n = -n;
+		if (n * -E < 0)
+			n = -n;
 		//nTAn
 		cost += vTMv(D, n);
 		//2ETn
@@ -112,7 +113,7 @@ namespace Hierarchical {
 	}
 
 	//bool near_orthogonal(const IC::Vector_3& n1, const IC::Vector_3& n2) {
-	//	if (abs(n1 * n2) < 0.15)//81¡ã
+	//	if (abs(n1 * n2) < 0.15)//81ï¿½ï¿½
 	//		return true;
 	//	return false;
 	//}
@@ -166,28 +167,30 @@ namespace Hierarchical {
 		if (out_plane.orthogonal_vector() * -quadric_E < 0)
 			out_plane = out_plane.opposite();
 
-		//auto cost = fitting_cost(quadric_A, quadric_B, quadric_C, quadric_D, quadric_E, quadric_F, out_plane);
-		//cost = cost / (p1->fds.size() + p2->fds.size());
-		//return cost;
-		double p1_cost = fitting_cost(
-			p1->quadric_A,
-			p1->quadric_B,
-			p1->fds.size(),//C
-			p1->quadric_D,
-			p1->quadric_E,
-			p1->fds.size(),//F
-			out_plane
-		) / std::max(int(p1->fds.size()), 20);
-		double p2_cost = fitting_cost(
-			p2->quadric_A,
-			p2->quadric_B,
-			p2->fds.size(),//C
-			p2->quadric_D,
-			p2->quadric_E,
-			p2->fds.size(),//F
-			out_plane
-		) / std::max(int(p2->fds.size()), 20);
-		return std::max(p1_cost,p2_cost);
+		auto cost = fitting_cost(quadric_A, quadric_B, quadric_C, quadric_D, quadric_E, quadric_F, out_plane);
+		cost = cost / (p1->fds.size() + p2->fds.size());
+		assert(std::isfinite(cost));
+		return cost;
+
+		//double p1_cost = fitting_cost(
+		//	p1->quadric_A,
+		//	p1->quadric_B,
+		//	p1->fds.size(),//C
+		//	p1->quadric_D,
+		//	p1->quadric_E,
+		//	p1->fds.size(),//F
+		//	out_plane
+		//) / std::max(int(p1->fds.size()), 20);
+		//double p2_cost = fitting_cost(
+		//	p2->quadric_A,
+		//	p2->quadric_B,
+		//	p2->fds.size(),//C
+		//	p2->quadric_D,
+		//	p2->quadric_E,
+		//	p2->fds.size(),//F
+		//	out_plane
+		//) / std::max(int(p2->fds.size()), 20);
+		//return std::max(p1_cost,p2_cost);
 	}
 
 
@@ -232,7 +235,6 @@ namespace Hierarchical {
 				}
 				assert(points.size() == 3);
 				auto center = CGAL::centroid(points[0], points[1], points[2]);
-				auto normal = CGAL::unit_normal(points[0], points[1], points[2]);
 
 				// Matrix numbering:
 				// 0 1 2
@@ -247,6 +249,12 @@ namespace Hierarchical {
 				quadric_A[5] += center.z() * center.z();
 				plane_region->quadric_B += center - CGAL::ORIGIN;
 
+
+				if (CGAL::Polygon_mesh_processing::is_degenerate_triangle_face(fd, mesh)) {
+					//TODO:: use area weight
+					continue;
+				}
+				auto normal = CGAL::unit_normal(points[0], points[1], points[2]);
 				auto& quadric_D = plane_region->quadric_D;
 				quadric_D[0] += normal.x() * normal.x();
 				quadric_D[1] += normal.x() * normal.y();
@@ -256,6 +264,7 @@ namespace Hierarchical {
 				quadric_D[5] += normal.z() * normal.z();
 				plane_region->quadric_E += -normal;
 			}
+			
 			auto quality = qem_fit_plane_3(
 				plane_region->quadric_A,
 				plane_region->quadric_B,
@@ -534,9 +543,11 @@ namespace Hierarchical {
 		std::vector<EC::Detected_shape> detected_shapes;
 		for (Plane_region* plane_region : plane_regions) {
 			assert(!plane_region->fds.empty());
+			if (plane_region->fds.size() <= 3) continue;
+
 			auto plane = plane_region->plane;
 			std::vector<EC::PWN> pwns;
-			IC::Vector_3 average_normal;
+			IC::Vector_3 average_normal = CGAL::NULL_VECTOR;
 
 			for (auto& fd : plane_region->fds)
 			{

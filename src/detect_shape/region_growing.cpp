@@ -5,6 +5,7 @@
 
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_polygon_mesh.h>
 #include <CGAL/Polygon_mesh_processing/compute_normal.h>
+#include <CGAL/Polygon_mesh_processing/measure.h>
 #include <CGAL/IO/write_ply_points.h>
 #include <CGAL/linear_least_squares_fitting_3.h>
 #include <CGAL/Regularization/regularize_planes.h>
@@ -28,11 +29,10 @@ namespace Region_Growing {
 		using Region_growing = CGAL::Shape_detection::Region_growing<IC::PWN_vector, Neighbor_query, Region_type, Sorting::Seed_map>;
 
 		const auto& params = Config::Detection::get();
-		// Default parameter values for the data file point_set_3.xyz.
 		const std::size_t k = params.neigbor_K;
 		const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
 		const IC::FT  max_accepted_angle = params.max_accepted_angle;
-		const std::size_t min_region_size = params.min_region_size;
+		const std::size_t min_region_size = params.use_primitive_num ? 3 : params.min_region_size;
 
 		// Create instances of the classes Neighbor_query and Region_type.
 		Neighbor_query neighbor_query(
@@ -55,6 +55,14 @@ namespace Region_Growing {
 		// Run the algorithm.
 		Regions regions;
 		region_growing.detect(std::back_inserter(regions));
+
+		if (params.use_primitive_num && regions.size() > params.primitive_num) {
+			// keep largest region
+			std::sort(regions.begin(), regions.end(), [](const Region& r1, const Region& r2) {
+				return r1.size() > r2.size();
+			});
+			regions.resize(params.primitive_num);
+		}
 
 		if (params.save_result) {
 			//save region growing result
@@ -95,7 +103,8 @@ namespace Region_Growing {
 		// Default parameter values for the data file polygon_mesh.off.
 		const IC::FT  max_distance_to_plane = params.max_distance_to_plane;
 		const IC::FT  max_accepted_angle = params.max_accepted_angle;
-		const std::size_t min_region_size = params.min_region_size;
+		const std::size_t min_region_size = params.use_primitive_num ? 3 : params.min_region_size;
+
 
 		// Create instances of the classes Neighbor_query and Region_type.
 		Neighbor_query neighbor_query(mesh);
@@ -120,7 +129,32 @@ namespace Region_Growing {
 		Regions regions;
 		region_growing.detect(std::back_inserter(regions));
 
+		if (params.use_primitive_num && regions.size() > params.primitive_num) {
+			// keep largest region
+			// sort by area
+			std::vector<double> region_areas;
+			std::vector<int> index;
+			int i = 0;
+			for (const auto& r : regions) {
+				std::vector<Surface_Mesh::Face_index> face_range(r.begin(), r.end());
+				double area = PMP::area(face_range, mesh);
+				region_areas.push_back(area);
+				index.push_back(i++);
+			}
+			std::sort(index.begin(), index.end(), [&](int i1, int i2) {
+				return region_areas[i1] > region_areas[i2];
+			});
+			index.resize(params.primitive_num);
+			Regions largest_region;
+			for (auto i : index) {
+				largest_region.push_back(std::move(regions[i]));
+			}
+			regions = std::move(largest_region);
+		}
 
+		if (params.save_result) {
+			save_region_growing_mesh(mesh, regions);
+		}
 
 		return regions;
 	}

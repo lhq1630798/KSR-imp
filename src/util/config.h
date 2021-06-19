@@ -47,6 +47,8 @@ namespace Config {
 		DECLA(float, max_distance_to_plane);
 		DECLA(float, max_accepted_angle);
 		DECLA(int, min_region_size);
+		DECLA(bool, use_primitive_num);
+		DECLA(int, primitive_num);
 		DECLA(int, neigbor_K);
 		DECLA(float, alpha_scale);
 		DECLA(float, qem_a1);

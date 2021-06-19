@@ -136,6 +136,11 @@ std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3
         {
             if (auto inters_point = boost::get<Point_3>(&*result))
             {
+                //assert(*inters_point != e.point(0) && *inters_point != e.point(1));
+                if (*inters_point == e.point(0) || *inters_point == e.point(1)) {
+                    std::cout << "corner case: Point_3 on plane\n";
+                    return {};
+                }
                 auto point_2 = plane().to_2d(*inters_point);
                 new_poly->push_back(point_2);
                 if (new_poly == &poly1) 
@@ -145,7 +150,7 @@ std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3
                 new_poly->push_back(point_2);
             }
             else if (auto inters_seg = boost::get<Segment_3>(&*result)) {
-                std::cout << "Warning Segment_3 on plane\n";
+                std::cout << "corner case: Segment_3 on plane\n";
                 return {};
             }
         }
@@ -157,14 +162,14 @@ std::optional<std::pair<Polygon_3, Polygon_3>> Polygon_3::split_by_plane(Plane_3
     for (auto& [point_3, normal] : inline_points)
     {
         auto point_2 = plane().to_2d(point_3);
-        if (new_poly1.polygon_2().has_on_bounded_side(point_2))
+        if (!new_poly1.polygon_2().has_on_unbounded_side(point_2))
         {
             assert(!new_poly2.polygon_2().has_on_bounded_side(point_2));
             new_poly1.inline_points.emplace_back(point_3, normal);
         }
         else
         {
-            assert(new_poly2.polygon_2().has_on_bounded_side(point_2));
+            assert(!new_poly2.polygon_2().has_on_unbounded_side(point_2));
             new_poly2.inline_points.emplace_back(point_3, normal);
         }
     }

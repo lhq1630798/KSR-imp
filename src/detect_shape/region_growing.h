@@ -10,5 +10,8 @@ namespace Region_Growing {
 
 	Regions region_growing_on_mesh(const IC::Surface_Mesh&);
 	std::vector<EC::Detected_shape> detectshape_on_mesh(IC::Surface_Mesh);
+
+	void save_sdf_mesh(IC::Surface_Mesh, IC::Surface_Mesh::Property_map< IC::face_descriptor, double>);
+
 }
 

@@ -1,6 +1,7 @@
 #include "gui/app.h"
 #include "gui/platform.h"
 #include "util/config.h"
+#include "detect_shape/structure_detect.h"
 
 App::App(Platform& plt, GL::Shader shader)
 	: plt(plt), shader(shader) {}
@@ -59,19 +60,28 @@ void App::render_imgui()
 	if (ImGui::Button("Open Mesh"))
 		manager.load_mesh();
 
+	//{
+	//	ImGui::Separator();
+	//	if (ImGui::Button("Detect structure")) {
+	//		structure_detect(manager.input_mesh);
+	//	}
+
+	//}
 	{
 		ImGui::Separator();
 		auto& params = Config::Detection::get();
 		ImGui::Checkbox("Regularize after detect shape", &params.use_regularization);
 		ImGui::DragFloat("max distance to plane", &params.max_distance_to_plane, 0.001, 0.001, 1);
 		ImGui::DragFloat("max accepted angle", &params.max_accepted_angle, 1, 1, 90);
-		ImGui::DragInt("min region size", &params.min_region_size, 1, 1, 1000);
+		ImGui::Checkbox("use primitive num", &params.use_primitive_num);
+		!params.use_primitive_num && ImGui::DragInt("min region size", &params.min_region_size, 1, 1, 1000);
+		params.use_primitive_num && ImGui::DragInt("primitive_num", &params.primitive_num, 10, 10, 10000);
 		//ImGui::DragInt("neigbor K", &params.neigbor_K);
-		ImGui::Checkbox("shape_diameter", &params.shape_diameter);
-		if(params.shape_diameter) {
-			ImGui::DragFloat("sdf_rate", &params.sdf_rate, 0.001, 0, 1);
-			ImGui::DragFloat("seg_smooth", &params.smooth, 0.01, 0, 1);
-		}
+		//ImGui::Checkbox("shape_diameter", &params.shape_diameter);
+		//if(params.shape_diameter) {
+		//	ImGui::DragFloat("sdf_rate", &params.sdf_rate, 0.001, 0, 1);
+		//	ImGui::DragFloat("seg_smooth", &params.smooth, 0.01, 0, 1);
+		//}
 		ImGui::Text("DetectShape_option : %s", params.method.c_str());
 		static int DetectShape_option = -1;
 		if (ImGui::ListBox("DetectShape", &DetectShape_option, DetectShape_choices.data(), DetectShape_choices.size())) {
@@ -101,11 +111,11 @@ void App::render_imgui()
 				manager.face_qem->merge_once();
 				manager.alpha_mesh = manager.face_qem->get_mesh();
 			}
-			//ImGui::DragFloat("qem_cost", &params.qem_cost, 1, 0, 500);
-			//if (ImGui::Button("merge unitl cost")) {
-			//	manager.face_qem->merge_until(params.qem_cost);
-			//	manager.alpha_mesh = manager.face_qem->get_mesh();
-			//}
+			ImGui::DragFloat("qem_cost", &params.qem_cost, 0.01, 0, 1);
+			if (ImGui::Button("merge unitl cost")) {
+				manager.face_qem->merge_until(params.qem_cost);
+				manager.alpha_mesh = manager.face_qem->get_mesh();
+			}
 			ImGui::DragInt("face_num", &params.qem_num, 10, 10, 5000);
 			if (ImGui::Button("merge unitl num")) {
 				manager.face_qem->merge_until(std::size_t(params.qem_num));

@@ -3,15 +3,17 @@ headless = false
 save_path = "output/"
 
 [primitive_detection]
-#method = "region_growing"
-method = "hierarchical"
+method = "region_growing"
+#method = "hierarchical"
 use_regularization = true
 max_distance_to_plane = 0.01
 max_accepted_angle = 50
 min_region_size = 20
+use_primitive_num = false #discard small primitive if true
+primitive_num = 1000
 neigbor_K = 12
 save_result = true
-alpha_scale = 1.2 #use by ray shooting
+alpha_scale = 3 #use by ray shooting
 qem_cost = 0.05
 qem_num = 1000
 qem_a1 = 1
@@ -39,6 +41,6 @@ expand_scale = 0.3 #make it more robust to missing primitive
 [surface_extraction]
 method = "alphaShape_rays"
 lambda = 0.1
-missing_ground = true #assume there is the ground at -Z_plane
+missing_ground = true #assume there is the ground at -Z_plane if true
 use_area_weight = true
 alpha_scale = 1.2 #use by area_weight

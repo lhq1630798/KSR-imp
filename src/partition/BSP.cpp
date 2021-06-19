@@ -102,25 +102,12 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
 	//	return poly_3_a.inline_points.size() > poly_3_b.inline_points.size();
 	//});
 
-	// calculate bbox before expand polygon
+	// calculate bbox
 	auto box = CGAL::Bbox_3{};
 	for (const auto& poly_3 : polygons_3)
 		box += CGAL::bbox_3(poly_3.points_3().begin(), poly_3.points_3().end());
 	box.dilate(1e3);
 
-	assert(expand_scale >= 0);
-	bool expand = expand_scale > 0;
-	if (expand) {
-		//expand polygon
-		for (auto& poly : polygons_3) {
-			auto center_2 = poly.plane().to_2d(poly.center());
-			for (auto& point_2 : poly.polygon_2().container()) {
-				point_2 += expand_scale * (point_2 - center_2);
-			}
-			poly.update_points_3();
-		}
-
-	}
 
 
 	// add bounding box
@@ -150,30 +137,58 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
 	Point_3 p5 = { box.xmin(), box.ymax(), box.zmax() };
 	Point_3 p6 = { box.xmax(), box.ymax(), box.zmax() };
 	Point_3 p7 = { box.xmax(), box.ymax(), box.zmin() };
-	auto dh = lcc.make_hexahedron(p0, p1, p2, p3, p4, p5, p6, p7);
+	auto cell_dh = lcc.make_hexahedron(p0, p1, p2, p3, p4, p5, p6, p7);
 
-	lcc.set_attribute<3>(dh, lcc.create_attribute<3>());
-	for (const auto& poly : polygons_3)
-		lcc.info<3>(dh).polygons_3.push_back(poly);
-	lcc.info<3>(dh).center = lcc.barycenter<3>(dh);
-	for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
+	lcc.set_attribute<3>(cell_dh, lcc.create_attribute<3>());
+	lcc.info<3>(cell_dh).center = lcc.barycenter<3>(cell_dh);
+	for (auto fdh : collect(lcc.one_dart_per_incident_cell<2, 3>(cell_dh))) {
 		lcc.set_attribute<2>(fdh, lcc.create_attribute<2>());
 		auto p_range = collect(lcc.darts_of_cell<2, 2>(fdh));
 		auto plane = Plane_3{ lcc.point(p_range[0]),lcc.point(p_range[1]),lcc.point(p_range[2]) };
 		lcc.info<2>(fdh).plane = plane;
 	}
 
-	auto bbox_volume = (box.xmax() - box.xmin()) * (box.ymax() - box.ymin()) * (box.zmax() - box.zmin());
-	std::cout << "bbox volume: " << bbox_volume << std::endl;
+	volumes.push_back(cell_dh);
+
+	//add a virtual volume
+	auto ghost = lcc.make_combinatorial_hexahedron();
+	lcc.set_attribute<3>(ghost, lcc.create_attribute<3>());
+	lcc.info<3>(ghost).center = CGAL::ORIGIN;
+	lcc.info<3>(ghost).is_ghost = true;
+	lcc.sew<3>(cell_dh, ghost);
+	lcc.sew<3>(lcc.beta<2>(cell_dh), lcc.beta<2>(ghost));
+	lcc.sew<3>(lcc.beta<0, 2>(cell_dh), lcc.beta<1, 2>(ghost));
+	lcc.sew<3>(lcc.beta<1, 2>(cell_dh), lcc.beta<0, 2>(ghost));
+	lcc.sew<3>(lcc.beta<1, 1, 2>(cell_dh), lcc.beta<1, 1, 2>(ghost));
+	lcc.sew<3>(lcc.beta<2, 1, 1, 2>(cell_dh), lcc.beta<2, 1, 1, 2>(ghost));
+
+
+
+	assert(expand_scale >= 0);
+	bool expand = expand_scale > 0;
+	if (expand) {
+		//expand polygon
+		for (auto& poly : polygons_3) {
+			auto center_2 = poly.plane().to_2d(poly.center());
+			for (auto& point_2 : poly.polygon_2().container()) {
+				point_2 += expand_scale * (point_2 - center_2);
+			}
+			poly.update_points_3();
+		}
+	}
+
+
+	for (const auto& poly : polygons_3)
+		lcc.info<3>(cell_dh).polygons_3.push_back(poly);
+
 
 	if (expand) {
-		auto center = lcc.info<3>(dh).center;
+		auto center = lcc.info<3>(cell_dh).center;
 		//clip expanded polygons by bbox
-		for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
+		for (auto fdh : collect(lcc.one_dart_per_incident_cell<2, 3>(cell_dh))) {
 			auto plane = lcc.info<2>(fdh).plane;
 			assert(plane.has_on_positive_side(center));
-			auto polys = std::move(lcc.info<3>(dh).polygons_3);
-
+			auto polys = std::move(lcc.info<3>(cell_dh).polygons_3);
 			for (auto poly : polys) {
 				if (auto res = poly.split_by_plane(plane)) {
 					auto [new_poly1, new_poly2] = *res;
@@ -191,27 +206,14 @@ BSP_Partition::BSP_Partition(Polygons_3 _polygons_3, float expand_scale)
 						lcc.info<3>(fdh).polygons_3.push_back(poly);
 					}
 					else {
+						fmt::print("primitive outside convex cell\n");
 						assert(false);
 					}
 				}
 			}
-
 		}
 	}
 
-	volumes.push_back(dh);
-
-	//add a virtual volume
-	auto ghost = lcc.make_combinatorial_hexahedron();
-	lcc.set_attribute<3>(ghost, lcc.create_attribute<3>());
-	lcc.info<3>(ghost).center = CGAL::ORIGIN;
-	lcc.info<3>(ghost).is_ghost = true;
-	lcc.sew<3>(dh, ghost);
-	lcc.sew<3>(lcc.beta<2>(dh), lcc.beta<2>(ghost));
-	lcc.sew<3>(lcc.beta<0, 2>(dh), lcc.beta<1, 2>(ghost));
-	lcc.sew<3>(lcc.beta<1, 2>(dh), lcc.beta<0, 2>(ghost));
-	lcc.sew<3>(lcc.beta<1, 1, 2>(dh), lcc.beta<1, 1, 2>(ghost));
-	lcc.sew<3>(lcc.beta<2, 1, 1, 2>(dh), lcc.beta<2, 1, 1, 2>(ghost));
 }
 
 void BSP_Partition::partition()
@@ -260,20 +262,20 @@ void BSP_Partition::partition()
 		num++;
 	}
 
-	// count attribute
-	size_t inliner_num = 0;
-	for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
-		inliner_num += lcc.info<2>(fdh).inline_points.size();
+	if (Config::read<bool>("debug")) {
+		// count attribute
+		size_t inliner_num = 0;
+		for (auto fdh : collect(lcc.one_dart_per_cell<2>())) {
+			inliner_num += lcc.info<2>(fdh).inline_points.size();
+		}
+		fmt::print("inliner_num = {}\n", inliner_num);
+
+		// EC::FT lcc_volume;
+		// for(auto vdh : collect(lcc.one_dart_per_cell<3>()))
+		// 	if (!lcc.info<3>(vdh).is_ghost) 
+		// 		lcc_volume += volume(lcc, vdh);
+		// std::cout << "lcc volume: " << lcc_volume << std::endl;
 	}
-	fmt::print("inliner_num = {}\n", inliner_num);
-
-	// EC::FT lcc_volume;
-	// for(auto vdh : collect(lcc.one_dart_per_cell<3>()))
-	// 	if (!lcc.info<3>(vdh).is_ghost) 
-	// 		lcc_volume += volume(lcc, vdh);
-	// std::cout << "lcc volume: " << lcc_volume << std::endl;
-
-
 }
 
 
@@ -284,9 +286,6 @@ void BSP_Partition::partition_next()
 	if (volumes.empty())
 		return;
 	fmt::print("\rsplit volume:{} ...", count);
-	//if (count == 16) {
-	//	DEBUG_BREAK;
-	//}
 	count++;
 
 	auto dh = volumes.back();
