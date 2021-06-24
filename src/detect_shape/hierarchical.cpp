@@ -1,6 +1,7 @@
 #define CGAL_EIGEN3_ENABLED
 #include <CGAL/linear_least_squares_fitting_3.h>
 #include <CGAL/Polygon_mesh_processing/shape_predicates.h>
+#include <CGAL/Regularization/regularize_planes.h>
 #include <fmt/core.h>
 #include <execution>
 #include <mutex>
@@ -538,7 +539,45 @@ namespace Hierarchical {
 
 	std::vector<EC::Detected_shape> FaceQEM::detected_shape()
 	{
-		//TODO: regularize
+		if(Config::Detection::get().use_regularization){
+			std::vector<IC::Plane_3> planes{};
+			std::vector<IC::Point_3> points{};
+			std::vector<int> point_plane_index_map{};
+			for (Plane_region* plane_region : plane_regions) {
+				for (auto& fd : plane_region->fds){
+					point_plane_index_map.push_back(planes.size());
+
+					std::vector<IC::Point_3> face_vertice;;
+					for (auto vd : mesh.vertices_around_face(mesh.halfedge(fd))) {
+						face_vertice.push_back(mesh.point(vd));
+					}
+					assert(face_vertice.size() == 3);
+					auto center = CGAL::centroid(face_vertice[0], face_vertice[1], face_vertice[2]);
+					points.push_back(center);
+					}
+				planes.push_back(plane_region->plane);
+			}
+
+			const auto& params = Config::Regularization::get();
+			CGAL::regularize_planes(points,
+				CGAL::Identity_property_map<IC::Point_3>(),
+				planes,
+				CGAL::Identity_property_map<IC::Plane_3>(),
+				CGAL::make_property_map(point_plane_index_map),
+				params.parallelism,  // regularize parallelism
+				params.orthogonality,  // regularize orthogonality
+				params.coplanarity, // regularize coplanarity
+				params.Z_symmetry,  // regularize Z-symmetry 
+				params.paral_degree,  // 1 degrees of tolerance for parallelism / orthogonality
+				params.coplane_dist // tolerance coplanarity
+			);
+
+			int ind = 0;
+			for (Plane_region* plane_region : plane_regions) {
+				plane_region->plane = planes[ind++];
+			}
+		}
+
 		IK_to_EK to_EK;
 		std::vector<EC::Detected_shape> detected_shapes;
 		for (Plane_region* plane_region : plane_regions) {
@@ -657,7 +696,7 @@ namespace Hierarchical {
 		auto normal = points[vd].second / points[vd].second.squared_length();
 		double cost = 0;
 		
-		//normalºÍdistanceµÄÏÞÖÆ
+		//normalï¿½ï¿½distanceï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 		double angle_threshold = std::cos(CGAL::to_double((param.max_accepted_angle * static_cast<IC::FT>(CGAL_PI)) / IC::FT(180)));
 		double distance_threshold = param.max_distance_to_plane * param.max_distance_to_plane;
 
@@ -728,7 +767,7 @@ namespace Hierarchical {
 			if (visited[event.vd])
 				continue;
 
-			//normalºÍdistanceµÄÏÞÖÆ
+			//normalï¿½ï¿½distanceï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			if (event.cost == 1e100) {
 				visited[event.vd] = true;
 				continue;
@@ -768,7 +807,37 @@ namespace Hierarchical {
 
 	std::vector<EC::Detected_shape> PointQEM::detected_shape()
 	{
-		//TODO: regularize
+
+		if(Config::Detection::get().use_regularization){
+			std::vector<int> point_plane_index_map(points.size(), -1);
+			std::vector<IC::Plane_3> planes{};
+			for (Point_region* point_region : point_regions) {
+				for (auto& vd : point_region->vds){
+					point_plane_index_map[vd] = planes.size();
+				}
+				planes.push_back(point_region->plane);
+			}
+
+			const auto& params = Config::Regularization::get();
+			CGAL::regularize_planes(points,
+				IC::Point_map(),
+				planes,
+				CGAL::Identity_property_map<IC::Plane_3>(),
+				CGAL::make_property_map(point_plane_index_map),
+				params.parallelism,  // regularize parallelism
+				params.orthogonality,  // regularize orthogonality
+				params.coplanarity, // regularize coplanarity
+				params.Z_symmetry,  // regularize Z-symmetry 
+				params.paral_degree,  // 1 degrees of tolerance for parallelism / orthogonality
+				params.coplane_dist // tolerance coplanarity
+			);
+
+			int ind = 0;
+			for (Point_region* point_region : point_regions) {
+				point_region->plane = planes[ind++];
+			}
+		}
+
 		IK_to_EK to_EK;
 		std::vector<EC::Detected_shape> detected_shapes;
 		for (Point_region* point_region : point_regions) {

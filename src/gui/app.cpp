@@ -104,7 +104,13 @@ void App::render_imgui()
 		ImGui::DragFloat("scale alpha value", &params.alpha_scale, 0.1, 1, 10);
 		ImGui::Checkbox("alpha shape", &show_alpha_shape);
 	}
-
+	{
+		ImGui::Separator();
+		ImGui::Text("Regularization");
+		auto& params = Config::Regularization::get();
+		ImGui::DragFloat("paral_degree", &params.paral_degree, 0.1, 1, 20);
+		ImGui::DragFloat("coplane_dist", &params.coplane_dist, 0.001, 0.01, 0.02);
+	}
 	{
 		if (manager.face_qem) {
 			ImGui::Separator();

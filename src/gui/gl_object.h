@@ -494,7 +494,7 @@ public:
 	void render(Shader &shader) const
 	{
 		shader.use();
-		glPointSize(1);
+		glPointSize(3);
 		glBindVertexArray(vao);
 		glDrawArrays(GL_POINTS, 0, (GLuint)points.size());
 		glBindVertexArray(0);
