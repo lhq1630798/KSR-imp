@@ -309,6 +309,36 @@ void Manager::detect_shape()
 	process_detected_shape(std::move(detected_shape));
 }
 
+void Manager::save_convex() {
+	EK_to_IK to_inexact;
+	IC::Surface_Mesh mesh;
+	using Color = CGAL::Color;
+	auto face_color = mesh.add_property_map<IC::Surface_Mesh::Face_index, Color>("f:color", Color(0, 0, 0)).first;
+	// Iterate through all regions.
+	for (auto shape : convex_shape) {
+		std::vector<IC::vertex_descriptor> verts;
+		for (auto point : shape.points_3()) {
+			IC::Point_3 p = to_inexact(point);
+			p = IC::Point_3{
+				p.x() * ES_params.scale - ES_params.translate.x(),
+				p.y() * ES_params.scale - ES_params.translate.y(),
+				p.z() * ES_params.scale - ES_params.translate.z() };
+			verts.push_back(mesh.add_vertex(p));
+		}
+		IC::face_descriptor fd = mesh.add_face(verts);
+		const Color color(
+			static_cast<unsigned char>(rand() % 256),
+			static_cast<unsigned char>(rand() % 256),
+			static_cast<unsigned char>(rand() % 256));
+		face_color[fd] = color;
+	}
+
+	std::string path = Config::read<std::string>("save_path") + "convex_mesh.off";
+	std::ofstream file(path, std::ios::binary);
+	file << mesh;
+	file.close();
+}
+
 void Manager::process_detected_shape(std::vector<EC::Detected_shape> detected_shape){
 	ES_params.detected_shape = std::move(detected_shape);
 
@@ -338,6 +368,12 @@ void Manager::process_detected_shape(std::vector<EC::Detected_shape> detected_sh
 	}
 	auto m = GL::Mesh{ verts,idxs };
 	alpha_mesh = std::make_unique<GL::Mesh>(m);
+
+	//save convex shape
+	const auto& params2 = Config::Detection::get();
+	if (params2.save_result) {
+		save_convex();
+	}
 }
 
 void Manager::init_BSP()
@@ -418,12 +454,15 @@ int Manager::run_offline(fs::path file)
 
 
 	detect_shape();
-	for (int i = 0; i < 3; i++) {
-		points_qem->refine();
-		//face_qem->refine();
+	const auto& params = Config::Detection::get();
+	if (params.method == "hierarchical") {
+		for (int i = 0; i < 3; i++) {
+			points_qem->refine();
+			//face_qem->refine();
+		}
+		process_detected_shape(points_qem->detected_shape());
+		//process_detected_shape(face_qem->detected_shape());
 	}
-	process_detected_shape(points_qem->detected_shape());
-	//process_detected_shape(face_qem->detected_shape());
 	init_BSP();
 	partition();
 	extract_surface();

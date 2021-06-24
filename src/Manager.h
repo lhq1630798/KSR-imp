@@ -21,6 +21,7 @@ public:
 	void partition();
 	void extract_surface();
 	void save_results();
+	void save_convex();
 	int run_offline(fs::path file);
 
 	IC::PWN_vector points;//input points

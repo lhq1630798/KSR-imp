@@ -64,34 +64,35 @@ namespace Region_Growing {
 			regions.resize(params.primitive_num);
 		}
 
-		if (params.save_result) {
-			//save region growing result
-		}
+		//if (params.save_result) {
+		//	//save region growing result
+		//	save_regions_point(points, regions);
+		//}
 
 		return regions;
 	}
 
-	void save_region_growing_mesh(IC::Surface_Mesh mesh, Regions regions) {
-		//save region growing result
-		using Color = CGAL::Color;
-		auto face_color = mesh.add_property_map<Surface_Mesh::Face_index, Color>("f:color", Color(0, 0, 0)).first;
-		// Iterate through all regions.
-		for (const auto& region : regions) {
-			// Generate a random color.
-			const Color color(
-				static_cast<unsigned char>(rand() % 256),
-				static_cast<unsigned char>(rand() % 256),
-				static_cast<unsigned char>(rand() % 256));
-			// Iterate through all region items.
-			using size_type = typename Surface_Mesh::size_type;
-			for (const auto index : region)
-				face_color[Surface_Mesh::Face_index(static_cast<size_type>(index))] = color;
-		}
-		std::string path = Config::read<std::string>("save_path") + "region_growing.off";
-		std::ofstream file(path, std::ios::binary);
-		file << mesh;
-		file.close();
-	}
+	//void save_region_growing_mesh(IC::Surface_Mesh mesh, Regions regions) {
+	//	//save region growing result
+	//	using Color = CGAL::Color;
+	//	auto face_color = mesh.add_property_map<Surface_Mesh::Face_index, Color>("f:color", Color(0, 0, 0)).first;
+	//	// Iterate through all regions.
+	//	for (const auto& region : regions) {
+	//		// Generate a random color.
+	//		const Color color(
+	//			static_cast<unsigned char>(rand() % 256),
+	//			static_cast<unsigned char>(rand() % 256),
+	//			static_cast<unsigned char>(rand() % 256));
+	//		// Iterate through all region items.
+	//		using size_type = typename Surface_Mesh::size_type;
+	//		for (const auto index : region)
+	//			face_color[Surface_Mesh::Face_index(static_cast<size_type>(index))] = color;
+	//	}
+	//	std::string path = Config::read<std::string>("save_path") + "region_growing.off";
+	//	std::ofstream file(path, std::ios::binary);
+	//	file << mesh;
+	//	file.close();
+	//}
 
 	Regions region_growing_on_mesh(const IC::Surface_Mesh& mesh) {
 		using Neighbor_query = CGAL::Shape_detection::Polygon_mesh::One_ring_neighbor_query<Surface_Mesh>;
@@ -152,9 +153,9 @@ namespace Region_Growing {
 			regions = std::move(largest_region);
 		}
 
-		if (params.save_result) {
+		/*if (params.save_result) {
 			save_region_growing_mesh(mesh, regions);
-		}
+		}*/
 
 		return regions;
 	}

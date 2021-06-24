@@ -273,9 +273,9 @@ namespace Region_Growing {
         Regions regions;
         region_growing.detect(std::back_inserter(regions));
 
-        if (Config::Detection::get().save_result) {
+        /*if (Config::Detection::get().save_result) {
             save_region_growing_mesh(mesh, regions);
-        }
+        }*/
 
         return regions;
     }

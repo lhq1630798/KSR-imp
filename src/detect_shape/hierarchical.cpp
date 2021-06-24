@@ -14,6 +14,51 @@
 
 namespace Hierarchical {
 
+	void save_regions_mesh(IC::Surface_Mesh mesh, std::vector<std::pair<std::vector<IC::face_descriptor>, GL::Vec3> >& regions, std::string method) {
+		//save region growing result
+		using Color = CGAL::Color;
+		auto face_color = mesh.add_property_map<IC::Surface_Mesh::Face_index, Color>("f:color", Color(0, 0, 0)).first;
+		// Iterate through all regions.
+		for (const auto& region : regions) {
+			// Generate a random color.
+			const Color color(
+				static_cast<unsigned char>(region.second[0] * 256),
+				static_cast<unsigned char>(region.second[1] * 256),
+				static_cast<unsigned char>(region.second[2] * 256));
+			// Iterate through all region items.
+			for (const auto index : region.first)
+				face_color[index] = color;
+		}
+		std::string path = Config::read<std::string>("save_path") + method + "_regions_mesh.off";
+		std::ofstream file(path, std::ios::binary);
+		file << mesh;
+		file.close();
+	}
+
+	void save_regions_point(const IC::PWN_vector& points, std::vector<std::pair<std::vector<size_t>, GL::Vec3> >& regions, std::string method) {
+		//save region growing result
+		IC::Surface_Mesh mesh;
+		using Color = CGAL::Color;
+		auto vertex_color = mesh.add_property_map<IC::Surface_Mesh::Vertex_index, Color>("v:color", Color(0, 0, 0)).first;
+		// Iterate through all regions.
+		for (const auto& region : regions) {
+			// Generate a random color.
+			const Color color(
+				static_cast<unsigned char>(region.second[0] * 256),
+				static_cast<unsigned char>(region.second[1] * 256),
+				static_cast<unsigned char>(region.second[2] * 256));
+			// Iterate through all region items.
+			for (const auto index : region.first) {
+				IC::vertex_descriptor v0 = mesh.add_vertex((*(points.begin() + index)).first);
+				vertex_color[v0] = color;
+			}
+		}
+		std::string path = Config::read<std::string>("save_path") + method + "_regions_point.off";
+		std::ofstream file(path, std::ios::binary);
+		file << mesh;
+		file.close();
+	}
+	
 	std::unique_ptr<FaceQEM> bootstrap_face_qem(IC::Surface_Mesh& mesh) {
 
 		Region_Growing::Regions regions;
@@ -213,6 +258,20 @@ namespace Hierarchical {
 
 		init();
 
+		//save result
+		std::vector<std::pair<std::vector<IC::face_descriptor>, GL::Vec3> > regions;
+		for (Plane_region* plane_region : plane_regions) {
+			std::vector<IC::face_descriptor> region;
+			for (auto& fd : plane_region->fds)
+			{
+				region.push_back(fd);
+			}
+			regions.push_back(std::make_pair(region, plane_region->color));
+		}
+		const auto& params = Config::Detection::get();
+		if (params.save_result) {
+			save_regions_mesh(mesh, regions, "RG");
+		}
 	}
 
 	void FaceQEM::init() {
@@ -539,6 +598,21 @@ namespace Hierarchical {
 
 	std::vector<EC::Detected_shape> FaceQEM::detected_shape()
 	{
+		//save MRG results
+		std::vector<std::pair<std::vector<IC::face_descriptor>, GL::Vec3> > regions;
+		for (Plane_region* plane_region : plane_regions) {
+			std::vector<IC::face_descriptor> region;
+			for (auto& fd : plane_region->fds)
+			{
+				region.push_back(fd);
+			}
+			regions.push_back(std::make_pair(region, plane_region->color));
+		}
+		const auto& params = Config::Detection::get();
+		if (params.save_result) {
+			save_regions_mesh(mesh, regions, "MRG");
+		}
+
 		if(Config::Detection::get().use_regularization){
 			std::vector<IC::Plane_3> planes{};
 			std::vector<IC::Point_3> points{};
@@ -608,6 +682,7 @@ namespace Hierarchical {
 				plane = plane.opposite();
 			detected_shapes.push_back({ to_EK(plane) , pwns });
 		}
+
 		return detected_shapes;
 	}
 
@@ -630,6 +705,7 @@ namespace Hierarchical {
 
 		Region_Growing::Regions regions;
 		regions = Region_Growing::region_growing_on_points(points);
+
 		return std::make_unique<PointQEM>(points, regions);
 	}
 
@@ -646,6 +722,21 @@ namespace Hierarchical {
 			}
 		}
 		init();
+
+		//save result
+		std::vector<std::pair<std::vector<size_t>, GL::Vec3> > regions;
+		for (Point_region* point_region : point_regions) {
+			std::vector<size_t> region;
+			for (auto& vd : point_region->vds)
+			{
+				region.push_back(vd);
+			}
+			regions.push_back(std::make_pair(region,point_region->color));
+		}
+		const auto& params = Config::Detection::get();
+		if (params.save_result) {
+			save_regions_point(points, regions, "RG");
+		}
 	}
 
 	void PointQEM::init() {
@@ -658,7 +749,7 @@ namespace Hierarchical {
 			for (auto index : point_region->vds) {
 				const IC::PWN& point = *(points.begin() + index);
 				points_coord.push_back(point.first);
-				average_normal += point.second / point.second.squared_length();
+				average_normal += point.second;
 			}
 			average_normal /= point_region->vds.size();
 
@@ -693,7 +784,7 @@ namespace Hierarchical {
 	double fitting_cost(const IC::PWN_vector& points, size_t vd, const IC::Plane_3& plane) {
 		const auto& param = Config::Detection::get();
 		auto center = points[vd].first;
-		auto normal = points[vd].second / points[vd].second.squared_length();
+		auto normal = points[vd].second;
 		double cost = 0;
 		
 		//normal��distance������
@@ -807,6 +898,19 @@ namespace Hierarchical {
 
 	std::vector<EC::Detected_shape> PointQEM::detected_shape()
 	{
+		std::vector<std::pair<std::vector<size_t>, GL::Vec3> > regions;
+		for (Point_region* point_region : point_regions) {
+			std::vector<size_t> region;
+			for (auto& vd : point_region->vds)
+			{
+				region.push_back(vd);
+			}
+			regions.push_back(std::make_pair(region, point_region->color));
+		}
+		const auto& params2 = Config::Detection::get();
+		if (params2.save_result) {
+			save_regions_point(points, regions, "MRG");
+		}
 
 		if(Config::Detection::get().use_regularization){
 			std::vector<int> point_plane_index_map(points.size(), -1);
@@ -848,7 +952,7 @@ namespace Hierarchical {
 			for (auto& vd : point_region->vds)
 			{
 				auto center = points[vd].first;
-				auto normal = points[vd].second / points[vd].second.squared_length();
+				auto normal = points[vd].second;
 				average_normal += normal;
 				pwns.push_back({ to_EK(center), to_EK(normal) });
 			}
